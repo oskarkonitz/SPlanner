@@ -1,1 +1,1 @@
-#PROJEKT WDP - Aplikacja do zarzadzania nauką
+# PROJEKT WDP - Aplikacja do zarzadzania nauką
