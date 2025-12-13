@@ -6,7 +6,8 @@ DEFAULT_DATA = {
         "max_per_day": 2,
         "max_same_subject_per_day": 1,
     },
-    "exams": []
+    "exams": [],
+    "topics": []
 }
 
 def load(path="storage.json"):
