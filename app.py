@@ -1,6 +1,7 @@
 import uuid
 import argparse
 from storage import load, save
+from planner import plan
 
 def new_id(prefix):
     return f"{prefix}_{uuid.uuid4().hex[:8]}"
@@ -36,13 +37,16 @@ def cmd_add(data):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("cmd", choices=["add"])
+    parser.add_argument("cmd", choices=["add","plan"])
     args = parser.parse_args()
 
     data = load()
 
     if args.cmd == "add":
         cmd_add(data)
+    if args.cmd == "plan":
+        plan(data)
+        print("planowanie zakonczone")
 
     save(data)
 
