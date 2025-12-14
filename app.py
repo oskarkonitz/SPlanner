@@ -41,8 +41,10 @@ def main():
     args = parser.parse_args()
 
     data = load()
+
     if args.cmd == "add":
         cmd_add(data)
+
     if args.cmd == "plan":
         plan(data)
         print("planowanie zakonczone")

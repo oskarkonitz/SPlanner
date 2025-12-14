@@ -17,6 +17,9 @@ def callendar_create(data, tday):
         callendar.update({max_date : []})
         max_date -= timedelta(days=1)
 
+    for exam in data["exams"]:
+        callendar.update({date_format(exam["date"]): ["E"]})
+
     return callendar
 
 def topics_list_create(data, e_id):
@@ -35,24 +38,55 @@ def plan(data):
 
     for exam in data["exams"]:
         exam_date = date_format(exam["date"])
-        v_date = exam_date - timedelta(days=1)
+        e_date = exam_date - timedelta(days=1)
+
+        border_day = e_date
+        while "E" not in callendar[border_day] and border_day != today:
+            border_day -= timedelta(days=1)
+
         t_list = topics_list_create(data, exam["id"])
-        t_list.reverse()
-        days_available = (v_date - today).days + 1
+        # t_list.reverse()
+
+        days_available = (e_date - border_day).days + 1
         needed_daily = math.ceil(len(t_list) / days_available)
-        while v_date >= today and len(t_list) > 0:
+        tasks_remaining = len(t_list)
+
+        if needed_daily == 1:
+            border_day = e_date - timedelta(days=(tasks_remaining))
+        else:
+            border_day -= timedelta(days=1)
+
+        if border_day == today:
+            border_day -= timedelta(days=1)
+
+        while border_day <= e_date:
             for i in range(needed_daily):
-                callendar[v_date].append(t_list[0])
-                del t_list[0]
-            v_date -= timedelta(days=1)
+                if len(t_list) > 0:
+                    callendar[border_day + timedelta(days=1)].append(t_list[0])
+                    del t_list[0]
+                    tasks_remaining -= 1
+            border_day += timedelta(days=1)
 
-    print(callendar)
+    for topic in data["topics"]:
+        for key, value in callendar.items():
+            if topic["id"] in value:
+                topic["scheduled_date"] = key
 
+        # while e_date >= today and len(t_list) > 0:
+        #     for i in range(needed_daily):
+        #         if len(t_list) > 0:
+        #             callendar[e_date].append(t_list[0])
 
-
-
-
-
-
-data = load()
-plan(data)
+            # if needed_daily % 2 == 0 or needed_daily == 1:
+            #     for i in range(needed_daily):
+            #         if len(t_list) > 0:
+            #             callendar[e_date].append(t_list[0])
+            #             del t_list[0]
+            # else:
+            #     callendar[e_date].append(t_list[0])
+            #     del t_list[0]
+            #     for i in range(needed_daily - 1):
+            #         if len(t_list) > 0:
+            #             callendar[e_date].append(t_list[0])
+            #             del t_list[0]
+            # e_date -= timedelta(days=1)
