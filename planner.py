@@ -10,23 +10,44 @@ def callendar_create(data, tday):
     max_date = tday
 
     for exam in data["exams"]:
-        if date_format(exam["date"]) > max_date:
-            max_date = date_format(exam["date"])
+        # if date_format(exam["date"]) > max_date:
+        #     max_date = date_format(exam["date"])
+        exam_date = date_format(exam["date"])
+        if exam_date < tday:
+            continue
+        if exam_date > max_date:
+            max_date = exam_date
 
     while max_date >= tday:
         callendar.update({max_date : []})
         max_date -= timedelta(days=1)
 
     for exam in data["exams"]:
-        callendar.update({date_format(exam["date"]): ["E"]})
+        # callendar.update({date_format(exam["date"]): ["E"]})
+        exam_date = date_format(exam["date"])
+        if exam_date < tday:
+            continue
+        callendar.update({exam_date : ["E"]})
 
     return callendar
 
 def topics_list_create(data, e_id):
     topics_list = []
+    today = date.today()
+    exam_date = None
+
+    for exam in data["exams"]:
+        if exam["id"] == e_id:
+            exam_date = date_format(exam["date"])
+            break
+
+    if exam_date is None or exam_date <= today:
+        return topics_list
+
     for topic in data["topics"]:
-        if topic["exam_id"] == e_id:
+        if topic["exam_id"] == e_id and topic["status"] == "todo":
             topics_list.append(topic["id"])
+
     return topics_list
 
 def plan(data):
@@ -38,10 +59,15 @@ def plan(data):
 
     for exam in data["exams"]:
         exam_date = date_format(exam["date"])
+        if exam_date <= today:
+            continue
+
         e_date = exam_date - timedelta(days=1)
+        if e_date not in callendar:
+            continue
 
         border_day = e_date
-        while "E" not in callendar[border_day] and border_day != today:
+        while border_day > today and "E" not in callendar.get(border_day, []):
             border_day -= timedelta(days=1)
 
         t_list = topics_list_create(data, exam["id"])
@@ -71,22 +97,3 @@ def plan(data):
         for key, value in callendar.items():
             if topic["id"] in value:
                 topic["scheduled_date"] = key
-
-        # while e_date >= today and len(t_list) > 0:
-        #     for i in range(needed_daily):
-        #         if len(t_list) > 0:
-        #             callendar[e_date].append(t_list[0])
-
-            # if needed_daily % 2 == 0 or needed_daily == 1:
-            #     for i in range(needed_daily):
-            #         if len(t_list) > 0:
-            #             callendar[e_date].append(t_list[0])
-            #             del t_list[0]
-            # else:
-            #     callendar[e_date].append(t_list[0])
-            #     del t_list[0]
-            #     for i in range(needed_daily - 1):
-            #         if len(t_list) > 0:
-            #             callendar[e_date].append(t_list[0])
-            #             del t_list[0]
-            # e_date -= timedelta(days=1)
