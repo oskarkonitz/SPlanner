@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from storage import load, save
 from planner import plan
 import uuid
@@ -83,8 +83,8 @@ class GUI:
         tk.Label(add_win, text="Data (YYYY-MM-DD):").grid(row=2, column=0, pady=10, padx=10, sticky="e")
         entry_date = tk.Entry(add_win, width=30)
         entry_date.grid(row=2, column=1, padx=10, pady=10)
-        tommorow = datetime.now() + timedelta(days=1)
-        entry_date.insert(0, tommorow.strftime("%Y-%m-%d"))
+        tomorrow = datetime.now() + timedelta(days=1)
+        entry_date.insert(0, tomorrow.strftime("%Y-%m-%d"))
 
         tk.Label(add_win, text="Tematy (jeden pod drugim):").grid(row=3, column=0, columnspan=2, pady=5)
         text_topics = tk.Text(add_win, width=40, height=10)
@@ -94,7 +94,57 @@ class GUI:
         btn_save.grid(row=5, column=0, columnspan=2, pady=20)
 
     def show_week(self):
-        messagebox.showinfo("abc", "def")
+        week_win = tk.Toplevel(self.root)
+        week_win.geometry("600x400")
+        week_win.title("Plan na najbliższy tydzień")
+
+        frame = tk.Frame(week_win)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        columns = ("data", "przedmiot", "temat")
+        tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
+        tree.heading("data", text="Data")
+        tree.column("data", width=100, anchor="center")
+        tree.heading("przedmiot", text="Przedmiot")
+        tree.column("przedmiot", width=150, anchor="w")
+        tree.heading("temat", text="Temat | Zadanie")
+        tree.column("temat", width=300, anchor="w")
+
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side="right", fill="y")
+        tree.pack(side="left", fill="both", expand=True)
+
+        today = datetime.now().date()
+
+        for i in range(7):
+            current_day = today + timedelta(days=i)
+            day_str = current_day.strftime("%Y-%m-%d")
+            date_shown = False
+
+            for exam in self.data["exams"]:
+                if exam["date"] == day_str:
+                    date_label = day_str if not date_shown else ""
+                    tree.insert("", "end", values=(date_label, exam["subject"], exam["title"]), tags=("exam",))
+                    date_shown = True
+            for topic in self.data["topics"]:
+                if str(topic.get("scheduled_date")) == day_str:
+                    subj_name = "Inne"
+                    for exam in self.data["exams"]:
+                        if exam["id"] == topic["exam_id"]:
+                            subj_name = exam["subject"]
+                            break
+
+                    date_label = day_str if not date_shown else ""
+                    if topic["status"] == "done":
+                        tree.insert("", "end", values=(date_label, subj_name, topic["name"]), tags=("done",))
+                    else:
+                        tree.insert("", "end", values=(date_label, subj_name, topic["name"]))
+                    date_shown = True
+
+        tree.tag_configure("exam", foreground="red")
+        tree.tag_configure("done", foreground="green")
 
 
 
