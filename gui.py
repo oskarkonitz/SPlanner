@@ -9,14 +9,14 @@ class GUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Planer Nauki")
-        self.root.geometry("400x450")
+        self.root.geometry("400x500")
         self.root.resizable(False, False)
 
         self.data = load()
         # print(f"Loaded exams: {len(self.data["exams"])}")
 
         self.btn_style = {
-            "font": ("Arial", 12, "bold"),
+            "font": ("Arial", 11, "bold"),
             "cursor": "hand2",
             "height": 2,
             "width": 18,
@@ -37,7 +37,7 @@ class GUI:
 
     def manual(self):
         man_win = tk.Toplevel(self.root)
-        man_win.geometry("450x450")
+        man_win.geometry("450x500")
         man_win.title("Instrukcja Obsługi")
 
         frame = tk.Frame(man_win)
@@ -92,7 +92,7 @@ class GUI:
             save(self.data)
             messagebox.showinfo("Sukces", "Planowanie zakonczone")
         except Exception as e:
-            messagebox.showerror("Error", f"Błąd: {e}")
+            messagebox.showerror("Błąd", f"Powod: {e}")
 
     def add_window(self):
         def save_new_exam():
@@ -273,7 +273,7 @@ class GUI:
         btn_toggle = tk.Button(btn_frame, text="Zmień status", command=toggle_status, **self.btn_style)
         btn_toggle.pack(side="left", padx=5)
 
-        btn_clear = tk.Button(btn_frame, text="Wyczyść bazę", command=clear_database, **self.btn_style, foreground="red")
+        btn_clear = tk.Button(btn_frame, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
         btn_clear.pack(side="left", padx=5)
 
         btn_close = tk.Button(btn_frame, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
