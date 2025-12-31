@@ -175,7 +175,7 @@ class GUI:
         tree.column("data", width=100, anchor="center")
         tree.heading("przedmiot", text="Przedmiot")
         tree.column("przedmiot", width=150, anchor="w")
-        tree.heading("temat", text="Temat | Zadanie")
+        tree.heading("temat", text="Temat | Zadanie | Forma Zaliczenia")
         tree.column("temat", width=300, anchor="w")
 
         tree.tag_configure("exam", foreground="red")
