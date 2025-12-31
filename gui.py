@@ -178,9 +178,10 @@ class GUI:
         tree.heading("temat", text="Temat | Zadanie | Forma Zaliczenia")
         tree.column("temat", width=300, anchor="w")
 
-        tree.tag_configure("exam", foreground="red")
-        tree.tag_configure("done", foreground="green")
-        tree.tag_configure("date_header", font=("Arial", 12, "bold"))
+        tree.tag_configure("exam", foreground="red", font=("Arial", 14, "bold"))
+        tree.tag_configure("done", foreground="green", font=("Arial", 14, "bold"))
+        tree.tag_configure("date_header", font=("Arial", 13, "bold"))
+        tree.tag_configure("todo", font=("Arial", 14, "bold"))
 
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
