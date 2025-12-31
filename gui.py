@@ -10,6 +10,7 @@ class GUI:
         self.root = root
         self.root.title("Planer Nauki v1.0")
         self.root.geometry("400x400")
+        self.root.resizable(False, False)
 
         self.data = load()
         print(f"Loaded exams: {len(self.data["exams"])}")
@@ -31,7 +32,7 @@ class GUI:
             save(self.data)
             messagebox.showinfo("Sukces", "Planowanie zakonczone")
         except Exception as e:
-            messagebox.showerror("Error", e)
+            messagebox.showerror("Error", f"Błąd: {e}")
 
     def add_window(self):
         def save_new_exam():
@@ -65,11 +66,12 @@ class GUI:
                 })
 
             save(self.data)
-            messagebox.showinfo("Sukces", f"Dodano egzamin i {len(topics_list)} tematów")
             add_win.destroy()
+            messagebox.showinfo("Sukces", f"Dodano egzamin i {len(topics_list)} tematów")
 
         add_win = tk.Toplevel(self.root)
         add_win.geometry("460x400")
+        add_win.resizable(False, False)
         add_win.title("Dodaj nowy egzamin")
 
         tk.Label(add_win, text="Przedmiot:").grid(row=0, column=0, pady=10, padx=10, sticky="e")
@@ -90,8 +92,14 @@ class GUI:
         text_topics = tk.Text(add_win, width=40, height=10)
         text_topics.grid(row=4, column=0, columnspan=2, padx=10)
 
-        btn_save = tk.Button(add_win, text="ZAPISZ", command=save_new_exam, height=2, width=15)
-        btn_save.grid(row=5, column=0, columnspan=2, pady=20)
+        btn_frame = tk.Frame(add_win)
+        btn_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20)
+
+        btn_save = tk.Button(btn_frame, text="Zapisz", command=save_new_exam, height=2, width=15)
+        btn_save.pack(side="left", padx=5)
+
+        btn_exit = tk.Button(btn_frame, text="Wyjście", command=add_win.destroy, height=2, width=15)
+        btn_exit.pack(side="left", padx=5)
 
     def show_week(self):
         week_win = tk.Toplevel(self.root)
@@ -110,6 +118,10 @@ class GUI:
         tree.heading("temat", text="Temat | Zadanie")
         tree.column("temat", width=300, anchor="w")
 
+        tree.tag_configure("exam", foreground="red")
+        tree.tag_configure("done", foreground="green")
+        tree.tag_configure("date_header", font=("Arial", 12, "bold"))
+
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
 
@@ -121,13 +133,18 @@ class GUI:
         for i in range(7):
             current_day = today + timedelta(days=i)
             day_str = current_day.strftime("%Y-%m-%d")
-            date_shown = False
+            date_printed = False
+
+            def print_date():
+                nonlocal date_printed
+                if not date_printed:
+                    tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
+                    date_printed = True
 
             for exam in self.data["exams"]:
                 if exam["date"] == day_str:
-                    date_label = day_str if not date_shown else ""
-                    tree.insert("", "end", values=(date_label, exam["subject"], exam["title"]), tags=("exam",))
-                    date_shown = True
+                    print_date()
+                    tree.insert("", "end", values=("", exam["subject"], exam["title"]), tags=("exam",))
             for topic in self.data["topics"]:
                 if str(topic.get("scheduled_date")) == day_str:
                     subj_name = "Inne"
@@ -135,17 +152,59 @@ class GUI:
                         if exam["id"] == topic["exam_id"]:
                             subj_name = exam["subject"]
                             break
+                    print_date()
+                    current_status = topic["status"]
+                    tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]), tags=(current_status,))
 
-                    date_label = day_str if not date_shown else ""
-                    if topic["status"] == "done":
-                        tree.insert("", "end", values=(date_label, subj_name, topic["name"]), tags=("done",))
-                    else:
-                        tree.insert("", "end", values=(date_label, subj_name, topic["name"]))
-                    date_shown = True
+        def toggle_status():
+            seleted_item = tree.selection()
+            if not seleted_item:
+                messagebox.showinfo("Pomoc", "Najpierw zaznacz zadanie aby zmienić jego status")
+                return
+            topic_id = seleted_item[0]
+            target_topic = None
+            for topic in self.data["topics"]:
+                if topic["id"] == topic_id:
+                    target_topic = topic
+                    break
 
-        tree.tag_configure("exam", foreground="red")
-        tree.tag_configure("done", foreground="green")
+            if target_topic:
+                if target_topic["status"] == "todo":
+                    target_topic["status"] = "done"
+                    tree.item(topic_id, tags=("done",))
+                else:
+                    target_topic["status"] = "todo"
+                    tree.item(topic_id, tags=("",))
+                save(self.data)
+            else:
+                messagebox.showwarning("Błąd", "Nie można zmienić statusu tego elementu.")
 
+        def clear_database():
+            answer = messagebox.askyesno("UWAGA", "Czy na pewno chcesz usunąć WSZYSTKIE dane?\nTej operacji nie da się cofnąć!")
+            if answer:
+                self.data = {
+                    "settings": {
+                        "max_per_day": 2,
+                        "max_same_subject_per_day": 1,
+                    },
+                    "exams": [],
+                    "topics": []
+                }
+                save(self.data)
+                week_win.destroy()
+                messagebox.showinfo("Sukces", "Baza danych została zresetowana.")
+
+        btn_frame = tk.Frame(week_win)
+        btn_frame.pack(pady=10)
+
+        btn_toggle = tk.Button(btn_frame, text="Zmień status", command=toggle_status, height=2, width=15)
+        btn_toggle.pack(side="left", padx=5)
+
+        btn_clear = tk.Button(btn_frame, text="Wyczyść bazę", command=clear_database, height=2, width=15)
+        btn_clear.pack(side="left", padx=5)
+
+        btn_close = tk.Button(btn_frame, text="Zamknij", command=week_win.destroy, height=2, width=15)
+        btn_close.pack(side="left", padx=5)
 
 
 if __name__ == "__main__":
