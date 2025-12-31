@@ -8,23 +8,83 @@ from datetime import datetime, timedelta
 class GUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Planer Nauki v1.0")
-        self.root.geometry("400x400")
+        self.root.title("Planer Nauki")
+        self.root.geometry("400x450")
         self.root.resizable(False, False)
 
         self.data = load()
-        print(f"Loaded exams: {len(self.data["exams"])}")
+        # print(f"Loaded exams: {len(self.data["exams"])}")
 
-        self.label_title = tk.Label(self.root, text="Planer Nauki", font=("Arial", 20, "bold"))
+        self.btn_style = {
+            "font": ("Arial", 12, "bold"),
+            "cursor": "hand2",
+            "height": 2,
+            "width": 18,
+        }
+
+        self.label_title = tk.Label(self.root, text="Wybierz opcje:", font=("Arial", 20, "bold"))
         self.label_title.pack(pady=20)
-        self.btn_add = tk.Button(self.root, text="Dodaj Egzamin", width=20, height=2, command=self.add_window)
+        self.btn_add = tk.Button(self.root, text="Dodaj Egzamin", command=self.add_window, **self.btn_style)
         self.btn_add.pack(pady=10)
-        self.btn_plan = tk.Button(self.root, text="Generuj Plan", width=20, height=2, command=self.run_planner)
+        self.btn_plan = tk.Button(self.root, text="Generuj Plan", command=self.run_planner, **self.btn_style)
         self.btn_plan.pack(pady=10)
-        self.btn_week = tk.Button(self.root, text="Pokaż Tydzień", width=20, height=2, command=self.show_week)
+        self.btn_week = tk.Button(self.root, text="Pokaż Plan", command=self.show_plan, **self.btn_style)
         self.btn_week.pack(pady=10)
-        self.btn_exit = tk.Button(self.root, text="Wyjście", width=20, height=2, command=self.root.quit)
-        self.btn_exit.pack(pady=20)
+        self.btn_manual = tk.Button(self.root, text="Instrukcja Obsługi", command=self.manual, **self.btn_style)
+        self.btn_manual.pack(pady=10)
+        self.btn_exit = tk.Button(self.root, text="Wyjście", command=self.root.quit, **self.btn_style, activeforeground="red")
+        self.btn_exit.pack(pady=40)
+
+    def manual(self):
+        man_win = tk.Toplevel(self.root)
+        man_win.geometry("450x450")
+        man_win.title("Instrukcja Obsługi")
+
+        frame = tk.Frame(man_win)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(frame)
+        scrollbar.pack(side="right", fill="y")
+
+        text = tk.Text(frame, wrap="word", yscrollcommand=scrollbar.set, padx=10, pady=10)
+        text.pack(side="left", fill="both", expand=True)
+
+        scrollbar.config(command=text.yview)
+
+        text.tag_config("bold", font=("Arial", 20, "bold"))
+        text.tag_config("normal", font=("Arial", 15))
+
+        text.insert("end", "JAK KORZYSTAĆ Z PLANERA?\n\n", "bold")
+        instrukcja = (
+            "1. Dodawanie Egzaminu:\n"
+            "Kliknij przycisk 'Dodaj Egzamin'. Wpisz nazwę przedmiotu, formę (np. kolokwium) "
+            "oraz datę egzaminu. W dużym polu poniżej wpisz listę zagadnień do nauki "
+            "- każde w nowej linii.\n\n"
+
+            "2. Generowanie Planu:\n"
+            "Po dodaniu egzaminów kliknij 'Generuj Plan'. Aplikacja automatycznie rozłoży "
+            "Twoje zagadnienia na dni pomiędzy dniem dzisiejszym a datą egzaminu.\n\n"
+
+            "3. Przeglądanie Planu:\n"
+            "Kliknij 'Pokaż Plan', aby zobaczyć tabelę z zadaniami. Dni są posortowane chronologicznie."
+            "Na czerwono zaznaczone są egzaminy.\n\n"
+            
+            "4. Praca z Planem:\n"
+            "Jeśli podczas przeglądania planu dodasz nowy egzamin, to wystarczy wygenerować plan ponownie i odświeżyć Przeglądarke.\n\n"
+
+            "5. Zaznaczanie Postępów:\n"
+            "W oknie planu zaznacz zadanie myszką i kliknij 'Zmień status'. "
+            "Zadania zrobione zmienią kolor na zielony."
+            "Jeśli jakiemuś zadaniu zmienisz status na zrobiony przez pomyłke to możesz to"
+            "cofnąć ponownie zmieniając status.\n\n"
+
+            "6. Resetowanie:\n"
+            "Przycisk 'Wyczyść bazę' usuwa trwale wszystkie dane. Używaj ostrożnie, nie da się ich odzyskać!"
+        )
+        text.insert("end", instrukcja, "normal")
+        text.configure(state="disabled")
+        btn_close = tk.Button(man_win, text="Zamknij", command=man_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close.pack(side="bottom", pady=10)
 
     def run_planner(self):
         try:
@@ -95,16 +155,16 @@ class GUI:
         btn_frame = tk.Frame(add_win)
         btn_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20)
 
-        btn_save = tk.Button(btn_frame, text="Zapisz", command=save_new_exam, height=2, width=15)
+        btn_save = tk.Button(btn_frame, text="Zapisz", command=save_new_exam, **self.btn_style)
         btn_save.pack(side="left", padx=5)
 
-        btn_exit = tk.Button(btn_frame, text="Wyjście", command=add_win.destroy, height=2, width=15)
+        btn_exit = tk.Button(btn_frame, text="Zamknij", command=add_win.destroy, **self.btn_style, activeforeground="red")
         btn_exit.pack(side="left", padx=5)
 
-    def show_week(self):
+    def show_plan(self):
         week_win = tk.Toplevel(self.root)
-        week_win.geometry("600x400")
-        week_win.title("Plan na najbliższy tydzień")
+        week_win.geometry("750x400")
+        week_win.title("Plan Nauki")
 
         frame = tk.Frame(week_win)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -128,33 +188,43 @@ class GUI:
         scrollbar.pack(side="right", fill="y")
         tree.pack(side="left", fill="both", expand=True)
 
-        today = datetime.now().date()
+        def refresh_table():
+            for item in tree.get_children():
+                tree.delete(item)
 
-        for i in range(7):
-            current_day = today + timedelta(days=i)
-            day_str = current_day.strftime("%Y-%m-%d")
-            date_printed = False
-
-            def print_date():
-                nonlocal date_printed
-                if not date_printed:
-                    tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
-                    date_printed = True
-
+            all_dates = set()
             for exam in self.data["exams"]:
-                if exam["date"] == day_str:
-                    print_date()
-                    tree.insert("", "end", values=("", exam["subject"], exam["title"]), tags=("exam",))
+                all_dates.add(str(exam["date"]))
             for topic in self.data["topics"]:
-                if str(topic.get("scheduled_date")) == day_str:
-                    subj_name = "Inne"
-                    for exam in self.data["exams"]:
-                        if exam["id"] == topic["exam_id"]:
-                            subj_name = exam["subject"]
-                            break
-                    print_date()
-                    current_status = topic["status"]
-                    tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]), tags=(current_status,))
+                if topic["scheduled_date"]:
+                    all_dates.add(str(topic["scheduled_date"]))
+            sorted_dates = sorted(list(all_dates))
+
+            for day_str in sorted_dates:
+                date_printed = False
+                def print_date():
+                    nonlocal date_printed
+                    if not date_printed:
+                        tree.insert("", "end", values=("", "", ""))
+                        tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
+                        date_printed = True
+
+                for exam in self.data["exams"]:
+                    if exam["date"] == day_str:
+                        print_date()
+                        tree.insert("", "end", values=("", exam["subject"], exam["title"]), tags=("exam",))
+                for topic in self.data["topics"]:
+                    if str(topic.get("scheduled_date")) == day_str:
+                        subj_name = "Inne"
+                        for exam in self.data["exams"]:
+                            if exam["id"] == topic["exam_id"]:
+                                subj_name = exam["subject"]
+                                break
+                        print_date()
+                        current_status = topic["status"]
+                        tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]), tags=(current_status,))
+
+        refresh_table()
 
         def toggle_status():
             seleted_item = tree.selection()
@@ -191,19 +261,22 @@ class GUI:
                     "topics": []
                 }
                 save(self.data)
-                week_win.destroy()
+                refresh_table()
                 messagebox.showinfo("Sukces", "Baza danych została zresetowana.")
 
         btn_frame = tk.Frame(week_win)
         btn_frame.pack(pady=10)
 
-        btn_toggle = tk.Button(btn_frame, text="Zmień status", command=toggle_status, height=2, width=15)
+        btn_refresh = tk.Button(btn_frame, text="Odśwież", command=refresh_table, **self.btn_style)
+        btn_refresh.pack(side="left", padx=5)
+
+        btn_toggle = tk.Button(btn_frame, text="Zmień status", command=toggle_status, **self.btn_style)
         btn_toggle.pack(side="left", padx=5)
 
-        btn_clear = tk.Button(btn_frame, text="Wyczyść bazę", command=clear_database, height=2, width=15)
+        btn_clear = tk.Button(btn_frame, text="Wyczyść bazę", command=clear_database, **self.btn_style, foreground="red")
         btn_clear.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame, text="Zamknij", command=week_win.destroy, height=2, width=15)
+        btn_close = tk.Button(btn_frame, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
 
 
