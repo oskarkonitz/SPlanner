@@ -9,7 +9,7 @@ class GUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Planer Nauki")
-        self.root.geometry("400x500")
+        #self.root.geometry("400x500")
         self.root.resizable(False, False)
 
         self.data = load()
@@ -20,10 +20,12 @@ class GUI:
             "cursor": "hand2",
             "height": 2,
             "width": 18,
+            "relief": "flat",
+            "bg": "#e1e1e1"
         }
 
         self.label_title = tk.Label(self.root, text="Wybierz opcje:", font=("Arial", 20, "bold"))
-        self.label_title.pack(pady=20)
+        self.label_title.pack(pady=20, padx=60)
         self.btn_add = tk.Button(self.root, text="Dodaj Egzamin", command=self.add_window, **self.btn_style)
         self.btn_add.pack(pady=10)
         self.btn_plan = tk.Button(self.root, text="Generuj Plan", command=self.run_planner, **self.btn_style)
@@ -37,7 +39,7 @@ class GUI:
 
     def manual(self):
         man_win = tk.Toplevel(self.root)
-        man_win.geometry("450x500")
+        #man_win.geometry("450x500")
         man_win.title("Instrukcja Obsługi")
 
         frame = tk.Frame(man_win)
@@ -52,7 +54,7 @@ class GUI:
         scrollbar.config(command=text.yview)
 
         text.tag_config("bold", font=("Arial", 20, "bold"))
-        text.tag_config("normal", font=("Arial", 15))
+        text.tag_config("normal", font=("Arial", 13))
 
         text.insert("end", "JAK KORZYSTAĆ Z PLANERA?\n\n", "bold")
         instrukcja = (
@@ -67,10 +69,11 @@ class GUI:
 
             "3. Przeglądanie Planu:\n"
             "Kliknij 'Pokaż Plan', aby zobaczyć tabelę z zadaniami. Dni są posortowane chronologicznie."
-            "Na czerwono zaznaczone są egzaminy.\n\n"
+            "Na czerwono zaznaczone są egzaminy a na zielono zadania wykonane.\n\n"
             
             "4. Praca z Planem:\n"
-            "Jeśli podczas przeglądania planu dodasz nowy egzamin, to wystarczy wygenerować plan ponownie i odświeżyć Przeglądarke.\n\n"
+            "Jeśli podczas przeglądania planu dodasz nowy egzamin, to wystarczy wygenerować"
+            "plan ponownie i odświeżyć Przeglądarke. Nie trzeba jej na nowo uruchamiać\n\n"
 
             "5. Zaznaczanie Postępów:\n"
             "W oknie planu zaznacz zadanie myszką i kliknij 'Zmień status'. "
@@ -79,7 +82,7 @@ class GUI:
             "cofnąć ponownie zmieniając status.\n\n"
 
             "6. Resetowanie:\n"
-            "Przycisk 'Wyczyść bazę' usuwa trwale wszystkie dane. Używaj ostrożnie, nie da się ich odzyskać!"
+            "Przycisk 'Wyczyść dane' usuwa trwale wszystko z bazy danych. Używaj ostrożnie, nie da się ich odzyskać!"
         )
         text.insert("end", instrukcja, "normal")
         text.configure(state="disabled")
@@ -130,7 +133,7 @@ class GUI:
             messagebox.showinfo("Sukces", f"Dodano egzamin i {len(topics_list)} tematów")
 
         add_win = tk.Toplevel(self.root)
-        add_win.geometry("460x400")
+        #add_win.geometry("460x400")
         add_win.resizable(False, False)
         add_win.title("Dodaj nowy egzamin")
 
@@ -178,10 +181,10 @@ class GUI:
         tree.heading("temat", text="Temat | Zadanie | Forma Zaliczenia")
         tree.column("temat", width=300, anchor="w")
 
-        tree.tag_configure("exam", foreground="red", font=("Arial", 14, "bold"))
-        tree.tag_configure("done", foreground="green", font=("Arial", 14, "bold"))
+        tree.tag_configure("exam", foreground="red", font=("Arial", 13, "bold"))
+        tree.tag_configure("done", foreground="green", font=("Arial", 12, "bold"))
         tree.tag_configure("date_header", font=("Arial", 13, "bold"))
-        tree.tag_configure("todo", font=("Arial", 14, "bold"))
+        tree.tag_configure("todo", font=("Arial", 13, "bold"))
 
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
@@ -224,6 +227,7 @@ class GUI:
                         print_date()
                         current_status = topic["status"]
                         tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]), tags=(current_status,))
+                tree.insert("", "end", values=("", "", ""))
 
         refresh_table()
 
@@ -245,7 +249,7 @@ class GUI:
                     tree.item(topic_id, tags=("done",))
                 else:
                     target_topic["status"] = "todo"
-                    tree.item(topic_id, tags=("",))
+                    tree.item(topic_id, tags=("todo",))
                 save(self.data)
             else:
                 messagebox.showwarning("Błąd", "Nie można zmienić statusu tego elementu.")
