@@ -3,6 +3,8 @@ from storage import load
 import math
 
 def date_format(text):
+    if isinstance(text, date):
+        return text
     return datetime.strptime(text, "%Y-%m-%d").date()
 
 def callendar_create(data, tday):

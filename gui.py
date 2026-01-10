@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 from storage import load, save
-from planner import plan
+from planner import plan, date_format
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 class GUI:
     def __init__(self, root):
@@ -15,6 +15,7 @@ class GUI:
         self.data = load()
         # print(f"Loaded exams: {len(self.data["exams"])}")
 
+        # STYL PRZYCISKOW DLA CALEGO PROGRAMU
         self.btn_style = {
             "font": ("Arial", 11, "bold"),
             "cursor": "hand2",
@@ -24,6 +25,7 @@ class GUI:
             "bg": "#e1e1e1"
         }
 
+        # PRZYCISKI W MENU GLOWNYM
         self.label_title = tk.Label(self.root, text="Wybierz opcje:", font=("Arial", 20, "bold"))
         self.label_title.pack(pady=20, padx=60)
         self.btn_add = tk.Button(self.root, text="Dodaj Egzamin", command=self.add_window, **self.btn_style)
@@ -37,6 +39,7 @@ class GUI:
         self.btn_exit = tk.Button(self.root, text="Wyjście", command=self.root.quit, **self.btn_style, activeforeground="red")
         self.btn_exit.pack(pady=40)
 
+    #OKNO Z INSTRUKCJĄ
     def manual(self):
         man_win = tk.Toplevel(self.root)
         #man_win.geometry("450x500")
@@ -89,6 +92,7 @@ class GUI:
         btn_close = tk.Button(man_win, text="Zamknij", command=man_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="bottom", pady=10)
 
+    #FUNKCJA URUCHAMIAJĄCA PROGRAM PLANUJĄCY
     def run_planner(self):
         try:
             plan(self.data)
@@ -97,7 +101,9 @@ class GUI:
         except Exception as e:
             messagebox.showerror("Błąd", f"Powod: {e}")
 
+    #OKNO DO DODAWANIA NOWYCH EGZAMINOW I TEMATÓW
     def add_window(self):
+        # FUNKCJA WEW. ZAPISUJACA DANE WPROWADZONE PRZEZ UZYTKOWNIKA
         def save_new_exam():
             subject = entry_subject.get()
             date_str = entry_date.get()
@@ -164,6 +170,7 @@ class GUI:
         btn_exit = tk.Button(btn_frame, text="Zamknij", command=add_win.destroy, **self.btn_style, activeforeground="red")
         btn_exit.pack(side="left", padx=5)
 
+    #OKNO Z GOTOWYM PLANEM NAUKI
     def show_plan(self):
         week_win = tk.Toplevel(self.root)
         week_win.geometry("750x400")
@@ -192,15 +199,17 @@ class GUI:
         scrollbar.pack(side="right", fill="y")
         tree.pack(side="left", fill="both", expand=True)
 
+        # FUNKCJA WEW. ODSWIEZAJACA WIDOK PLANU
         def refresh_table():
             for item in tree.get_children():
                 tree.delete(item)
 
             all_dates = set()
             for exam in self.data["exams"]:
-                all_dates.add(str(exam["date"]))
+                if date_format(exam["date"]) >= date.today():
+                    all_dates.add(str(exam["date"]))
             for topic in self.data["topics"]:
-                if topic["scheduled_date"]:
+                if topic["scheduled_date"] and date_format(topic["scheduled_date"]) >= date.today():
                     all_dates.add(str(topic["scheduled_date"]))
             sorted_dates = sorted(list(all_dates))
 
@@ -231,6 +240,7 @@ class GUI:
 
         refresh_table()
 
+        # FUNKCJA WEW. ZMIENIAJACA STATUS ZADANIA
         def toggle_status():
             seleted_item = tree.selection()
             if not seleted_item:
@@ -254,6 +264,7 @@ class GUI:
             else:
                 messagebox.showwarning("Błąd", "Nie można zmienić statusu tego elementu.")
 
+        # FUNKCJA WEW. USUWAJACA DANE Z BAZY
         def clear_database():
             answer = messagebox.askyesno("UWAGA", "Czy na pewno chcesz usunąć WSZYSTKIE dane?\nTej operacji nie da się cofnąć!")
             if answer:
@@ -269,20 +280,31 @@ class GUI:
                 refresh_table()
                 messagebox.showinfo("Sukces", "Baza danych została zresetowana.")
 
-        btn_frame = tk.Frame(week_win)
-        btn_frame.pack(pady=10)
+        btn_frame1 = tk.Frame(week_win)
+        btn_frame1.pack(pady=0)
 
-        btn_refresh = tk.Button(btn_frame, text="Odśwież", command=refresh_table, **self.btn_style)
+        btn_frame2 = tk.Frame(week_win)
+        btn_frame2.pack(pady=5)
+
+        btn_refresh = tk.Button(btn_frame1, text="Odśwież", command=refresh_table, **self.btn_style)
         btn_refresh.pack(side="left", padx=5)
 
-        btn_toggle = tk.Button(btn_frame, text="Zmień status", command=toggle_status, **self.btn_style)
+        btn_gen = tk.Button(btn_frame1, text="Generuj plan", command=self.run_planner, **self.btn_style)
+        btn_gen.pack(side="left", padx=5)
+
+        btn_toggle = tk.Button(btn_frame1, text="Zmień status", command=toggle_status, **self.btn_style)
         btn_toggle.pack(side="left", padx=5)
 
-        btn_clear = tk.Button(btn_frame, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
+        btn_add = tk.Button(btn_frame1, text="Dodaj egzamin", command=self.add_window, **self.btn_style)
+        btn_add.pack(side="left", padx=5)
+
+        btn_clear = tk.Button(btn_frame2, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
         btn_clear.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close = tk.Button(btn_frame2, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
+
+
 
 
 if __name__ == "__main__":
