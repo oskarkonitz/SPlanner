@@ -263,8 +263,27 @@ class GUI:
             edit_win.destroy()
             messagebox.showinfo("Sukces", "Dane zaktualizowane, kliknij Odśwież")
 
-        btn_save = tk.Button(edit_win, text="Zapisz zmiany", command=save_changes, **self.btn_style)
-        btn_save.grid(row=5, column=0, pady=20, columnspan=2)
+        def delete_exam():
+            confirm = messagebox.askyesno("Uwaga", f"Czy na pewno chcesz usunąć '{exam_data["subject"]}'?")
+            if confirm:
+                self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != exam_data["id"]]
+                self.data["exams"] = [e for e in self.data["exams"] if e["id"] != exam_data["id"]]
+
+                save(self.data)
+                edit_win.destroy()
+                messagebox.showinfo("Sukces", "Egzamin usunięty, odśwież aby zobaczyć zmiany.")
+
+        btn_frame = tk.Frame(edit_win)
+        btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
+
+        btn_save = tk.Button(btn_frame, text="Zapisz zmiany", command=save_changes, **self.btn_style)
+        btn_save.pack(side="left", padx=5)
+
+        btn_delete = tk.Button(btn_frame, text="Usuń", command=delete_exam, **self.btn_style, foreground="red")
+        btn_delete.pack(side="left", padx=5)
+
+        btn_cancel = tk.Button(btn_frame, text="Anuluj", command=edit_win.destroy, **self.btn_style)
+        btn_cancel.pack(side="left", padx=5)
 
     #OKNO Z GOTOWYM PLANEM NAUKI
     def show_plan(self):
