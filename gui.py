@@ -177,8 +177,7 @@ class GUI:
         btn_exit.pack(side="left", padx=5)
 
     #FUNKCJE DO EDYCJI DANYCH
-
-    #SPRAWDZENIE CO JEST ZAZNACZONE
+    #   SPRAWDZENIE CO JEST ZAZNACZONE
     def edit_select(self, tree, callback=None):
         selected_item = tree.selection()
         if not selected_item:
@@ -199,7 +198,7 @@ class GUI:
 
         messagebox.showerror("Błąd", "Nie można edytować tego elementu.")
 
-    #OKNO EDYCJI CALOSCI
+    #   OKNO EDYCJI CALOSCI
     def edit_exam_window(self, exam_data, callback=None):
         edit_win = tk.Toplevel(self.root)
         edit_win.resizable(False, False)
@@ -292,7 +291,7 @@ class GUI:
         btn_cancel = tk.Button(btn_frame, text="Anuluj", command=edit_win.destroy, **self.btn_style, activeforeground="red")
         btn_cancel.pack(side="left", padx=5)
 
-    #OKNO EDYCJI TEMATU
+    #   OKNO EDYCJI TEMATU
     def edit_topic_window(self, topic_data, callback=None):
         topic_win = tk.Toplevel(self.root)
         topic_win.title(f"Edytuj: {topic_data["name"]}")
@@ -522,11 +521,106 @@ class GUI:
         btn_edit = tk.Button(btn_frame2, text="Edytuj", command=lambda: self.edit_select(tree, callback=refresh_table), **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
+        btn_archive = tk.Button(btn_frame2, text="Archiwum", command=self.archive_window, **self.btn_style)
+        btn_archive.pack(side="left", padx=5)
+
         btn_clear = tk.Button(btn_frame2, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
         btn_clear.pack(side="left", padx=5)
 
         btn_close = tk.Button(btn_frame2, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
+
+    #OKNO ARCHIWUM
+    def archive_window(self):
+        arch_win = tk.Toplevel(self.root)
+        arch_win.title("Archiwum Egzaminów")
+
+        tk.Label(arch_win, text="Minione Egzaminy", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(arch_win, text="Kliknij dwukrotnie aby zobaczyć szczegóły", font=("Arial", 12, "bold")).pack(pady=5)
+
+        frame = tk.Frame(arch_win)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        columns = ("data", "przedmiot", "forma")
+        tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
+
+        tree.heading("data", text="Data")
+        tree.column("data", width=100, anchor="center")
+        tree.heading("przedmiot", text="Przedmiot")
+        tree.column("przedmiot", width=200, anchor="w")
+        tree.heading("forma", text="Forma")
+        tree.column("forma", width=150, anchor="w")
+
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        tree.pack(side="left", fill="both", expand=True)
+
+        today = date.today()
+        past_exams = [e for e in self.data["exams"] if date_format(e["date"]) < today]
+        past_exams.sort(key=lambda x: x["date"], reverse=True)
+
+        for exam in past_exams:
+            tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"]))
+
+        #FUNKCJA OTWIERAJĄCA SZCZEGÓŁY
+        def double_click(event):
+            selection = tree.selection()
+            if not selection:
+                return
+
+            exam_id = selection[0]
+
+            selected_exam = next((e for e in past_exams if e["id"] == exam_id), None)
+            if selected_exam:
+                self.archive_datails_window(selected_exam)
+
+        tree.bind("<Double-1>", double_click)
+        btn_close = tk.Button(arch_win, text="Zamknij", command=arch_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close.pack(pady=10)
+
+    #OKNO SZCZEGOLOW ARCHIWUM
+    def archive_datails_window(self, exam_data):
+        hist_window = tk.Toplevel(self.root)
+        hist_window.title(f"Szczegóły: {exam_data["subject"]}")
+
+        info_frame = tk.Frame(hist_window)
+        info_frame.pack(pady=10)
+        tk.Label(info_frame, text=f"{exam_data["subject"]} ({exam_data["title"]})", font=("Arial", 12, "bold")).pack()
+        tk.Label(info_frame, text=f"Data egzaminu: {exam_data["date"]}", font=("Arial", 12, "bold")).pack()
+
+        frame = tk.Frame(hist_window)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        columns = ("temat", "status", "data_plan")
+        tree = ttk.Treeview(frame, columns=columns, show="headings")
+
+        tree.heading("temat", text="Temat")
+        tree.column("temat", width=250, anchor="w")
+        tree.heading("status", text="Status")
+        tree.column("status", width=100, anchor="center")
+        tree.heading("data_plan", text="Planowana Data")
+        tree.column("data_plan", width=120, anchor="center")
+
+        tree.tag_configure("done", foreground="green", font=("Arial", 12, "bold"))
+        tree.tag_configure("todo", foreground="red", font=("Arial", 13, "bold"))
+
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        tree.pack(side="left", fill="both", expand=True)
+
+        exam_topics = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
+        exam_topics.sort(key=lambda x: x.get("scheduled_date") or "9999-99-99")
+
+        for topic in exam_topics:
+            status_text = "Zrobione" if topic["status"] == "done" else "Niezrobione"
+            sched_date = topic.get("scheduled_date") if topic.get("scheduled_date") else "-"
+
+            tree.insert("", "end", values=(topic["name"], status_text, sched_date), tags=(topic["status"],))
+
+        btn_close = tk.Button(hist_window, text="Zamknij", command=hist_window.destroy, **self.btn_style, activeforeground="red")
+        btn_close.pack(pady=10)
 
 if __name__ == "__main__":
     root = tk.Tk()
