@@ -16,6 +16,59 @@ class GUI:
         self.data = load()
         # print(f"Loaded exams: {len(self.data["exams"])}")
 
+        today = date.today()
+
+        active_exams_ids = {e["id"] for e in self.data["exams"]if date_format(e["date"]) >= today}
+        active_topics = [t for t in self.data["topics"] if t["exam_id"] in active_exams_ids]
+
+        total_topics = len(active_topics)
+        done_topics = len([t for t in active_topics if t["status"] == "done"])
+
+        progress = 0
+        if total_topics > 0:
+            progress = int((done_topics / total_topics) * 100)
+
+        topics_today = [t for t in self.data["topics"] if t["scheduled_date"] and str(t["scheduled_date"]) == str(today) and t["status"] == "todo"]
+        count_today = len(topics_today)
+
+        future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
+        future_exams.sort(key=lambda x: x["date"])
+        next_exam_txt = "Brak nadchodzących egzaminów"
+        days_color = "green"
+
+        if future_exams:
+            nearest = future_exams[0]
+            days = (date_format(nearest["date"]) - today).days
+
+            if days == 0:
+                next_exam_txt = f"Dzisiaj: {nearest["subject"]}!"
+                days_color = "violet"
+            elif days <= 2:
+                if days == 1:
+                    next_exam_txt = f"Jutro: {nearest['subject']}!"
+                else:
+                    next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
+                days_color = "orange"
+            elif days <= 5:
+                next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
+                days_color = "yellow"
+            else:
+                next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
+
+        self.label_title = tk.Label(self.root, text="Planer Nauki", font=("Arial", 20, "bold"))
+        self.label_title.pack(pady=(20, 10))
+
+        stats_frame = tk.Frame(self.root)
+        stats_frame.pack(fill="x", padx=40, pady=10, ipady=10)
+
+        tk.Label(stats_frame, text=next_exam_txt, font=("Arial", 13, "bold"), foreground=days_color).pack(pady=2)
+
+        today_txt = f"Zadania na dziś: {count_today}"
+        tk.Label(stats_frame, text=today_txt, font=("Arial", 12, "bold")).pack(pady=2)
+
+        progress_txt = f"Postęp: {done_topics}/{total_topics} ({progress}%)"
+        tk.Label(stats_frame, text=progress_txt, font=("Arial", 12, "bold")).pack(pady=5)
+
         # STYL PRZYCISKOW DLA CALEGO PROGRAMU
         self.btn_style = {
             "font": ("Arial", 11, "bold"),
@@ -27,13 +80,9 @@ class GUI:
         }
 
         # PRZYCISKI W MENU GLOWNYM
-        self.label_title = tk.Label(self.root, text="Wybierz opcje:", font=("Arial", 20, "bold"))
+        self.label_title = tk.Label(self.root, text="Wybierz opcje:", font=("Arial", 14, "bold"))
         self.label_title.pack(pady=20, padx=60)
-        self.btn_add = tk.Button(self.root, text="Dodaj Egzamin", command=self.add_window, **self.btn_style)
-        self.btn_add.pack(pady=10)
-        self.btn_plan = tk.Button(self.root, text="Generuj Plan", command=self.run_planner, **self.btn_style)
-        self.btn_plan.pack(pady=10)
-        self.btn_week = tk.Button(self.root, text="Pokaż Plan", command=self.show_plan, **self.btn_style)
+        self.btn_week = tk.Button(self.root, text="Uruchom", command=self.show_plan, **self.btn_style)
         self.btn_week.pack(pady=10)
         self.btn_manual = tk.Button(self.root, text="Instrukcja Obsługi", command=self.manual, **self.btn_style)
         self.btn_manual.pack(pady=10)
@@ -731,7 +780,7 @@ class GUI:
                 tree.delete(item)
 
             exam_topics = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
-            exam_topics.sort(key=lambda x: x.get("scheduled_date") or "9999-99-99")
+            exam_topics.sort(key=lambda x: str(x.get("scheduled_date") or "9999-99-99"))
 
             for topic in exam_topics:
                 status_text = "Zrobione" if topic["status"] == "done" else "Niezrobione"
