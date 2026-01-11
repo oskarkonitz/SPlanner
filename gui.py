@@ -132,7 +132,8 @@ class GUI:
                     "exam_id": exam_id,
                     "name": topic,
                     "status": "todo",
-                    "scheduled_date": None
+                    "scheduled_date": None,
+                    "locked": False
                 })
 
             save(self.data)
@@ -243,7 +244,8 @@ class GUI:
                         "exam_id": exam_data["id"],
                         "name": name,
                         "status" : "todo",
-                        "scheduled_date": None
+                        "scheduled_date": None,
+                        "locked": False
                     })
                     topics_keep_ids.append(new_id)
 
@@ -291,9 +293,14 @@ class GUI:
 
         tk.Label(topic_win, text="Data (YYYY-MM-DD):").grid(row=1, column=0, padx=10, pady=10, sticky="e")
         ent_date = tk.Entry(topic_win, width=30)
-        if topic_data.get("scheduled_date"):
-            ent_date.insert(0, topic_data["scheduled_date"])
+        original_date = topic_data.get("scheduled_date", "")
+        if original_date:
+            ent_date.insert(0, original_date)
         ent_date.grid(row=1, column=1, padx=10, pady=10)
+
+        is_locked = tk.BooleanVar(value=topic_data.get("locked", False))
+        check_locked = tk.Checkbutton(topic_win, text="Zablokuj", variable=is_locked, onvalue=True, offvalue=False)
+        check_locked.grid(row=2, column=0, columnspan=2, pady=5)
 
         def save_changes():
             new_name = ent_name.get()
@@ -310,9 +317,20 @@ class GUI:
             else:
                 topic_data["scheduled_date"] = new_date
 
+                if str(original_date) != new_date:
+                    pass
+
+            topic_data["locked"] = is_locked.get()
+
+            infomess = "odśwież"
+
+            if new_date and str(original_date) != new_date:
+                topic_data["locked"] = True
+                infomess = "zmieniono datę ręcznie - włączono blokade planowania dla tego tematu. Odśwież"
+
             save(self.data)
             topic_win.destroy()
-            messagebox.showinfo("Sukces", "Zaktualizowano temat, odśwież aby zobaczyć zmiany.")
+            messagebox.showinfo("Sukces", f"Zaktualizowano temat, {infomess} aby zobaczyć zmiany.")
 
         def delete_topic():
             confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć to zadanie?")

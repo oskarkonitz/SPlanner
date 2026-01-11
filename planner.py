@@ -47,7 +47,7 @@ def topics_list_create(data, e_id):
         return topics_list
 
     for topic in data["topics"]:
-        if topic["exam_id"] == e_id and topic["status"] == "todo":
+        if topic["exam_id"] == e_id and topic["status"] == "todo" and not topic.get("locked", False):
             topics_list.append(topic["id"])
 
     return topics_list
