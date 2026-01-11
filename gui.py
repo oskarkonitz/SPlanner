@@ -356,6 +356,11 @@ class GUI:
         tree.tag_configure("done", foreground="green", font=("Arial", 12, "bold"))
         tree.tag_configure("date_header", font=("Arial", 13, "bold"))
         tree.tag_configure("todo", font=("Arial", 13, "bold"))
+        tree.tag_configure("normal", font=("Arial", 12, "bold"))
+        tree.tag_configure("today", font=("Arial", 12, "bold"), foreground="violet")
+        tree.tag_configure("red", font=("Arial", 13, "bold"), foreground="red")
+        tree.tag_configure("orange", font=("Arial", 12, "bold"), foreground="orange")
+        tree.tag_configure("yellow", foreground="yellow", font=("Arial", 12, "bold"))
 
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
@@ -382,8 +387,18 @@ class GUI:
                 def print_date():
                     nonlocal date_printed
                     if not date_printed:
-                        tree.insert("", "end", values=("", "", ""))
                         tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
+                        days_left = (date_format(day_str) - date.today()).days
+                        if days_left == 0:
+                            tree.insert("", "end", values=("Dzisiaj", "", ""), tags=("today",))
+                        elif days_left == 1:
+                            tree.insert("", "end", values=("1 dzień", "", ""), tags=("red",))
+                        elif days_left <= 3:
+                            tree.insert("", "end", values=(f"{days_left} dni", "", ""), tags=("orange",))
+                        elif days_left <= 6:
+                            tree.insert("", "end", values=(f"{days_left} dni", "", ""), tags=("yellow",))
+                        else:
+                            tree.insert("", "end", values=(f"{days_left} dni", "", ""), tags=("normal",))
                         date_printed = True
 
                 for exam in self.data["exams"]:
