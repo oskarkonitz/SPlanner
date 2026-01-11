@@ -103,7 +103,7 @@ class GUI:
             messagebox.showerror("Błąd", f"Powod: {e}")
 
     #OKNO DO DODAWANIA NOWYCH EGZAMINOW I TEMATÓW
-    def add_window(self):
+    def add_window(self, callback=None):
         # FUNKCJA WEW. ZAPISUJACA DANE WPROWADZONE PRZEZ UZYTKOWNIKA
         def save_new_exam():
             subject = entry_subject.get()
@@ -137,6 +137,10 @@ class GUI:
                 })
 
             save(self.data)
+
+            if callback:
+                callback()
+
             add_win.destroy()
             messagebox.showinfo("Sukces", f"Dodano egzamin i {len(topics_list)} tematów")
 
@@ -175,7 +179,7 @@ class GUI:
     #FUNKCJE DO EDYCJI DANYCH
 
     #SPRAWDZENIE CO JEST ZAZNACZONE
-    def edit_select(self, tree):
+    def edit_select(self, tree, callback=None):
         selected_item = tree.selection()
         if not selected_item:
             messagebox.showinfo("Info", "Najpierw zaznacz element, który chcesz edytować.")
@@ -185,18 +189,18 @@ class GUI:
 
         for exam in self.data["exams"]:
             if exam["id"] == item_id:
-                self.edit_exam_window(exam)
+                self.edit_exam_window(exam, callback)
                 return
 
         for topic in self.data["topics"]:
             if topic["id"] == item_id:
-                self.edit_topic_window(topic)
+                self.edit_topic_window(topic, callback)
                 return
 
         messagebox.showerror("Błąd", "Nie można edytować tego elementu.")
 
     #OKNO EDYCJI CALOSCI
-    def edit_exam_window(self, exam_data):
+    def edit_exam_window(self, exam_data, callback=None):
         edit_win = tk.Toplevel(self.root)
         edit_win.resizable(False, False)
         edit_win.title(f"Edytuj: {exam_data["subject"]}")
@@ -255,6 +259,10 @@ class GUI:
             ]
 
             save(self.data)
+
+            if callback:
+                callback()
+
             edit_win.destroy()
             messagebox.showinfo("Sukces", "Dane zaktualizowane, kliknij Odśwież")
 
@@ -265,6 +273,10 @@ class GUI:
                 self.data["exams"] = [e for e in self.data["exams"] if e["id"] != exam_data["id"]]
 
                 save(self.data)
+
+                if callback:
+                    callback()
+
                 edit_win.destroy()
                 messagebox.showinfo("Sukces", "Egzamin usunięty, odśwież aby zobaczyć zmiany.")
 
@@ -281,7 +293,7 @@ class GUI:
         btn_cancel.pack(side="left", padx=5)
 
     #OKNO EDYCJI TEMATU
-    def edit_topic_window(self, topic_data):
+    def edit_topic_window(self, topic_data, callback=None):
         topic_win = tk.Toplevel(self.root)
         topic_win.title(f"Edytuj: {topic_data["name"]}")
         topic_win.resizable(width=False, height=False)
@@ -329,6 +341,10 @@ class GUI:
                 infomess = "zmieniono datę ręcznie - włączono blokade planowania dla tego tematu. Odśwież"
 
             save(self.data)
+
+            if callback:
+                callback()
+
             topic_win.destroy()
             messagebox.showinfo("Sukces", f"Zaktualizowano temat, {infomess} aby zobaczyć zmiany.")
 
@@ -337,6 +353,10 @@ class GUI:
             if confirm:
                 self.data["topics"] = [t for t in self.data["topics"] if t["id"] != topic_data["id"]]
                 save(self.data)
+
+                if callback:
+                    callback()
+
                 topic_win.destroy()
                 messagebox.showinfo("Sukces", "Usunięto zadanie.")
 
@@ -477,6 +497,10 @@ class GUI:
                 refresh_table()
                 messagebox.showinfo("Sukces", "Baza danych została zresetowana.")
 
+        def run_and_refresh():
+            self.run_planner()
+            refresh_table()
+
         btn_frame1 = tk.Frame(week_win)
         btn_frame1.pack(pady=0)
 
@@ -486,16 +510,16 @@ class GUI:
         btn_refresh = tk.Button(btn_frame1, text="Odśwież", command=refresh_table, **self.btn_style)
         btn_refresh.pack(side="left", padx=5)
 
-        btn_gen = tk.Button(btn_frame1, text="Generuj plan", command=self.run_planner, **self.btn_style)
+        btn_gen = tk.Button(btn_frame1, text="Generuj plan", command=run_and_refresh, **self.btn_style)
         btn_gen.pack(side="left", padx=5)
 
         btn_toggle = tk.Button(btn_frame1, text="Zmień status", command=toggle_status, **self.btn_style)
         btn_toggle.pack(side="left", padx=5)
 
-        btn_add = tk.Button(btn_frame1, text="Dodaj egzamin", command=self.add_window, **self.btn_style)
+        btn_add = tk.Button(btn_frame1, text="Dodaj egzamin", command=lambda: self.add_window(callback=refresh_table), **self.btn_style)
         btn_add.pack(side="left", padx=5)
 
-        btn_edit = tk.Button(btn_frame2, text="Edytuj", command=lambda: self.edit_select(tree), **self.btn_style)
+        btn_edit = tk.Button(btn_frame2, text="Edytuj", command=lambda: self.edit_select(tree, callback=refresh_table), **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
         btn_clear = tk.Button(btn_frame2, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
