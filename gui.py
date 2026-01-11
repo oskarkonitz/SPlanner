@@ -563,6 +563,60 @@ class GUI:
         for exam in past_exams:
             tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"]))
 
+        #FUNKCJA USUWAJACA WYBRANY EGZAMIN Z ARCHIWUM
+        def delete_selected():
+            selection = tree.selection()
+            if not selection:
+                messagebox.showinfo("Info", "Zaznacz egzamin do usunięcia.")
+                return
+
+            exam_id = selection[0]
+
+            name = "ten egzamin"
+            for e in self.data["exams"]:
+                if e["id"] == exam_id:
+                    name = e["subject"]
+                    break
+
+            confirm = messagebox.askyesno("Uwaga", f"Czy na pewno chcesz trwale usunąć egzamin {name} z archiwum?")
+            if confirm:
+                self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != exam_id]
+                self.data["exams"] = [e for e in self.data["exams"] if e["id"] != exam_id]
+
+                save(self.data)
+                tree.delete(exam_id)
+
+                #   Aby tree nie wyrzucalo bledow po usunieciu
+                nonlocal past_exams
+                past_exams = [e for e in past_exams if e["id"] != exam_id]
+
+                messagebox.showinfo("Sukces", "Usunięto egzamin z archiwum.")
+
+        #FUNKCJA USUWAJĄCA WSZYSTKO Z ARCHIWUM
+        def delete_all_archive():
+            nonlocal past_exams
+            if not past_exams:
+                messagebox.showinfo("Info", "Archiwum jest puste.")
+                return
+
+            confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć WSZYSTKIE egzaminy z archiwum?")
+            if confirm:
+                today = date.today()
+
+                ids_to_remove = [e["id"] for e in self.data["exams"] if date_format(e["date"]) < today]
+
+                self.data["exams"] = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
+                self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] not in ids_to_remove]
+
+                save(self.data)
+
+                for item in tree.get_children():
+                    tree.delete(item)
+
+                past_exams = []
+
+                messagebox.showinfo("Sukces", "Wyczyszczono archiwum.")
+
         #FUNKCJA OTWIERAJĄCA SZCZEGÓŁY
         def double_click(event):
             selection = tree.selection()
@@ -576,8 +630,18 @@ class GUI:
                 self.archive_datails_window(selected_exam)
 
         tree.bind("<Double-1>", double_click)
-        btn_close = tk.Button(arch_win, text="Zamknij", command=arch_win.destroy, **self.btn_style, activeforeground="red")
-        btn_close.pack(pady=10)
+
+        btn_frame = tk.Frame(arch_win)
+        btn_frame.pack(pady=10)
+
+        btn_del_sel = tk.Button(btn_frame, text="Usuń zaznaczony", command=delete_selected, **self.btn_style)
+        btn_del_sel.pack(side="left", padx=5)
+
+        btn_del_all = tk.Button(btn_frame, text="Wyczyść archiwum", command=delete_all_archive, **self.btn_style, foreground="red")
+        btn_del_all.pack(side="left", padx=5)
+
+        btn_close = tk.Button(btn_frame, text="Zamknij", command=arch_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close.pack(side="left", padx=5)
 
     #OKNO SZCZEGOLOW ARCHIWUM
     def archive_datails_window(self, exam_data):
