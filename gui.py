@@ -170,6 +170,102 @@ class GUI:
         btn_exit = tk.Button(btn_frame, text="Zamknij", command=add_win.destroy, **self.btn_style, activeforeground="red")
         btn_exit.pack(side="left", padx=5)
 
+    #FUNKCJE DO EDYCJI DANYCH
+
+    #SPRAWDZENIE CO JEST ZAZNACZONE
+    def edit_select(self, tree):
+        selected_item = tree.selection()
+        if not selected_item:
+            messagebox.showinfo("Info", "Najpierw zaznacz element, który chcesz edytować.")
+            return
+
+        item_id = selected_item[0]
+        found_exam = None
+
+        for exam in self.data["exams"]:
+            if exam["id"] == item_id:
+                found_exam = exam
+                break
+
+        if not found_exam:
+            for topic in self.data["topics"]:
+                if topic["id"] == item_id:
+                    for exam in self.data["exams"]:
+                        if exam["id"] == topic["exam_id"]:
+                            found_exam = exam
+                            break
+                    break
+
+        if not found_exam:
+            messagebox.showerror("Błąd", "Nie można edytować tego elementu.")
+        else:
+            self.edit_window(found_exam)
+
+    #OKNO EDYCJI
+    def edit_window(self, exam_data):
+        edit_win = tk.Toplevel(self.root)
+        edit_win.resizable(False, False)
+        edit_win.title(f"Edytuj: {exam_data["subject"]}")
+
+        tk.Label(edit_win, text="Przedmiot:").grid(row=0, column=0, pady=5, padx=10, sticky="e")
+        ent_subject = tk.Entry(edit_win, width=30)
+        ent_subject.insert(0, exam_data["subject"])
+        ent_subject.grid(row=0, column=1, padx=10, pady=5)
+
+        tk.Label(edit_win, text="Forma:").grid(row=1, column=0, pady=5, padx=10, sticky="e")
+        ent_title = tk.Entry(edit_win, width=30)
+        ent_title.insert(0, exam_data["title"])
+        ent_title.grid(row=1, column=1, padx=10, pady=5)
+
+        tk.Label(edit_win, text="Data (YYYY-MM-DD):").grid(row=2, column=0, pady=5, padx=10, sticky="e")
+        ent_date = tk.Entry(edit_win, width=30)
+        ent_date.insert(0, exam_data["date"])
+        ent_date.grid(row=2, column=1, padx=10, pady=5)
+
+        tk.Label(edit_win, text="Tematy (edycja listy):").grid(row=3, column=0, pady=5, columnspan=2)
+        txt_topics = tk.Text(edit_win, width=40, height=10)
+        txt_topics.grid(row=4, column=0, columnspan=2, padx=10)
+        topics_list = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
+        for t in topics_list:
+            txt_topics.insert(tk.END, t["name"] + "\n")
+
+        def save_changes():
+            exam_data["subject"] = ent_subject.get()
+            exam_data["date"] = ent_date.get()
+            exam_data["title"] = ent_title.get()
+
+            new_names = [line.strip() for line in txt_topics.get("1.0", tk.END).split("\n") if line.strip()]
+            existing_map = {t["name"]: t for t in topics_list}
+
+            topics_keep_ids = []
+
+            for name in new_names:
+                if name in existing_map:
+                    topic = existing_map[name]
+                    topics_keep_ids.append(topic["id"])
+                else:
+                    new_id = f"topic_{uuid.uuid4().hex[:8]}"
+                    self.data["topics"].append({
+                        "id": new_id,
+                        "exam_id": exam_data["id"],
+                        "name": name,
+                        "status" : "todo",
+                        "scheduled_date": None
+                    })
+                    topics_keep_ids.append(new_id)
+
+            self.data["topics"] = [
+                t for t in self.data["topics"]
+                if t["exam_id"] != exam_data["id"] or t["id"] in topics_keep_ids
+            ]
+
+            save(self.data)
+            edit_win.destroy()
+            messagebox.showinfo("Sukces", "Dane zaktualizowane, kliknij Odśwież")
+
+        btn_save = tk.Button(edit_win, text="Zapisz zmiany", command=save_changes, **self.btn_style)
+        btn_save.grid(row=5, column=0, pady=20, columnspan=2)
+
     #OKNO Z GOTOWYM PLANEM NAUKI
     def show_plan(self):
         week_win = tk.Toplevel(self.root)
@@ -225,7 +321,7 @@ class GUI:
                 for exam in self.data["exams"]:
                     if exam["date"] == day_str:
                         print_date()
-                        tree.insert("", "end", values=("", exam["subject"], exam["title"]), tags=("exam",))
+                        tree.insert("", "end", iid=exam["id"], values=("", exam["subject"], exam["title"]), tags=("exam",))
                 for topic in self.data["topics"]:
                     if str(topic.get("scheduled_date")) == day_str:
                         subj_name = "Inne"
@@ -297,6 +393,9 @@ class GUI:
 
         btn_add = tk.Button(btn_frame1, text="Dodaj egzamin", command=self.add_window, **self.btn_style)
         btn_add.pack(side="left", padx=5)
+
+        btn_edit = tk.Button(btn_frame2, text="Edytuj", command=lambda: self.edit_select(tree), **self.btn_style)
+        btn_edit.pack(side="left", padx=5)
 
         btn_clear = tk.Button(btn_frame2, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
         btn_clear.pack(side="left", padx=5)
