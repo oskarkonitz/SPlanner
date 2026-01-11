@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta, date
 
 class GUI:
+    #FUNKCJA WYKONUJĄCA SIE NA POCZĄTKU
     def __init__(self, root):
         self.root = root
         self.root.title("Planer Nauki")
@@ -167,7 +168,7 @@ class GUI:
         btn_save = tk.Button(btn_frame, text="Zapisz", command=save_new_exam, **self.btn_style)
         btn_save.pack(side="left", padx=5)
 
-        btn_exit = tk.Button(btn_frame, text="Zamknij", command=add_win.destroy, **self.btn_style, activeforeground="red")
+        btn_exit = tk.Button(btn_frame, text="Anuluj", command=add_win.destroy, **self.btn_style, activeforeground="red")
         btn_exit.pack(side="left", padx=5)
 
     #FUNKCJE DO EDYCJI DANYCH
@@ -180,29 +181,21 @@ class GUI:
             return
 
         item_id = selected_item[0]
-        found_exam = None
 
         for exam in self.data["exams"]:
             if exam["id"] == item_id:
-                found_exam = exam
-                break
+                self.edit_exam_window(exam)
+                return
 
-        if not found_exam:
-            for topic in self.data["topics"]:
-                if topic["id"] == item_id:
-                    for exam in self.data["exams"]:
-                        if exam["id"] == topic["exam_id"]:
-                            found_exam = exam
-                            break
-                    break
+        for topic in self.data["topics"]:
+            if topic["id"] == item_id:
+                self.edit_topic_window(topic)
+                return
 
-        if not found_exam:
-            messagebox.showerror("Błąd", "Nie można edytować tego elementu.")
-        else:
-            self.edit_window(found_exam)
+        messagebox.showerror("Błąd", "Nie można edytować tego elementu.")
 
-    #OKNO EDYCJI
-    def edit_window(self, exam_data):
+    #OKNO EDYCJI CALOSCI
+    def edit_exam_window(self, exam_data):
         edit_win = tk.Toplevel(self.root)
         edit_win.resizable(False, False)
         edit_win.title(f"Edytuj: {exam_data["subject"]}")
@@ -282,7 +275,63 @@ class GUI:
         btn_delete = tk.Button(btn_frame, text="Usuń", command=delete_exam, **self.btn_style, foreground="red")
         btn_delete.pack(side="left", padx=5)
 
-        btn_cancel = tk.Button(btn_frame, text="Anuluj", command=edit_win.destroy, **self.btn_style)
+        btn_cancel = tk.Button(btn_frame, text="Anuluj", command=edit_win.destroy, **self.btn_style, activeforeground="red")
+        btn_cancel.pack(side="left", padx=5)
+
+    #OKNO EDYCJI TEMATU
+    def edit_topic_window(self, topic_data):
+        topic_win = tk.Toplevel(self.root)
+        topic_win.title(f"Edytuj: {topic_data["name"]}")
+        topic_win.resizable(width=False, height=False)
+
+        tk.Label(topic_win, text="Temat:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
+        ent_name = tk.Entry(topic_win, width=30)
+        ent_name.insert(0, topic_data["name"])
+        ent_name.grid(row=0, column=1, padx=10, pady=10)
+
+        tk.Label(topic_win, text="Data (YYYY-MM-DD):").grid(row=1, column=0, padx=10, pady=10, sticky="e")
+        ent_date = tk.Entry(topic_win, width=30)
+        if topic_data.get("scheduled_date"):
+            ent_date.insert(0, topic_data["scheduled_date"])
+        ent_date.grid(row=1, column=1, padx=10, pady=10)
+
+        def save_changes():
+            new_name = ent_name.get()
+            new_date = ent_date.get()
+
+            if not new_name:
+                messagebox.showwarning("Błąd", "Temat musi mieć nazwę.")
+                return
+
+            topic_data["name"] = new_name
+
+            if not new_date.strip():
+                topic_data["scheduled_date"] = None
+            else:
+                topic_data["scheduled_date"] = new_date
+
+            save(self.data)
+            topic_win.destroy()
+            messagebox.showinfo("Sukces", "Zaktualizowano temat, odśwież aby zobaczyć zmiany.")
+
+        def delete_topic():
+            confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć to zadanie?")
+            if confirm:
+                self.data["topics"] = [t for t in self.data["topics"] if t["id"] != topic_data["id"]]
+                save(self.data)
+                topic_win.destroy()
+                messagebox.showinfo("Sukces", "Usunięto zadanie.")
+
+        btn_frame = tk.Frame(topic_win)
+        btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
+
+        btn_save = tk.Button(btn_frame, text="Zapisz", command=save_changes, **self.btn_style)
+        btn_save.pack(side="left", padx=5)
+
+        btn_delete = tk.Button(btn_frame, text="Usuń", command=delete_topic, **self.btn_style, foreground="red")
+        btn_delete.pack(side="left", padx=5)
+
+        btn_cancel = tk.Button(btn_frame, text="Anuluj", command=topic_win.destroy, **self.btn_style, activeforeground="red")
         btn_cancel.pack(side="left", padx=5)
 
     #OKNO Z GOTOWYM PLANEM NAUKI
@@ -421,9 +470,6 @@ class GUI:
 
         btn_close = tk.Button(btn_frame2, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
-
-
-
 
 if __name__ == "__main__":
     root = tk.Tk()
