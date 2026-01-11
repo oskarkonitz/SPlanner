@@ -541,15 +541,20 @@ class GUI:
         frame = tk.Frame(arch_win)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        columns = ("data", "przedmiot", "forma")
+        columns = ("data", "przedmiot", "forma", "status")
         tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
 
         tree.heading("data", text="Data")
         tree.column("data", width=100, anchor="center")
         tree.heading("przedmiot", text="Przedmiot")
-        tree.column("przedmiot", width=200, anchor="w")
+        tree.column("przedmiot", width=180, anchor="w")
         tree.heading("forma", text="Forma")
-        tree.column("forma", width=150, anchor="w")
+        tree.column("forma", width=120, anchor="w")
+        tree.heading("status", text="Status")
+        tree.column("status", width=150, anchor="center")
+
+        tree.tag_configure("active", foreground="lightblue", font=("Arial", 12, "bold"))
+        tree.tag_configure("past", foreground="gray", font=("Arial", 12, "bold"))
 
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
@@ -557,13 +562,29 @@ class GUI:
         tree.pack(side="left", fill="both", expand=True)
 
         today = date.today()
-        past_exams = [e for e in self.data["exams"] if date_format(e["date"]) < today]
-        past_exams.sort(key=lambda x: x["date"], reverse=True)
+        display_exams = list(self.data["exams"])
+        display_exams.sort(key=lambda x: x["date"], reverse=True)
 
-        for exam in past_exams:
-            tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"]))
+        for exam in display_exams:
+            exam_date = date_format(exam["date"])
+            days = (exam_date - today).days
 
-        #FUNKCJA USUWAJACA WYBRANY EGZAMIN Z ARCHIWUM
+            status_txt = ""
+            tag = "normal"
+
+            if days < 0:
+                status_txt = "Archiwalny"
+                tag = "past"
+            elif days == 0:
+                status_txt = "Dzisiaj"
+                tag = "active"
+            else:
+                status_txt = f"{days} dni"
+                tag = "active"
+
+            tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"], status_txt), tags=(tag,))
+
+        #FUNKCJA USUWAJACA WYBRANY EGZAMIN
         def delete_selected():
             selection = tree.selection()
             if not selection:
@@ -587,19 +608,20 @@ class GUI:
                 tree.delete(exam_id)
 
                 #   Aby tree nie wyrzucalo bledow po usunieciu
-                nonlocal past_exams
-                past_exams = [e for e in past_exams if e["id"] != exam_id]
+                nonlocal display_exams
+                display_exams = [e for e in display_exams if e["id"] != exam_id]
 
                 messagebox.showinfo("Sukces", "Usunięto egzamin z archiwum.")
 
-        #FUNKCJA USUWAJĄCA WSZYSTKO Z ARCHIWUM
+        #FUNKCJA WSZYSTKIE ARCHIWALNE
         def delete_all_archive():
-            nonlocal past_exams
-            if not past_exams:
-                messagebox.showinfo("Info", "Archiwum jest puste.")
+            nonlocal today
+            has_past = any(date_format(e["date"]) < today for e in self.data["exams"])
+            if not has_past:
+                messagebox.showinfo("Info", "Brak archiwalnych egzaminów do usunięcia.")
                 return
 
-            confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć WSZYSTKIE egzaminy z archiwum?")
+            confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć WSZYSTKIE archiwalne egzaminy?\nEgzaminy nadchodzące pozostaną bez zmian.")
             if confirm:
                 today = date.today()
 
@@ -613,9 +635,16 @@ class GUI:
                 for item in tree.get_children():
                     tree.delete(item)
 
-                past_exams = []
+                nonlocal display_exams
+                display_exams = list(self.data["exams"])
+                display_exams.sort(key=lambda x: x["date"], reverse=True)
 
-                messagebox.showinfo("Sukces", "Wyczyszczono archiwum.")
+                for exam in display_exams:
+                    days = (date_format(exam["date"]) - today).days
+                    stat = f"{days} dni" if days > 0 else "Dzisiaj"
+                    tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"], status_txt), tags=("active",))
+
+                messagebox.showinfo("Sukces", "Wyczyszczono archiwalne egzaminy.")
 
         #FUNKCJA OTWIERAJĄCA SZCZEGÓŁY
         def double_click(event):
@@ -625,7 +654,7 @@ class GUI:
 
             exam_id = selection[0]
 
-            selected_exam = next((e for e in past_exams if e["id"] == exam_id), None)
+            selected_exam = next((e for e in self.data["exams"] if e["id"] == exam_id), None)
             if selected_exam:
                 self.archive_datails_window(selected_exam)
 
@@ -637,7 +666,7 @@ class GUI:
         btn_del_sel = tk.Button(btn_frame, text="Usuń zaznaczony", command=delete_selected, **self.btn_style)
         btn_del_sel.pack(side="left", padx=5)
 
-        btn_del_all = tk.Button(btn_frame, text="Wyczyść archiwum", command=delete_all_archive, **self.btn_style, foreground="red")
+        btn_del_all = tk.Button(btn_frame, text="Wyczyść archiwalne", command=delete_all_archive, **self.btn_style, foreground="red")
         btn_del_all.pack(side="left", padx=5)
 
         btn_close = tk.Button(btn_frame, text="Zamknij", command=arch_win.destroy, **self.btn_style, activeforeground="red")
