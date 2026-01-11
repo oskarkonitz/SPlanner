@@ -521,7 +521,7 @@ class GUI:
         btn_edit = tk.Button(btn_frame2, text="Edytuj", command=lambda: self.edit_select(tree, callback=refresh_table), **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
-        btn_archive = tk.Button(btn_frame2, text="Archiwum", command=self.archive_window, **self.btn_style)
+        btn_archive = tk.Button(btn_frame2, text="Wszystkie egzaminy", command=self.archive_window, **self.btn_style)
         btn_archive.pack(side="left", padx=5)
 
         btn_clear = tk.Button(btn_frame2, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
@@ -533,9 +533,9 @@ class GUI:
     #OKNO ARCHIWUM
     def archive_window(self):
         arch_win = tk.Toplevel(self.root)
-        arch_win.title("Archiwum Egzaminów")
+        arch_win.title("Baza Egzaminów i Archiwum")
 
-        tk.Label(arch_win, text="Minione Egzaminy", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(arch_win, text="Wszystkie Egzaminy", font=("Arial", 16, "bold")).pack(pady=10)
         tk.Label(arch_win, text="Kliknij dwukrotnie aby zobaczyć szczegóły", font=("Arial", 12, "bold")).pack(pady=5)
 
         frame = tk.Frame(arch_win)
@@ -562,27 +562,46 @@ class GUI:
         tree.pack(side="left", fill="both", expand=True)
 
         today = date.today()
-        display_exams = list(self.data["exams"])
-        display_exams.sort(key=lambda x: x["date"], reverse=True)
 
-        for exam in display_exams:
-            exam_date = date_format(exam["date"])
-            days = (exam_date - today).days
+        def refresh_main_archive():
+            for item in tree.get_children():
+                tree.delete(item)
 
-            status_txt = ""
-            tag = "normal"
+            all_exams = list(self.data["exams"])
+            active_exams = []
+            arch_exams = []
 
-            if days < 0:
-                status_txt = "Archiwalny"
-                tag = "past"
-            elif days == 0:
-                status_txt = "Dzisiaj"
-                tag = "active"
-            else:
-                status_txt = f"{days} dni"
-                tag = "active"
+            for exam in all_exams:
+                if date_format(exam["date"]) >= today:
+                    active_exams.append(exam)
+                else:
+                    arch_exams.append(exam)
 
-            tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"], status_txt), tags=(tag,))
+            active_exams.sort(key=lambda x: x["date"])
+            arch_exams.sort(key=lambda x: x["date"], reverse=True)
+
+            display_exams = active_exams + arch_exams
+
+            for exam in display_exams:
+                exam_date = date_format(exam["date"])
+                days = (exam_date - today).days
+
+                status_txt = ""
+                tag = "normal"
+
+                if days < 0:
+                    status_txt = "Archiwalny"
+                    tag = "past"
+                elif days == 0:
+                    status_txt = "Dzisiaj"
+                    tag = "active"
+                else:
+                    status_txt = f"{days} dni"
+                    tag = "active"
+
+                tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"], status_txt), tags=(tag,))
+
+        refresh_main_archive()
 
         #FUNKCJA USUWAJACA WYBRANY EGZAMIN
         def delete_selected():
@@ -599,17 +618,20 @@ class GUI:
                     name = e["subject"]
                     break
 
-            confirm = messagebox.askyesno("Uwaga", f"Czy na pewno chcesz trwale usunąć egzamin {name} z archiwum?")
+            type_of_exam = "element"
+            for t in self.data["exams"]:
+                if t["id"] == exam_id:
+                    type_of_exam = f"{t["title"]} z"
+                    break
+
+            confirm = messagebox.askyesno("Uwaga", f"Czy na pewno chcesz trwale usunąć {type_of_exam} {name}?")
             if confirm:
                 self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != exam_id]
                 self.data["exams"] = [e for e in self.data["exams"] if e["id"] != exam_id]
 
                 save(self.data)
-                tree.delete(exam_id)
 
-                #   Aby tree nie wyrzucalo bledow po usunieciu
-                nonlocal display_exams
-                display_exams = [e for e in display_exams if e["id"] != exam_id]
+                refresh_main_archive()
 
                 messagebox.showinfo("Sukces", "Usunięto egzamin z archiwum.")
 
@@ -632,17 +654,7 @@ class GUI:
 
                 save(self.data)
 
-                for item in tree.get_children():
-                    tree.delete(item)
-
-                nonlocal display_exams
-                display_exams = list(self.data["exams"])
-                display_exams.sort(key=lambda x: x["date"], reverse=True)
-
-                for exam in display_exams:
-                    days = (date_format(exam["date"]) - today).days
-                    stat = f"{days} dni" if days > 0 else "Dzisiaj"
-                    tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"], status_txt), tags=("active",))
+                refresh_main_archive()
 
                 messagebox.showinfo("Sukces", "Wyczyszczono archiwalne egzaminy.")
 
@@ -656,7 +668,7 @@ class GUI:
 
             selected_exam = next((e for e in self.data["exams"] if e["id"] == exam_id), None)
             if selected_exam:
-                self.archive_datails_window(selected_exam)
+                self.archive_datails_window(selected_exam, callback=refresh_main_archive)
 
         tree.bind("<Double-1>", double_click)
 
@@ -673,14 +685,25 @@ class GUI:
         btn_close.pack(side="left", padx=5)
 
     #OKNO SZCZEGOLOW ARCHIWUM
-    def archive_datails_window(self, exam_data):
+    def archive_datails_window(self, exam_data, callback=None):
         hist_window = tk.Toplevel(self.root)
-        hist_window.title(f"Szczegóły: {exam_data["subject"]}")
 
         info_frame = tk.Frame(hist_window)
         info_frame.pack(pady=10)
-        tk.Label(info_frame, text=f"{exam_data["subject"]} ({exam_data["title"]})", font=("Arial", 12, "bold")).pack()
-        tk.Label(info_frame, text=f"Data egzaminu: {exam_data["date"]}", font=("Arial", 12, "bold")).pack()
+
+        lbl_subject = tk.Label(info_frame, text="", font=("Arial", 12, "bold"))
+        lbl_subject.pack()
+        lbl_date = tk.Label(info_frame, text="", font=("Arial", 12, "bold"))
+        lbl_date.pack()
+
+
+
+        def refresh_info():
+            lbl_subject.config(text=f"{exam_data["subject"]} ({exam_data["title"]})")
+            lbl_date.config(text=f"Data egzaminu: {exam_data["date"]}")
+            hist_window.title(f"Szczegóły: {exam_data["subject"]}")
+
+        refresh_info()
 
         frame = tk.Frame(hist_window)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -703,17 +726,77 @@ class GUI:
         scrollbar.pack(side="right", fill="y")
         tree.pack(side="left", fill="both", expand=True)
 
-        exam_topics = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
-        exam_topics.sort(key=lambda x: x.get("scheduled_date") or "9999-99-99")
+        def refresh_details():
+            for item in tree.get_children():
+                tree.delete(item)
 
-        for topic in exam_topics:
-            status_text = "Zrobione" if topic["status"] == "done" else "Niezrobione"
-            sched_date = topic.get("scheduled_date") if topic.get("scheduled_date") else "-"
+            exam_topics = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
+            exam_topics.sort(key=lambda x: x.get("scheduled_date") or "9999-99-99")
 
-            tree.insert("", "end", values=(topic["name"], status_text, sched_date), tags=(topic["status"],))
+            for topic in exam_topics:
+                status_text = "Zrobione" if topic["status"] == "done" else "Niezrobione"
+                sched_date = topic.get("scheduled_date") if topic.get("scheduled_date") else "-"
 
-        btn_close = tk.Button(hist_window, text="Zamknij", command=hist_window.destroy, **self.btn_style, activeforeground="red")
-        btn_close.pack(pady=10)
+                tree.insert("", "end", iid=topic["id"], values=(topic["name"], status_text, sched_date), tags=(topic["status"],))
+
+        refresh_details()
+
+        def toggle_status_local():
+            selected = tree.selection()
+            if not selected:
+                messagebox.showinfo("Info", "Zaznacz temat.")
+                return
+
+            topic_id = selected[0]
+            topic = next((t for t in self.data["topics"] if t["id"] == topic_id), None)
+
+            if topic:
+                if topic["status"] == "todo":
+                    topic["status"] = "done"
+                else:
+                    topic["status"] = "todo"
+
+                save(self.data)
+                refresh_details()
+
+        def edit_topic_local():
+            selected = tree.selection()
+            if not selected:
+                messagebox.showinfo("Info", "Zaznacz temat.")
+                return
+
+            topic_id = selected[0]
+            topic = next((t for t in self.data["topics"] if t["id"] == topic_id), None)
+
+            if topic:
+                self.edit_topic_window(topic, callback=refresh_details)
+
+        def edit_exam_local():
+            def saved():
+                refresh_details()
+                refresh_info()
+                if callback:
+                    callback()
+
+            self.edit_exam_window(exam_data, callback=saved)
+
+        tree.bind("<Double-1>", lambda event: edit_topic_local())
+
+        tk.Label(hist_window, text="Kliknij podwójnie w temat, aby go edytować", font=("Arial", 12, "bold")).pack()
+
+        btn_frame = tk.Frame(hist_window)
+        btn_frame.pack(pady=10)
+
+        btn_status = tk.Button(btn_frame, text="Zmień status", command=toggle_status_local, **self.btn_style)
+        btn_status.pack(side="left", padx=5)
+
+        btn_edit = tk.Button(btn_frame, text="Edytuj egzamin", command=edit_exam_local, **self.btn_style)
+        btn_edit.pack(side="left", padx=5)
+
+        btn_close = tk.Button(btn_frame, text="Zamknij", command=hist_window.destroy, **self.btn_style,activeforeground="red")
+        btn_close.pack(side="left", padx=5)
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
