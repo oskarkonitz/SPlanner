@@ -28,6 +28,18 @@ class GUI:
         if total_topics > 0:
             progress = int((done_topics / total_topics) * 100)
 
+        today_all_topics = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
+        today_total = len(today_all_topics)
+        today_done = len([t for t in today_all_topics if t["status"] == "done"])
+
+        today_prog = 0
+        today_txt_2 = ""
+        if today_total > 0:
+            today_prog = int((today_done / today_total) * 100)
+            today_txt_2 = f"Postęp dzisiaj: {today_done}/{today_total} ({today_prog}%)"
+        else:
+            today_txt_2 = "Brak zadań zaplanowanych na dzisiaj"
+
         topics_today = [t for t in self.data["topics"] if t["scheduled_date"] and str(t["scheduled_date"]) == str(today) and t["status"] == "todo"]
         count_today = len(topics_today)
 
@@ -65,6 +77,11 @@ class GUI:
 
         today_txt = f"Zadania na dziś: {count_today}"
         tk.Label(stats_frame, text=today_txt, font=("Arial", 12, "bold")).pack(pady=2)
+
+        lbl_today = tk.Label(stats_frame, text=today_txt_2, font=("Arial", 12, "bold"))
+        if today_prog == 100:
+            lbl_today.config(foreground="green")
+        lbl_today.pack(pady=2)
 
         progress_txt = f"Postęp: {done_topics}/{total_topics} ({progress}%)"
         tk.Label(stats_frame, text=progress_txt, font=("Arial", 12, "bold")).pack(pady=5)
