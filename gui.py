@@ -468,6 +468,7 @@ class GUI:
         tree.tag_configure("red", font=("Arial", 13, "bold"), foreground="red")
         tree.tag_configure("orange", font=("Arial", 12, "bold"), foreground="orange")
         tree.tag_configure("yellow", foreground="yellow", font=("Arial", 12, "bold"))
+        tree.tag_configure("overdue", foreground="gray", font=("Arial", 12, "italic", "bold"))
 
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
@@ -479,6 +480,20 @@ class GUI:
         def refresh_table():
             for item in tree.get_children():
                 tree.delete(item)
+
+            #       ZALEGLE TEMATY
+            #   pobranie zaleglych tematow
+            overdue_topics = [t for t in self.data["topics"] if t.get("scheduled_date") and date_format(t["scheduled_date"]) < date.today() and t["status"] == "todo"]
+            if overdue_topics:
+                tree.insert("", "end", values=("ZALEGŁE", "", ""), tags=("overdue",))
+                for topic in overdue_topics:
+                    subj_name = "Inne"
+                    for exam in self.data["exams"]:
+                        if exam["id"] == topic["exam_id"]:
+                            subj_name = exam["subject"]
+                            break
+                    tree.insert("", "end", iid=topic["id"], values=(topic["scheduled_date"], subj_name, topic["name"]), tags=("overdue",))
+                tree.insert("", "end", values=("", "", ""))
 
             all_dates = set()
             for exam in self.data["exams"]:
