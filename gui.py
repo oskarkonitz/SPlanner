@@ -7,15 +7,17 @@ from datetime import datetime, timedelta, date
 
 class GUI:
     #FUNKCJA WYKONUJĄCA SIE NA POCZĄTKU
+    #launcher z szybkim podgladem i przyciskami do uruchomienia instrukcji i reszty programu
     def __init__(self, root):
         self.root = root
         self.root.title("Planer Nauki")
         #self.root.geometry("400x500")
         self.root.resizable(False, False)
 
-        self.data = load()
+        self.data = load() #Zaladowanie danych z pliku (funkcja z storage.py)
         # print(f"Loaded exams: {len(self.data["exams"])}")
 
+        # zbieranie danych do szybkiego podgladu
         today = date.today()
 
         active_exams_ids = {e["id"] for e in self.data["exams"]if date_format(e["date"]) >= today}
@@ -67,9 +69,10 @@ class GUI:
             else:
                 next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
 
+        #ustawienie tytulu za pomoca biblioteki tkinter
         self.label_title = tk.Label(self.root, text="Planer Nauki", font=("Arial", 20, "bold"))
         self.label_title.pack(pady=(20, 10))
-
+        #tkinter ustawienie ramki na szybki podglad i wstawienie danych do okna
         stats_frame = tk.Frame(self.root)
         stats_frame.pack(fill="x", padx=40, pady=10, ipady=10)
 
@@ -87,6 +90,7 @@ class GUI:
         tk.Label(stats_frame, text=progress_txt, font=("Arial", 12, "bold")).pack(pady=5)
 
         # STYL PRZYCISKOW DLA CALEGO PROGRAMU
+        # zrobione aby sie nie powtarzac za kazdym razem przy tworzeniu przyciskow
         self.btn_style = {
             "font": ("Arial", 11, "bold"),
             "cursor": "hand2",

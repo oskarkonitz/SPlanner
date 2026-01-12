@@ -52,7 +52,7 @@ def topics_list_create(data, e_id):
 
     return topics_list
 
-def plan(data):
+def plan_old(data):
     pref_max_per_day = data["settings"].get("max_per_day", 2)
     pref_max_same_subject = data["settings"].get("max_same_subject_per_day", 1)
     today = date.today()
@@ -96,6 +96,72 @@ def plan(data):
             border_day += timedelta(days=1)
 
     for topic in data["topics"]:
+        for key, value in callendar.items():
+            if topic["id"] in value:
+                topic["scheduled_date"] = key
+
+def plan(data):
+    pref_max_per_day = data["settings"].get("max_per_day", 2)
+    today = date.today()
+
+    callendar = callendar_create(data, today)
+
+    for exam in data["exams"]:
+        exam_date = date_format(exam["date"])
+        if exam_date <= today:
+            continue
+
+        end_study_date = exam_date - timedelta(days=1) #    definicja konca dla egzaminu
+
+        if end_study_date < today:
+            continue
+
+
+        scan_date = end_study_date  #   definicja startu dla egzaminu
+        while scan_date > today and "E" not in callendar.get(scan_date, []):
+            scan_date -= timedelta(days=1)
+
+        start_study_date = scan_date
+
+        # zabezpieczenie: jeśli dziś jest po końcu nauki (błąd logiczny danych)
+        if start_study_date > end_study_date:
+            continue
+
+        t_list = topics_list_create(data, exam["id"])   #   liczenie tematów
+        if not t_list:
+            continue
+
+        days_available = (end_study_date - start_study_date).days + 1
+
+        # zabezpieczenie przed dzieleniem przez zero
+        if days_available <= 0:
+            days_available = 1
+
+        needed_daily = math.ceil(len(t_list) / days_available)
+
+        current_day = start_study_date
+
+        if needed_daily == 1:   #   logika planowania, jeśli 1 egzamin dziennie
+            tasks_count = len(t_list)
+            offset = days_available - tasks_count
+            if offset < 0: offset = 0
+            current_day = start_study_date + timedelta(days=offset)
+
+        #        PĘTLA PLANUJĄCA
+        while current_day <= end_study_date:
+            if current_day in callendar:
+                for i in range(needed_daily):
+                    if len(t_list) > 0:
+                        callendar[current_day].append(t_list[0])
+                        del t_list[0]
+
+            current_day += timedelta(days=1)
+
+    #       PRZYPISANIE DAT
+    for topic in data["topics"]:
+        if topic["status"] == "todo" and not topic.get("locked", False):
+            topic["scheduled_date"] = None
+
         for key, value in callendar.items():
             if topic["id"] in value:
                 topic["scheduled_date"] = key
