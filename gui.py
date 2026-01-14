@@ -4,6 +4,7 @@ from storage import load, save
 from planner import plan, date_format
 import uuid
 from datetime import datetime, timedelta, date
+from tkcalendar import DateEntry
 
 class GUI:
     #FUNKCJA WYKONUJĄCA SIE NA POCZĄTKU
@@ -78,8 +79,8 @@ class GUI:
 
         tk.Label(stats_frame, text=next_exam_txt, font=("Arial", 13, "bold"), foreground=days_color).pack(pady=2)
 
-        today_txt = f"Zadania na dziś: {count_today}"
-        tk.Label(stats_frame, text=today_txt, font=("Arial", 12, "bold")).pack(pady=2)
+        # today_txt = f"Zadania na dziś: {count_today}"
+        # tk.Label(stats_frame, text=today_txt, font=("Arial", 12, "bold")).pack(pady=2)
 
         lbl_today = tk.Label(stats_frame, text=today_txt_2, font=("Arial", 12, "bold"))
         if today_prog == 100:
@@ -228,10 +229,10 @@ class GUI:
         entry_title.grid(row=1, column=1, padx=10, pady=10)
 
         tk.Label(add_win, text="Data (YYYY-MM-DD):").grid(row=2, column=0, pady=10, padx=10, sticky="e")
-        entry_date = tk.Entry(add_win, width=30)
+        entry_date = DateEntry(add_win, width=27, date_pattern='y-mm-dd')
         entry_date.grid(row=2, column=1, padx=10, pady=10)
         tomorrow = datetime.now() + timedelta(days=1)
-        entry_date.insert(0, tomorrow.strftime("%Y-%m-%d"))
+        entry_date.set_date(tomorrow)
 
         tk.Label(add_win, text="Tematy (jeden pod drugim):").grid(row=3, column=0, columnspan=2, pady=5)
         text_topics = tk.Text(add_win, width=40, height=10)
@@ -285,9 +286,10 @@ class GUI:
         ent_title.grid(row=1, column=1, padx=10, pady=5)
 
         tk.Label(edit_win, text="Data (YYYY-MM-DD):").grid(row=2, column=0, pady=5, padx=10, sticky="e")
-        ent_date = tk.Entry(edit_win, width=30)
-        ent_date.insert(0, exam_data["date"])
+        ent_date = DateEntry(edit_win, width=27, date_pattern='y-mm-dd')
         ent_date.grid(row=2, column=1, padx=10, pady=5)
+        if exam_data["date"]:
+            ent_date.set_date(exam_data["date"])
 
         tk.Label(edit_win, text="Tematy (edycja listy):").grid(row=3, column=0, pady=5, columnspan=2)
         txt_topics = tk.Text(edit_win, width=40, height=10)
@@ -373,11 +375,11 @@ class GUI:
         ent_name.grid(row=0, column=1, padx=10, pady=10)
 
         tk.Label(topic_win, text="Data (YYYY-MM-DD):").grid(row=1, column=0, padx=10, pady=10, sticky="e")
-        ent_date = tk.Entry(topic_win, width=30)
+        ent_date = DateEntry(topic_win, width=27, date_pattern='y-mm-dd')
+        ent_date.grid(row=1, column=1, padx=10, pady=10)
         original_date = topic_data.get("scheduled_date", "")
         if original_date:
-            ent_date.insert(0, original_date)
-        ent_date.grid(row=1, column=1, padx=10, pady=10)
+            ent_date.set_date(original_date)
 
         is_locked = tk.BooleanVar(value=topic_data.get("locked", False))
         check_locked = tk.Checkbutton(topic_win, text="Zablokuj", variable=is_locked, onvalue=True, offvalue=False)

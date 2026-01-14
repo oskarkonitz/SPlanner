@@ -2,11 +2,14 @@ from datetime import datetime, date, timedelta
 from storage import load
 import math
 
+#   FUNKCJA ZMIENIAJACA FORMAT DATY
 def date_format(text):
     if isinstance(text, date):
         return text
     return datetime.strptime(text, "%Y-%m-%d").date()
 
+
+#   FUNKCJA TWORZACA PUSTA TABLICE KALENDARZA
 def callendar_create(data, tday):
     callendar = {}
     max_date = tday
@@ -33,6 +36,7 @@ def callendar_create(data, tday):
 
     return callendar
 
+#   FUNKCJA TWORZACA LISTE TEMATOW DO WSTAWIENIA W KALENDARZ
 def topics_list_create(data, e_id):
     topics_list = []
     today = date.today()
@@ -52,6 +56,7 @@ def topics_list_create(data, e_id):
 
     return topics_list
 
+#   STARA NIEUZYWANA FUNKCJA PLANOWANIA TEMATOW
 def plan_old(data):
     pref_max_per_day = data["settings"].get("max_per_day", 2)
     pref_max_same_subject = data["settings"].get("max_same_subject_per_day", 1)
@@ -100,10 +105,12 @@ def plan_old(data):
             if topic["id"] in value:
                 topic["scheduled_date"] = key
 
+#   FUNKCJA PLANOWANIA DAT DLA TEMATOW
 def plan(data):
     pref_max_per_day = data["settings"].get("max_per_day", 2)
     today = date.today()
 
+    #stworzenie pustego kalendarza
     callendar = callendar_create(data, today)
 
     for exam in data["exams"]:
@@ -144,7 +151,8 @@ def plan(data):
         if needed_daily == 1:   #   logika planowania, jeśli 1 egzamin dziennie
             tasks_count = len(t_list)
             offset = days_available - tasks_count
-            if offset < 0: offset = 0
+            if offset < 0:
+                offset = 0
             current_day = start_study_date + timedelta(days=offset)
 
         #        PĘTLA PLANUJĄCA
@@ -157,7 +165,7 @@ def plan(data):
 
             current_day += timedelta(days=1)
 
-    #       PRZYPISANIE DAT
+    #       PRZYPISANIE DAT DLA TEMATOW
     for topic in data["topics"]:
         if topic["status"] == "todo" and not topic.get("locked", False):
             topic["scheduled_date"] = None
