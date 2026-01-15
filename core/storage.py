@@ -6,7 +6,7 @@ import platformdirs
 #       - False, jesli dane maja byc zapisywane w folderze projektu/core
 #       - True, jesli dane maja byc zapisywane w folderach systemowych
 
-USE_SYSTEM_STORAGE = True
+USE_SYSTEM_STORAGE = False
 
 # sciezka lokalna
 CORE_DIR = Path(__file__).resolve().parent
