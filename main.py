@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from storage import load, save, load_language
-from planner import plan, date_format
+from core.storage import load, save, load_language
+from core.planner import plan, date_format
 import uuid
 from datetime import datetime, timedelta, date
 from tkcalendar import DateEntry
@@ -453,7 +453,7 @@ class GUI:
     #OKNO Z GOTOWYM PLANEM NAUKI
     def show_plan(self):
         week_win = tk.Toplevel(self.root)
-        week_win.geometry("750x400")
+        week_win.geometry("800x450")
         week_win.title(self.txt["win_plan_title"])
 
         frame = tk.Frame(week_win)
@@ -494,8 +494,11 @@ class GUI:
                 tree.delete(item)
 
             #       ZALEGLE TEMATY
+
+            active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= date.today()}
+
             #   pobranie zaleglych tematow
-            overdue_topics = [t for t in self.data["topics"] if t.get("scheduled_date") and date_format(t["scheduled_date"]) < date.today() and t["status"] == "todo"]
+            overdue_topics = [t for t in self.data["topics"] if t.get("scheduled_date") and date_format(t["scheduled_date"]) < date.today() and t["status"] == "todo" and t["exam_id"] in active_exams_ids]
             if overdue_topics:
                 tree.insert("", "end", values=(self.txt["tag_overdue"]), tags=("overdue",))
                 for topic in overdue_topics:

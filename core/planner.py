@@ -1,5 +1,4 @@
 from datetime import datetime, date, timedelta
-from storage import load
 import math
 
 #   FUNKCJA ZMIENIAJACA FORMAT DATY

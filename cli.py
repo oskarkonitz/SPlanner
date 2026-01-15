@@ -1,7 +1,7 @@
 import uuid
 import argparse
-from storage import load, save
-from planner import plan
+from core.storage import load, save
+from core.planner import plan
 from datetime import date, timedelta
 
 def new_id(prefix):
