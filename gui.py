@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from storage import load, save
+from storage import load, save, load_language
 from planner import plan, date_format
 import uuid
 from datetime import datetime, timedelta, date
@@ -11,13 +11,20 @@ class GUI:
     #launcher z szybkim podgladem i przyciskami do uruchomienia instrukcji i reszty programu
     def __init__(self, root):
         self.root = root
-        self.root.title("Planer Nauki")
+
+        self.data = load()  # Zaladowanie danych z pliku(funkcja z storage.py)
+
+        #   pobranie i ustawienie jezyka programu
+        current_lang_code = self.data["settings"].get("lang", "en")
+        self.txt = load_language(current_lang_code)
+
+        self.root.title(self.txt["app_title"])
         #self.root.geometry("400x500")
         self.root.resizable(False, False)
 
-        self.data = load() #Zaladowanie danych z pliku (funkcja z storage.py)
         # print(f"Loaded exams: {len(self.data["exams"])}")
 
+        #   SEKCJA STATYSTYK
         # zbieranie danych do szybkiego podgladu
         today = date.today()
 
@@ -39,16 +46,18 @@ class GUI:
         today_txt_2 = ""
         if today_total > 0:
             today_prog = int((today_done / today_total) * 100)
-            today_txt_2 = f"Postęp dzisiaj: {today_done}/{today_total} ({today_prog}%)"
+            #wzor w pliku jezykowym json: "postep dzisiaj: {done}/{total} ({prog}%)
+            today_txt_2 = self.txt["stats_progress_today"].format(done=today_done, total=today_total, prog=today_prog)
         else:
-            today_txt_2 = "Brak zadań zaplanowanych na dzisiaj"
+            today_txt_2 = self.txt["stats_no_today"]
 
         topics_today = [t for t in self.data["topics"] if t["scheduled_date"] and str(t["scheduled_date"]) == str(today) and t["status"] == "todo"]
         count_today = len(topics_today)
 
+        #   szukanie najblizszego egzaminu
         future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
         future_exams.sort(key=lambda x: x["date"])
-        next_exam_txt = "Brak nadchodzących egzaminów"
+        next_exam_txt = self.txt["stats_no_upcoming"]
         days_color = "green"
 
         if future_exams:
@@ -56,23 +65,24 @@ class GUI:
             days = (date_format(nearest["date"]) - today).days
 
             if days == 0:
-                next_exam_txt = f"Dzisiaj: {nearest["subject"]}!"
+                next_exam_txt = self.txt["stats_exam_today"].format(subject=nearest["subject"])
                 days_color = "violet"
             elif days <= 2:
                 if days == 1:
-                    next_exam_txt = f"Jutro: {nearest['subject']}!"
+                    next_exam_txt = self.txt["stats_exam_tomorrow"].format(subject=nearest["subject"])
                 else:
-                    next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
+                    next_exam_txt = self.txt["stats_exam_days"].format(days=days, subject=nearest["subject"])
                 days_color = "orange"
             elif days <= 5:
-                next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
+                next_exam_txt = self.txt["stats_exam_days"].format(days=days, subject=nearest["subject"])
                 days_color = "yellow"
             else:
-                next_exam_txt = f"Za {days} dni: {nearest['subject']}!"
+                next_exam_txt = self.txt["stats_exam_days"].format(days=days, subject=nearest["subject"])
 
         #ustawienie tytulu za pomoca biblioteki tkinter
-        self.label_title = tk.Label(self.root, text="Planer Nauki", font=("Arial", 20, "bold"))
+        self.label_title = tk.Label(self.root, text=self.txt["app_title"], font=("Arial", 20, "bold"))
         self.label_title.pack(pady=(20, 10))
+
         #tkinter ustawienie ramki na szybki podglad i wstawienie danych do okna
         stats_frame = tk.Frame(self.root)
         stats_frame.pack(fill="x", padx=40, pady=10, ipady=10)
@@ -87,7 +97,7 @@ class GUI:
             lbl_today.config(foreground="green")
         lbl_today.pack(pady=2)
 
-        progress_txt = f"Postęp: {done_topics}/{total_topics} ({progress}%)"
+        progress_txt = self.txt["stats_total_progress"].format(done=done_topics, total=total_topics, progress=progress)
         tk.Label(stats_frame, text=progress_txt, font=("Arial", 12, "bold")).pack(pady=5)
 
         # STYL PRZYCISKOW DLA CALEGO PROGRAMU
@@ -102,20 +112,43 @@ class GUI:
         }
 
         # PRZYCISKI W MENU GLOWNYM
-        self.label_title = tk.Label(self.root, text="Wybierz opcje:", font=("Arial", 14, "bold"))
+        self.label_title = tk.Label(self.root, text=self.txt["menu_title"], font=("Arial", 14, "bold"))
         self.label_title.pack(pady=20, padx=60)
-        self.btn_week = tk.Button(self.root, text="Uruchom", command=self.show_plan, **self.btn_style)
+        self.btn_week = tk.Button(self.root, text=self.txt["btn_run"], command=self.show_plan, **self.btn_style)
         self.btn_week.pack(pady=10)
-        self.btn_manual = tk.Button(self.root, text="Instrukcja Obsługi", command=self.manual, **self.btn_style)
+        self.btn_manual = tk.Button(self.root, text=self.txt["btn_manual"], command=self.manual, **self.btn_style)
         self.btn_manual.pack(pady=10)
-        self.btn_exit = tk.Button(self.root, text="Wyjście", command=self.root.quit, **self.btn_style, activeforeground="red")
+        self.btn_exit = tk.Button(self.root, text=self.txt["btn_exit"], command=self.root.quit, **self.btn_style, activeforeground="red")
         self.btn_exit.pack(pady=40)
+
+        # WYBOR JEZYKA
+        bottom_frame = tk.Frame(self.root)
+        bottom_frame.pack(side="bottom", fill="x", padx=10, pady=10)
+
+        self.lang_map = {"English": "en", "Polski": "pl"}
+        self.lang_rev = {v: k for k, v in self.lang_map.items()}  # odwrocenie slownika aby znalezc nazwe po kodzie
+
+        self.combo_lang = ttk.Combobox(bottom_frame, values=list(self.lang_map.keys()), state="readonly", width=10)
+        current_lang_name = self.lang_rev.get(current_lang_code, "English")
+        self.combo_lang.set(current_lang_name)
+        self.combo_lang.pack(side="right")
+
+        def language_change(event):
+            selected_name = self.combo_lang.get()
+            new_code = self.lang_map[selected_name]
+
+            if new_code != self.data["settings"].get("lang", "en"):
+                self.data["settings"]["lang"] = new_code
+                save(self.data)
+                messagebox.showinfo(self.txt["msg_info"], self.txt["msg_lang_changed"])
+
+        self.combo_lang.bind("<<ComboboxSelected>>", language_change)
 
     #OKNO Z INSTRUKCJĄ
     def manual(self):
         man_win = tk.Toplevel(self.root)
         #man_win.geometry("450x500")
-        man_win.title("Instrukcja Obsługi")
+        man_win.title(self.txt["manual_title"])
 
         frame = tk.Frame(man_win)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -131,37 +164,10 @@ class GUI:
         text.tag_config("bold", font=("Arial", 20, "bold"))
         text.tag_config("normal", font=("Arial", 13))
 
-        text.insert("end", "JAK KORZYSTAĆ Z PLANERA?\n\n", "bold")
-        instrukcja = (
-            "1. Dodawanie Egzaminu:\n"
-            "Kliknij przycisk 'Dodaj Egzamin'. Wpisz nazwę przedmiotu, formę (np. kolokwium) "
-            "oraz datę egzaminu. W dużym polu poniżej wpisz listę zagadnień do nauki "
-            "- każde w nowej linii.\n\n"
-
-            "2. Generowanie Planu:\n"
-            "Po dodaniu egzaminów kliknij 'Generuj Plan'. Aplikacja automatycznie rozłoży "
-            "Twoje zagadnienia na dni pomiędzy dniem dzisiejszym a datą egzaminu.\n\n"
-
-            "3. Przeglądanie Planu:\n"
-            "Kliknij 'Pokaż Plan', aby zobaczyć tabelę z zadaniami. Dni są posortowane chronologicznie."
-            "Na czerwono zaznaczone są egzaminy a na zielono zadania wykonane.\n\n"
-            
-            "4. Praca z Planem:\n"
-            "Jeśli podczas przeglądania planu dodasz nowy egzamin, to wystarczy wygenerować"
-            "plan ponownie i odświeżyć Przeglądarke. Nie trzeba jej na nowo uruchamiać\n\n"
-
-            "5. Zaznaczanie Postępów:\n"
-            "W oknie planu zaznacz zadanie myszką i kliknij 'Zmień status'. "
-            "Zadania zrobione zmienią kolor na zielony."
-            "Jeśli jakiemuś zadaniu zmienisz status na zrobiony przez pomyłke to możesz to"
-            "cofnąć ponownie zmieniając status.\n\n"
-
-            "6. Resetowanie:\n"
-            "Przycisk 'Wyczyść dane' usuwa trwale wszystko z bazy danych. Używaj ostrożnie, nie da się ich odzyskać!"
-        )
-        text.insert("end", instrukcja, "normal")
+        text.insert("end", self.txt["manual_header"], "bold")
+        text.insert("end", self.txt["manual_content"], "normal")
         text.configure(state="disabled")
-        btn_close = tk.Button(man_win, text="Zamknij", command=man_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close = tk.Button(man_win, text=self.txt["btn_close"], command=man_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="bottom", pady=10)
 
     #FUNKCJA URUCHAMIAJĄCA PROGRAM PLANUJĄCY
@@ -169,9 +175,9 @@ class GUI:
         try:
             plan(self.data)
             save(self.data)
-            messagebox.showinfo("Sukces", "Planowanie zakonczone")
+            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_plan_done"])
         except Exception as e:
-            messagebox.showerror("Błąd", f"Powod: {e}")
+            messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
 
     #OKNO DO DODAWANIA NOWYCH EGZAMINOW I TEMATÓW
     def add_window(self, callback=None):
@@ -183,7 +189,7 @@ class GUI:
             topics = text_topics.get("1.0", tk.END)
 
             if not subject or not date_str or not title:
-                messagebox.showwarning("Błąd!", "Uzupelnij brakujace pola")
+                messagebox.showwarning(self.txt["msg_error"], self.txt["msg_fill_fields"])
                 return
 
             topics_list = [t.strip() for t in topics.split("\n") if t.strip()]
@@ -213,46 +219,46 @@ class GUI:
                 callback()
 
             add_win.destroy()
-            messagebox.showinfo("Sukces", f"Dodano egzamin i {len(topics_list)} tematów")
+            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))
 
         add_win = tk.Toplevel(self.root)
         #add_win.geometry("460x400")
         add_win.resizable(False, False)
-        add_win.title("Dodaj nowy egzamin")
+        add_win.title(self.txt["win_add_title"])
 
-        tk.Label(add_win, text="Przedmiot:").grid(row=0, column=0, pady=10, padx=10, sticky="e")
+        tk.Label(add_win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=10, padx=10, sticky="e")
         entry_subject = tk.Entry(add_win, width=30)
         entry_subject.grid(row=0, column=1, padx=10, pady=10)
 
-        tk.Label(add_win, text="Forma:").grid(row=1, column=0, pady=10, padx=10, sticky="e")
+        tk.Label(add_win, text=self.txt["form_type"]).grid(row=1, column=0, pady=10, padx=10, sticky="e")
         entry_title = tk.Entry(add_win, width=30)
         entry_title.grid(row=1, column=1, padx=10, pady=10)
 
-        tk.Label(add_win, text="Data (YYYY-MM-DD):").grid(row=2, column=0, pady=10, padx=10, sticky="e")
+        tk.Label(add_win, text=self.txt["form_date"]).grid(row=2, column=0, pady=10, padx=10, sticky="e")
         entry_date = DateEntry(add_win, width=27, date_pattern='y-mm-dd')
         entry_date.grid(row=2, column=1, padx=10, pady=10)
         tomorrow = datetime.now() + timedelta(days=1)
         entry_date.set_date(tomorrow)
 
-        tk.Label(add_win, text="Tematy (jeden pod drugim):").grid(row=3, column=0, columnspan=2, pady=5)
+        tk.Label(add_win, text=self.txt["form_topics_add"]).grid(row=3, column=0, columnspan=2, pady=5)
         text_topics = tk.Text(add_win, width=40, height=10)
         text_topics.grid(row=4, column=0, columnspan=2, padx=10)
 
         btn_frame = tk.Frame(add_win)
         btn_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20)
 
-        btn_save = tk.Button(btn_frame, text="Zapisz", command=save_new_exam, **self.btn_style)
+        btn_save = tk.Button(btn_frame, text=self.txt["btn_save"], command=save_new_exam, **self.btn_style)
         btn_save.pack(side="left", padx=5)
 
-        btn_exit = tk.Button(btn_frame, text="Anuluj", command=add_win.destroy, **self.btn_style, activeforeground="red")
+        btn_exit = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=add_win.destroy, **self.btn_style, activeforeground="red")
         btn_exit.pack(side="left", padx=5)
 
-    #FUNKCJE DO EDYCJI DANYCH
+    #FUNKCJE DO EDYCJI DANYCH   ------------
     #   SPRAWDZENIE CO JEST ZAZNACZONE
     def edit_select(self, tree, callback=None):
         selected_item = tree.selection()
         if not selected_item:
-            messagebox.showinfo("Info", "Najpierw zaznacz element, który chcesz edytować.")
+            messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_edit"])
             return
 
         item_id = selected_item[0]
@@ -267,31 +273,31 @@ class GUI:
                 self.edit_topic_window(topic, callback)
                 return
 
-        messagebox.showerror("Błąd", "Nie można edytować tego elementu.")
+        messagebox.showerror(self.txt["msg_error"], self.txt["msg_cant_edit"])
 
-    #   OKNO EDYCJI CALOSCI
+    #   OKNO EDYCJI CALOSCI (EGZAMINU)
     def edit_exam_window(self, exam_data, callback=None):
         edit_win = tk.Toplevel(self.root)
         edit_win.resizable(False, False)
-        edit_win.title(f"Edytuj: {exam_data["subject"]}")
+        edit_win.title(self.txt["win_edit_exam_title"].format(subject=exam_data["subject"]))
 
-        tk.Label(edit_win, text="Przedmiot:").grid(row=0, column=0, pady=5, padx=10, sticky="e")
+        tk.Label(edit_win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=5, padx=10, sticky="e")
         ent_subject = tk.Entry(edit_win, width=30)
         ent_subject.insert(0, exam_data["subject"])
         ent_subject.grid(row=0, column=1, padx=10, pady=5)
 
-        tk.Label(edit_win, text="Forma:").grid(row=1, column=0, pady=5, padx=10, sticky="e")
+        tk.Label(edit_win, text=self.txt["form_type"]).grid(row=1, column=0, pady=5, padx=10, sticky="e")
         ent_title = tk.Entry(edit_win, width=30)
         ent_title.insert(0, exam_data["title"])
         ent_title.grid(row=1, column=1, padx=10, pady=5)
 
-        tk.Label(edit_win, text="Data (YYYY-MM-DD):").grid(row=2, column=0, pady=5, padx=10, sticky="e")
+        tk.Label(edit_win, text=self.txt["form_date"]).grid(row=2, column=0, pady=5, padx=10, sticky="e")
         ent_date = DateEntry(edit_win, width=27, date_pattern='y-mm-dd')
         ent_date.grid(row=2, column=1, padx=10, pady=5)
         if exam_data["date"]:
             ent_date.set_date(exam_data["date"])
 
-        tk.Label(edit_win, text="Tematy (edycja listy):").grid(row=3, column=0, pady=5, columnspan=2)
+        tk.Label(edit_win, text=self.txt["form_topics_edit"]).grid(row=3, column=0, pady=5, columnspan=2)
         txt_topics = tk.Text(edit_win, width=40, height=10)
         txt_topics.grid(row=4, column=0, columnspan=2, padx=10)
         topics_list = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
@@ -335,10 +341,10 @@ class GUI:
                 callback()
 
             edit_win.destroy()
-            messagebox.showinfo("Sukces", "Dane zaktualizowane, kliknij Odśwież")
+            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_data_updated"])
 
         def delete_exam():
-            confirm = messagebox.askyesno("Uwaga", f"Czy na pewno chcesz usunąć '{exam_data["subject"]}'?")
+            confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_exam"].format(subject=exam_data["subject"]))
             if confirm:
                 self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != exam_data["id"]]
                 self.data["exams"] = [e for e in self.data["exams"] if e["id"] != exam_data["id"]]
@@ -349,32 +355,32 @@ class GUI:
                     callback()
 
                 edit_win.destroy()
-                messagebox.showinfo("Sukces", "Egzamin usunięty, odśwież aby zobaczyć zmiany.")
+                messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_deleted"])
 
         btn_frame = tk.Frame(edit_win)
         btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
-        btn_save = tk.Button(btn_frame, text="Zapisz zmiany", command=save_changes, **self.btn_style)
+        btn_save = tk.Button(btn_frame, text=self.txt["btn_save_changes"], command=save_changes, **self.btn_style)
         btn_save.pack(side="left", padx=5)
 
-        btn_delete = tk.Button(btn_frame, text="Usuń", command=delete_exam, **self.btn_style, foreground="red")
+        btn_delete = tk.Button(btn_frame, text=self.txt["btn_delete"], command=delete_exam, **self.btn_style, foreground="red")
         btn_delete.pack(side="left", padx=5)
 
-        btn_cancel = tk.Button(btn_frame, text="Anuluj", command=edit_win.destroy, **self.btn_style, activeforeground="red")
+        btn_cancel = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=edit_win.destroy, **self.btn_style, activeforeground="red")
         btn_cancel.pack(side="left", padx=5)
 
     #   OKNO EDYCJI TEMATU
     def edit_topic_window(self, topic_data, callback=None):
         topic_win = tk.Toplevel(self.root)
-        topic_win.title(f"Edytuj: {topic_data["name"]}")
+        topic_win.title(self.txt["win_edit_topic_title"].format(name=topic_data["name"]))
         topic_win.resizable(width=False, height=False)
 
-        tk.Label(topic_win, text="Temat:").grid(row=0, column=0, padx=10, pady=10, sticky="e")
+        tk.Label(topic_win, text=self.txt["form_topic"]).grid(row=0, column=0, padx=10, pady=10, sticky="e")
         ent_name = tk.Entry(topic_win, width=30)
         ent_name.insert(0, topic_data["name"])
         ent_name.grid(row=0, column=1, padx=10, pady=10)
 
-        tk.Label(topic_win, text="Data (YYYY-MM-DD):").grid(row=1, column=0, padx=10, pady=10, sticky="e")
+        tk.Label(topic_win, text=self.txt["form_date"]).grid(row=1, column=0, padx=10, pady=10, sticky="e")
         ent_date = DateEntry(topic_win, width=27, date_pattern='y-mm-dd')
         ent_date.grid(row=1, column=1, padx=10, pady=10)
         original_date = topic_data.get("scheduled_date", "")
@@ -382,7 +388,7 @@ class GUI:
             ent_date.set_date(original_date)
 
         is_locked = tk.BooleanVar(value=topic_data.get("locked", False))
-        check_locked = tk.Checkbutton(topic_win, text="Zablokuj", variable=is_locked, onvalue=True, offvalue=False)
+        check_locked = tk.Checkbutton(topic_win, text=self.txt["form_lock"], variable=is_locked, onvalue=True, offvalue=False)
         check_locked.grid(row=2, column=0, columnspan=2, pady=5)
 
         def save_changes():
@@ -390,7 +396,7 @@ class GUI:
             new_date = ent_date.get()
 
             if not new_name:
-                messagebox.showwarning("Błąd", "Temat musi mieć nazwę.")
+                messagebox.showwarning(self.txt["msg_error"], self.txt["msg_topic_name_req"])
                 return
 
             topic_data["name"] = new_name
@@ -405,11 +411,11 @@ class GUI:
 
             topic_data["locked"] = is_locked.get()
 
-            infomess = "odśwież"
+            infomess = self.txt["btn_refresh"]
 
             if new_date and str(original_date) != new_date:
                 topic_data["locked"] = True
-                infomess = "zmieniono datę ręcznie - włączono blokade planowania dla tego tematu. Odśwież"
+                infomess = self.txt["msg_topic_date_lock"]
 
             save(self.data)
 
@@ -417,10 +423,10 @@ class GUI:
                 callback()
 
             topic_win.destroy()
-            messagebox.showinfo("Sukces", f"Zaktualizowano temat, {infomess} aby zobaczyć zmiany.")
+            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_topic_updated"].format(info=infomess))
 
         def delete_topic():
-            confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć to zadanie?")
+            confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_topic"])
             if confirm:
                 self.data["topics"] = [t for t in self.data["topics"] if t["id"] != topic_data["id"]]
                 save(self.data)
@@ -429,38 +435,41 @@ class GUI:
                     callback()
 
                 topic_win.destroy()
-                messagebox.showinfo("Sukces", "Usunięto zadanie.")
+                messagebox.showinfo(self.txt["msg_success"], self.txt["msg_topic_deleted"])
 
         btn_frame = tk.Frame(topic_win)
         btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
-        btn_save = tk.Button(btn_frame, text="Zapisz", command=save_changes, **self.btn_style)
+        btn_save = tk.Button(btn_frame, text=self.txt["btn_save"], command=save_changes, **self.btn_style)
         btn_save.pack(side="left", padx=5)
 
-        btn_delete = tk.Button(btn_frame, text="Usuń", command=delete_topic, **self.btn_style, foreground="red")
+        btn_delete = tk.Button(btn_frame, text=self.txt["btn_delete"], command=delete_topic, **self.btn_style, foreground="red")
         btn_delete.pack(side="left", padx=5)
 
-        btn_cancel = tk.Button(btn_frame, text="Anuluj", command=topic_win.destroy, **self.btn_style, activeforeground="red")
+        btn_cancel = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=topic_win.destroy, **self.btn_style, activeforeground="red")
         btn_cancel.pack(side="left", padx=5)
+    #                           ------------
 
     #OKNO Z GOTOWYM PLANEM NAUKI
     def show_plan(self):
         week_win = tk.Toplevel(self.root)
         week_win.geometry("750x400")
-        week_win.title("Plan Nauki")
+        week_win.title(self.txt["win_plan_title"])
 
         frame = tk.Frame(week_win)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # naglowki tabeli
         columns = ("data", "przedmiot", "temat")
         tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
-        tree.heading("data", text="Data")
+        tree.heading("data", text=self.txt["col_date"])
         tree.column("data", width=100, anchor="center")
-        tree.heading("przedmiot", text="Przedmiot")
+        tree.heading("przedmiot", text=self.txt["col_subject"])
         tree.column("przedmiot", width=150, anchor="w")
-        tree.heading("temat", text="Temat | Zadanie | Forma Zaliczenia")
+        tree.heading("temat", text=self.txt["col_topic_long"])
         tree.column("temat", width=300, anchor="w")
 
+        # tagi glownie dla kolorow
         tree.tag_configure("exam", foreground="red", font=("Arial", 13, "bold"))
         tree.tag_configure("done", foreground="green", font=("Arial", 12, "bold"))
         tree.tag_configure("date_header", font=("Arial", 13, "bold"))
@@ -472,6 +481,7 @@ class GUI:
         tree.tag_configure("yellow", foreground="yellow", font=("Arial", 12, "bold"))
         tree.tag_configure("overdue", foreground="gray", font=("Arial", 12, "italic", "bold"))
 
+        # dzialanie scrolla
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
 
@@ -487,9 +497,9 @@ class GUI:
             #   pobranie zaleglych tematow
             overdue_topics = [t for t in self.data["topics"] if t.get("scheduled_date") and date_format(t["scheduled_date"]) < date.today() and t["status"] == "todo"]
             if overdue_topics:
-                tree.insert("", "end", values=("ZALEGŁE", "", ""), tags=("overdue",))
+                tree.insert("", "end", values=(self.txt["tag_overdue"]), tags=("overdue",))
                 for topic in overdue_topics:
-                    subj_name = "Inne"
+                    subj_name = self.txt["val_other"]
                     for exam in self.data["exams"]:
                         if exam["id"] == topic["exam_id"]:
                             subj_name = exam["subject"]
@@ -513,16 +523,24 @@ class GUI:
                     if not date_printed:
                         tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
                         days_left = (date_format(day_str) - date.today()).days
+
+                        display_text = ""
+                        tag = "normal"
+
                         if days_left == 0:
-                            tree.insert("", "end", values=("Dzisiaj", "", ""), tags=("today",))
+                            display_text = self.txt["tag_today"]
+                            tag = "today"
                         elif days_left == 1:
-                            tree.insert("", "end", values=("1 dzień", "", ""), tags=("red",))
-                        elif days_left <= 3:
-                            tree.insert("", "end", values=(f"{days_left} dni", "", ""), tags=("orange",))
-                        elif days_left <= 6:
-                            tree.insert("", "end", values=(f"{days_left} dni", "", ""), tags=("yellow",))
+                            display_text = self.txt["tag_1_day"]
+                            tag = "red"
                         else:
-                            tree.insert("", "end", values=(f"{days_left} dni", "", ""), tags=("normal",))
+                            display_text = self.txt["tag_x_days"].format(days=days_left)
+                            if days_left <= 3:
+                                tag = "orange"
+                            elif days_left <= 6:
+                                tag = "yellow"
+
+                        tree.insert("", "end", values=(display_text, "", ""), tags=(tag,))
                         date_printed = True
 
                 for exam in self.data["exams"]:
@@ -531,7 +549,7 @@ class GUI:
                         tree.insert("", "end", iid=exam["id"], values=("", exam["subject"], exam["title"]), tags=("exam",))
                 for topic in self.data["topics"]:
                     if str(topic.get("scheduled_date")) == day_str:
-                        subj_name = "Inne"
+                        subj_name = self.txt["val_other"]
                         for exam in self.data["exams"]:
                             if exam["id"] == topic["exam_id"]:
                                 subj_name = exam["subject"]
@@ -547,7 +565,7 @@ class GUI:
         def toggle_status():
             seleted_item = tree.selection()
             if not seleted_item:
-                messagebox.showinfo("Pomoc", "Najpierw zaznacz zadanie aby zmienić jego status")
+                messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_status"])
                 return
             topic_id = seleted_item[0]
             target_topic = None
@@ -565,23 +583,25 @@ class GUI:
                     tree.item(topic_id, tags=("todo",))
                 save(self.data)
             else:
-                messagebox.showwarning("Błąd", "Nie można zmienić statusu tego elementu.")
+                messagebox.showwarning(self.txt["msg_error"], self.txt["msg_cant_status"])
 
         # FUNKCJA WEW. USUWAJACA DANE Z BAZY
         def clear_database():
-            answer = messagebox.askyesno("UWAGA", "Czy na pewno chcesz usunąć WSZYSTKIE dane?\nTej operacji nie da się cofnąć!")
+            answer = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_db"])
             if answer:
+                current_lang = self.data["settings"].get("lang", "en")
                 self.data = {
                     "settings": {
                         "max_per_day": 2,
                         "max_same_subject_per_day": 1,
+                        "lang": current_lang
                     },
                     "exams": [],
                     "topics": []
                 }
                 save(self.data)
                 refresh_table()
-                messagebox.showinfo("Sukces", "Baza danych została zresetowana.")
+                messagebox.showinfo(self.txt["msg_success"], self.txt["msg_db_cleared"])
 
         def run_and_refresh():
             self.run_planner()
@@ -593,53 +613,55 @@ class GUI:
         btn_frame2 = tk.Frame(week_win)
         btn_frame2.pack(pady=5)
 
-        btn_refresh = tk.Button(btn_frame1, text="Odśwież", command=refresh_table, **self.btn_style)
+        btn_refresh = tk.Button(btn_frame1, text=self.txt["btn_refresh"], command=refresh_table, **self.btn_style)
         btn_refresh.pack(side="left", padx=5)
 
-        btn_gen = tk.Button(btn_frame1, text="Generuj plan", command=run_and_refresh, **self.btn_style)
+        btn_gen = tk.Button(btn_frame1, text=self.txt["btn_gen_plan"], command=run_and_refresh, **self.btn_style)
         btn_gen.pack(side="left", padx=5)
 
-        btn_toggle = tk.Button(btn_frame1, text="Zmień status", command=toggle_status, **self.btn_style)
+        btn_toggle = tk.Button(btn_frame1, text=self.txt["btn_toggle_status"], command=toggle_status, **self.btn_style)
         btn_toggle.pack(side="left", padx=5)
 
-        btn_add = tk.Button(btn_frame1, text="Dodaj egzamin", command=lambda: self.add_window(callback=refresh_table), **self.btn_style)
+        btn_add = tk.Button(btn_frame1, text=self.txt["btn_add_exam"], command=lambda: self.add_window(callback=refresh_table), **self.btn_style)
         btn_add.pack(side="left", padx=5)
 
-        btn_edit = tk.Button(btn_frame2, text="Edytuj", command=lambda: self.edit_select(tree, callback=refresh_table), **self.btn_style)
+        btn_edit = tk.Button(btn_frame2, text=self.txt["btn_edit"], command=lambda: self.edit_select(tree, callback=refresh_table), **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
-        btn_archive = tk.Button(btn_frame2, text="Wszystkie egzaminy", command=self.archive_window, **self.btn_style)
+        btn_archive = tk.Button(btn_frame2, text=self.txt["btn_all_exams"], command=self.archive_window, **self.btn_style)
         btn_archive.pack(side="left", padx=5)
 
-        btn_clear = tk.Button(btn_frame2, text="Wyczyść dane", command=clear_database, **self.btn_style, foreground="red")
+        btn_clear = tk.Button(btn_frame2, text=self.txt["btn_clear_data"], command=clear_database, **self.btn_style, foreground="red")
         btn_clear.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame2, text="Zamknij", command=week_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close = tk.Button(btn_frame2, text=self.txt["btn_close"], command=week_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
 
     #OKNO ARCHIWUM
     def archive_window(self):
         arch_win = tk.Toplevel(self.root)
-        arch_win.title("Baza Egzaminów i Archiwum")
+        arch_win.title(self.txt["win_archive_title"])
 
-        tk.Label(arch_win, text="Wszystkie Egzaminy", font=("Arial", 16, "bold")).pack(pady=10)
-        tk.Label(arch_win, text="Kliknij dwukrotnie aby zobaczyć szczegóły", font=("Arial", 12, "bold")).pack(pady=5)
+        tk.Label(arch_win, text=self.txt["msg_archive_header"], font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(arch_win, text=self.txt["msg_archive_sub"], font=("Arial", 12, "bold")).pack(pady=5)
 
         frame = tk.Frame(arch_win)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # ustawienie naglowkow tabeli
         columns = ("data", "przedmiot", "forma", "status")
         tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
 
-        tree.heading("data", text="Data")
+        tree.heading("data", text=self.txt["col_date"])
         tree.column("data", width=100, anchor="center")
-        tree.heading("przedmiot", text="Przedmiot")
+        tree.heading("przedmiot", text=self.txt["col_subject"])
         tree.column("przedmiot", width=180, anchor="w")
-        tree.heading("forma", text="Forma")
+        tree.heading("forma", text=self.txt["col_form"])
         tree.column("forma", width=120, anchor="w")
-        tree.heading("status", text="Status")
+        tree.heading("status", text=self.txt["col_status"])
         tree.column("status", width=150, anchor="center")
 
+        # tagi dla kolorow
         tree.tag_configure("active", foreground="lightblue", font=("Arial", 12, "bold"))
         tree.tag_configure("past", foreground="gray", font=("Arial", 12, "bold"))
 
@@ -677,13 +699,13 @@ class GUI:
                 tag = "normal"
 
                 if days < 0:
-                    status_txt = "Archiwalny"
+                    status_txt = self.txt["tag_archived"]
                     tag = "past"
                 elif days == 0:
-                    status_txt = "Dzisiaj"
+                    status_txt = self.txt["tag_today"]
                     tag = "active"
                 else:
-                    status_txt = f"{days} dni"
+                    status_txt = self.txt["tag_x_days"].format(days=days)
                     tag = "active"
 
                 tree.insert("", "end", iid=exam["id"], values=(exam["date"], exam["subject"], exam["title"], status_txt), tags=(tag,))
@@ -694,7 +716,7 @@ class GUI:
         def delete_selected():
             selection = tree.selection()
             if not selection:
-                messagebox.showinfo("Info", "Zaznacz egzamin do usunięcia.")
+                messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_del"])
                 return
 
             exam_id = selection[0]
@@ -708,10 +730,10 @@ class GUI:
             type_of_exam = "element"
             for t in self.data["exams"]:
                 if t["id"] == exam_id:
-                    type_of_exam = f"{t["title"]} z"
+                    type_of_exam = t["title"]
                     break
 
-            confirm = messagebox.askyesno("Uwaga", f"Czy na pewno chcesz trwale usunąć {type_of_exam} {name}?")
+            confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_perm"].format(type=type_of_exam, name=name))
             if confirm:
                 self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != exam_id]
                 self.data["exams"] = [e for e in self.data["exams"] if e["id"] != exam_id]
@@ -720,17 +742,17 @@ class GUI:
 
                 refresh_main_archive()
 
-                messagebox.showinfo("Sukces", "Usunięto egzamin z archiwum.")
+                messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archived_del"])
 
-        #FUNKCJA WSZYSTKIE ARCHIWALNE
+        #FUNKCJA USUWAJACA WSZYSTKIE ARCHIWALNE
         def delete_all_archive():
             nonlocal today
             has_past = any(date_format(e["date"]) < today for e in self.data["exams"])
             if not has_past:
-                messagebox.showinfo("Info", "Brak archiwalnych egzaminów do usunięcia.")
+                messagebox.showinfo(self.txt["msg_info"], self.txt["msg_no_archive"])
                 return
 
-            confirm = messagebox.askyesno("Uwaga", "Czy na pewno chcesz usunąć WSZYSTKIE archiwalne egzaminy?\nEgzaminy nadchodzące pozostaną bez zmian.")
+            confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_archive"])
             if confirm:
                 today = date.today()
 
@@ -743,7 +765,7 @@ class GUI:
 
                 refresh_main_archive()
 
-                messagebox.showinfo("Sukces", "Wyczyszczono archiwalne egzaminy.")
+                messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archive_cleared"])
 
         #FUNKCJA OTWIERAJĄCA SZCZEGÓŁY
         def double_click(event):
@@ -762,13 +784,13 @@ class GUI:
         btn_frame = tk.Frame(arch_win)
         btn_frame.pack(pady=10)
 
-        btn_del_sel = tk.Button(btn_frame, text="Usuń zaznaczony", command=delete_selected, **self.btn_style)
+        btn_del_sel = tk.Button(btn_frame, text=self.txt["btn_del_selected"], command=delete_selected, **self.btn_style)
         btn_del_sel.pack(side="left", padx=5)
 
-        btn_del_all = tk.Button(btn_frame, text="Wyczyść archiwalne", command=delete_all_archive, **self.btn_style, foreground="red")
+        btn_del_all = tk.Button(btn_frame, text=self.txt["btn_clear_archive"], command=delete_all_archive, **self.btn_style, foreground="red")
         btn_del_all.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame, text="Zamknij", command=arch_win.destroy, **self.btn_style, activeforeground="red")
+        btn_close = tk.Button(btn_frame, text=self.txt["btn_close"], command=arch_win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
 
     #OKNO SZCZEGOLOW ARCHIWUM
@@ -787,8 +809,8 @@ class GUI:
 
         def refresh_info():
             lbl_subject.config(text=f"{exam_data["subject"]} ({exam_data["title"]})")
-            lbl_date.config(text=f"Data egzaminu: {exam_data["date"]}")
-            hist_window.title(f"Szczegóły: {exam_data["subject"]}")
+            lbl_date.config(text=self.txt["msg_exam_date"].format(date=exam_data["date"]))
+            hist_window.title(self.txt["win_archive_details_title"].format(subject=exam_data["subject"]))
 
         refresh_info()
 
@@ -798,11 +820,11 @@ class GUI:
         columns = ("temat", "status", "data_plan")
         tree = ttk.Treeview(frame, columns=columns, show="headings")
 
-        tree.heading("temat", text="Temat")
+        tree.heading("temat", text=self.txt["col_topic"])
         tree.column("temat", width=250, anchor="w")
-        tree.heading("status", text="Status")
+        tree.heading("status", text=self.txt["col_status"])
         tree.column("status", width=100, anchor="center")
-        tree.heading("data_plan", text="Planowana Data")
+        tree.heading("data_plan", text=self.txt["col_plan_date"])
         tree.column("data_plan", width=120, anchor="center")
 
         tree.tag_configure("done", foreground="green", font=("Arial", 12, "bold"))
@@ -821,7 +843,7 @@ class GUI:
             exam_topics.sort(key=lambda x: str(x.get("scheduled_date") or "9999-99-99"))
 
             for topic in exam_topics:
-                status_text = "Zrobione" if topic["status"] == "done" else "Niezrobione"
+                status_text = self.txt["tag_done"] if topic["status"] == "done" else self.txt["tag_todo"]
                 sched_date = topic.get("scheduled_date") if topic.get("scheduled_date") else "-"
 
                 tree.insert("", "end", iid=topic["id"], values=(topic["name"], status_text, sched_date), tags=(topic["status"],))
@@ -831,7 +853,7 @@ class GUI:
         def toggle_status_local():
             selected = tree.selection()
             if not selected:
-                messagebox.showinfo("Info", "Zaznacz temat.")
+                messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_topic"])
                 return
 
             topic_id = selected[0]
@@ -849,7 +871,7 @@ class GUI:
         def edit_topic_local():
             selected = tree.selection()
             if not selected:
-                messagebox.showinfo("Info", "Zaznacz temat.")
+                messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_topic"])
                 return
 
             topic_id = selected[0]
@@ -869,18 +891,18 @@ class GUI:
 
         tree.bind("<Double-1>", lambda event: edit_topic_local())
 
-        tk.Label(hist_window, text="Kliknij podwójnie w temat, aby go edytować", font=("Arial", 12, "bold")).pack()
+        tk.Label(hist_window, text=self.txt["msg_double_click_edit"], font=("Arial", 12, "bold")).pack()
 
         btn_frame = tk.Frame(hist_window)
         btn_frame.pack(pady=10)
 
-        btn_status = tk.Button(btn_frame, text="Zmień status", command=toggle_status_local, **self.btn_style)
+        btn_status = tk.Button(btn_frame, text=self.txt["btn_toggle_status"], command=toggle_status_local,**self.btn_style)
         btn_status.pack(side="left", padx=5)
 
-        btn_edit = tk.Button(btn_frame, text="Edytuj egzamin", command=edit_exam_local, **self.btn_style)
+        btn_edit = tk.Button(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local, **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame, text="Zamknij", command=hist_window.destroy, **self.btn_style,activeforeground="red")
+        btn_close = tk.Button(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
 
 
