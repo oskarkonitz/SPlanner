@@ -5,6 +5,9 @@ from core.planner import plan, date_format
 import uuid
 from datetime import datetime, timedelta, date
 from tkcalendar import DateEntry
+from gui.windows.add_exam import AddExamWindow
+from gui.windows.manual import ManualWindow
+
 
 class GUI:
     #FUNKCJA WYKONUJĄCA SIE NA POCZĄTKU
@@ -146,29 +149,7 @@ class GUI:
 
     #OKNO Z INSTRUKCJĄ
     def manual(self):
-        man_win = tk.Toplevel(self.root)
-        #man_win.geometry("450x500")
-        man_win.title(self.txt["manual_title"])
-
-        frame = tk.Frame(man_win)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        scrollbar = tk.Scrollbar(frame)
-        scrollbar.pack(side="right", fill="y")
-
-        text = tk.Text(frame, wrap="word", yscrollcommand=scrollbar.set, padx=10, pady=10)
-        text.pack(side="left", fill="both", expand=True)
-
-        scrollbar.config(command=text.yview)
-
-        text.tag_config("bold", font=("Arial", 20, "bold"))
-        text.tag_config("normal", font=("Arial", 13))
-
-        text.insert("end", self.txt["manual_header"], "bold")
-        text.insert("end", self.txt["manual_content"], "normal")
-        text.configure(state="disabled")
-        btn_close = tk.Button(man_win, text=self.txt["btn_close"], command=man_win.destroy, **self.btn_style, activeforeground="red")
-        btn_close.pack(side="bottom", pady=10)
+        ManualWindow(self.root, self.txt, self.btn_style)
 
     #FUNKCJA URUCHAMIAJĄCA PROGRAM PLANUJĄCY
     def run_planner(self):
@@ -181,77 +162,7 @@ class GUI:
 
     #OKNO DO DODAWANIA NOWYCH EGZAMINOW I TEMATÓW
     def add_window(self, callback=None):
-        # FUNKCJA WEW. ZAPISUJACA DANE WPROWADZONE PRZEZ UZYTKOWNIKA
-        def save_new_exam():
-            subject = entry_subject.get()
-            date_str = entry_date.get()
-            title = entry_title.get()
-            topics = text_topics.get("1.0", tk.END)
-
-            if not subject or not date_str or not title:
-                messagebox.showwarning(self.txt["msg_error"], self.txt["msg_fill_fields"])
-                return
-
-            topics_list = [t.strip() for t in topics.split("\n") if t.strip()]
-            exam_id = f"exam_{uuid.uuid4().hex[:8]}"
-
-            new_exam = {
-                "id": exam_id,
-                "subject": subject,
-                "title": title,
-                "date": date_str,
-            }
-            self.data["exams"].append(new_exam)
-
-            for topic in topics_list:
-                self.data["topics"].append({
-                    "id": f"topic_{uuid.uuid4().hex[:8]}",
-                    "exam_id": exam_id,
-                    "name": topic,
-                    "status": "todo",
-                    "scheduled_date": None,
-                    "locked": False
-                })
-
-            save(self.data)
-
-            if callback:
-                callback()
-
-            add_win.destroy()
-            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))
-
-        add_win = tk.Toplevel(self.root)
-        #add_win.geometry("460x400")
-        add_win.resizable(False, False)
-        add_win.title(self.txt["win_add_title"])
-
-        tk.Label(add_win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=10, padx=10, sticky="e")
-        entry_subject = tk.Entry(add_win, width=30)
-        entry_subject.grid(row=0, column=1, padx=10, pady=10)
-
-        tk.Label(add_win, text=self.txt["form_type"]).grid(row=1, column=0, pady=10, padx=10, sticky="e")
-        entry_title = tk.Entry(add_win, width=30)
-        entry_title.grid(row=1, column=1, padx=10, pady=10)
-
-        tk.Label(add_win, text=self.txt["form_date"]).grid(row=2, column=0, pady=10, padx=10, sticky="e")
-        entry_date = DateEntry(add_win, width=27, date_pattern='y-mm-dd')
-        entry_date.grid(row=2, column=1, padx=10, pady=10)
-        tomorrow = datetime.now() + timedelta(days=1)
-        entry_date.set_date(tomorrow)
-
-        tk.Label(add_win, text=self.txt["form_topics_add"]).grid(row=3, column=0, columnspan=2, pady=5)
-        text_topics = tk.Text(add_win, width=40, height=10)
-        text_topics.grid(row=4, column=0, columnspan=2, padx=10)
-
-        btn_frame = tk.Frame(add_win)
-        btn_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20)
-
-        btn_save = tk.Button(btn_frame, text=self.txt["btn_save"], command=save_new_exam, **self.btn_style)
-        btn_save.pack(side="left", padx=5)
-
-        btn_exit = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=add_win.destroy, **self.btn_style, activeforeground="red")
-        btn_exit.pack(side="left", padx=5)
+        AddExamWindow(self.root, self.txt, self.data, self.btn_style, callback)
 
     #FUNKCJE DO EDYCJI DANYCH   ------------
     #   SPRAWDZENIE CO JEST ZAZNACZONE
