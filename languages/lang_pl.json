@@ -1,5 +1,6 @@
 {
-    "app_title": "Planer Nauki",
+    "app_title": "Splanner",
+    "menu_app_title": "Planer Nauki",
     "menu_title": "Wybierz opcje:",
     "lang_label": "Język / Language:",
     
@@ -64,8 +65,8 @@
     "val_other": "Inne",
 
     "manual_title": "Instrukcja Obsługi",
-    "manual_header": "JAK KORZYSTAĆ Z PLANERA?\n\n",
-    "manual_content": "1. Dodawanie Egzaminu:\nKliknij przycisk 'Dodaj Egzamin'. Wpisz nazwę przedmiotu, formę (np. kolokwium) oraz datę egzaminu. W dużym polu poniżej wpisz listę zagadnień do nauki - każde w nowej linii.\n\n2. Generowanie Planu:\nPo dodaniu egzaminów kliknij 'Generuj Plan'. Aplikacja automatycznie rozłoży Twoje zagadnienia na dni pomiędzy dniem dzisiejszym a datą egzaminu.\n\n3. Przeglądanie Planu:\nKliknij 'Pokaż Plan', aby zobaczyć tabelę z zadaniami. Dni są posortowane chronologicznie. Na czerwono zaznaczone są egzaminy, a na zielono zadania wykonane.\n\n4. Praca z Planem:\nJeśli podczas przeglądania planu dodasz nowy egzamin, wystarczy wygenerować plan ponownie i odświeżyć przeglądarkę.\n\n5. Zaznaczanie Postępów:\nW oknie planu zaznacz zadanie myszką i kliknij 'Zmień status'. Zadania zrobione zmienią kolor na zielony.\n\n6. Resetowanie:\nPrzycisk 'Wyczyść dane' usuwa trwale wszystko z bazy danych. Używaj ostrożnie!",
+    "manual_header": "WITAJ W STUDY PLANNER!\n\n",
+    "manual_content": "Ten program pomoże Ci rozłożyć naukę w czasie, abyś zdążył na każdy egzamin bez stresu.\n\n--- INSTRUKCJA ---\n\n1. OKNO POWITALNE\nNa ekranie początkowym znajduje się szybki podgląd (licznik do następnego egzaminu oraz pasek postępu aktualizujący się na bieżąco). Znajdziesz tu przycisk uruchamiający główne okno, tę instrukcję, wybór języka oraz przycisk wyjścia.\nUwaga: Jeśli zmienisz język, musisz uruchomić aplikację ponownie.\n\n2. GŁÓWNE OKNO\nTo centrum dowodzenia z planem nauki. Z tego miejsca możesz:\n• Dodawać i edytować egzaminy\n• Przeglądać i generować plan\n• Zmieniać statusy zadań\n• Przeglądać i czyścić bazę danych\n\nWażne: Jeśli dodasz egzaminy z zadaniami, musisz kliknąć \"Generuj Plan\". Inaczej zadania nie będą miały przypisanych dat.\n\nKolory wpisów:\n• Biały: Zadanie do wykonania\n• Zielony: Zadanie wykonane (nie zmieni daty przy ponownym generowaniu)\n• Szary: Zadanie zaległe (termin minął)\n• Czerwony: Dzień egzaminu\n\n3. DODAWANIE EGZAMINU\n• Kliknij przycisk „Dodaj Egzamin”\n• Wpisz przedmiot i formę (np. Kolokwium)\n• Wybierz datę (możesz użyć kalendarza, aby ją zaznaczyć)\n• Wpisz tematy/zadania (jeden pod drugim)\n• Kliknij „Zapisz”\n(Pamiętaj, aby potem wygenerować plan!)\n\n4. PRZEGLĄDANIE BAZY DANYCH\nPo kliknięciu w „Wszystkie Egzaminy” zobaczysz listę wszystkich wpisów (aktywnych i archiwalnych). Możesz tu:\n• Usunąć zaznaczony egzamin\n• Usunąć wszystkie archiwalne egzaminy (aktywne zostaną nienaruszone)\n• Zobaczyć szczegóły każdego z egzaminów\n\nW widoku szczegółowym możesz zmieniać statusy zadań oraz edytować egzamin lub konkretne zadania.\n\n5. EDYCJA I BLOKADA PLANOWANIA\nZ poziomu edycji możesz zmieniać nazwy, daty oraz dodawać/usuwać tematy.\n\nBlokada planowania:\nJest przydatna przy manualnej zmianie daty dla zadania. Opcja ta włącza się automatycznie po ręcznej zmianie daty (można ją też włączyć ręcznie).\n\nPrzykład użycia:\nChcesz przełożyć zadania na inne dni niż proponuje algorytm (np. przez wyjazd). Dzięki blokadzie, gdy ponownie wygenerujesz plan (np. dodając nowe tematy), algorytm poukłada wszystko inne, ale zablokowanego wpisu nie ruszy. Zostanie dokładnie tam, gdzie chciałeś.",
 
     "msg_success": "Sukces",
     "msg_error": "Błąd",

@@ -21,7 +21,7 @@ class GUI:
         self.root.resizable(False, False)
 
         #  Tytuł aplikacji
-        self.label_title = tk.Label(self.root, text=self.txt["app_title"], font=("Arial", 20, "bold"))
+        self.label_title = tk.Label(self.root, text=self.txt["menu_app_title"], font=("Arial", 20, "bold"))
         self.label_title.pack(pady=(20, 10))
 
         #  Ramka statystyk (Dashboard)
@@ -119,7 +119,7 @@ class GUI:
         bottom_frame = tk.Frame(self.root)
         bottom_frame.pack(side="bottom", fill="x", padx=10, pady=10)
 
-        self.lang_map = {"English": "en", "Polski": "pl"}
+        self.lang_map = {"English": "en", "Polski": "pl", "Deutsch": "de", "Español": "es"} #mapa jezykow do wyboru
         self.lang_rev = {v: k for k, v in self.lang_map.items()} #odwrocona mapa jezykow
 
         self.combo_lang = ttk.Combobox(bottom_frame, values=list(self.lang_map.keys()), state="readonly", width=10)

@@ -1,5 +1,6 @@
 {
-    "app_title": "Study Planner",
+    "app_title": "Splanner",
+    "menu_app_title": "Study Planner",
     "menu_title": "Choose an option:",
     "lang_label": "Language / Język:",
 
@@ -64,8 +65,8 @@
     "val_other": "Other",
 
     "manual_title": "User Manual",
-    "manual_header": "HOW TO USE THE PLANNER?\n\n",
-    "manual_content": "1. Adding an Exam:\nClick 'Add Exam'. Enter the subject name, type (e.g., final), and exam date. In the large field below, list the topics to study - each on a new line.\n\n2. Generating the Plan:\nAfter adding exams, click 'Generate Plan'. The app will automatically distribute your topics across the days between today and the exam date.\n\n3. Viewing the Plan:\nClick 'Open Planner' to view the task table. Days are sorted chronologically. Exams are marked in red, completed tasks in green.\n\n4. Working with the Plan:\nIf you add a new exam while viewing the plan, simply generate the plan again and refresh the view.\n\n5. Tracking Progress:\nSelect a task in the plan window and click 'Change Status'. Completed tasks will turn green.\n\n6. Resetting:\nThe 'Clear Data' button permanently deletes everything from the database. Use with caution!",
+    "manual_header": "WELCOME TO STUDY PLANNER!\n\n",
+    "manual_content": "This program will help you distribute your study material over time so you are ready for every exam stress-free.\n\n--- MANUAL ---\n\n1. WELCOME WINDOW\nThe start screen features a quick preview (countdown to the next exam and a real-time progress bar). Here you will find a button to launch the main window, this manual, language selection, and an exit button.\nNote: If you change the language, you must restart the application.\n\n2. MAIN WINDOW\nThis is your command center with the study plan. From here you can:\n• Add and edit exams\n• View and generate the plan\n• Change task statuses\n• Browse and clear the database\n\nImportant: If you add exams with tasks, you must click \"Generate Plan\". Otherwise, tasks will not have assigned dates.\n\nEntry colors:\n• White: Task to do\n• Green: Task done (date won't change when regenerating)\n• Gray: Overdue task (deadline passed)\n• Red: Exam day\n\n3. ADDING AN EXAM\n• Click the \"Add Exam\" button\n• Enter subject and type (e.g., Colloquium)\n• Pick a date (you can use the calendar to select it)\n• Enter topics/tasks (one per line)\n• Click \"Save\"\n(Remember to generate the plan afterwards!)\n\n4. BROWSING DATABASE\nAfter clicking \"All Exams\", you will see a list of all entries (active and archived). Here you can:\n• Delete the selected exam\n• Delete all archived exams (active ones remain untouched)\n• View details of each exam\n\nIn the detailed view, you can change task statuses and edit the exam or specific tasks.\n\n5. EDITING AND PLAN LOCKING\nFrom the edit menu, you can change names, dates, and add/remove topics.\n\nPlanning Lock:\nUseful when manually changing a task date. This option enables automatically after a manual date change (it can also be toggled manually).\n\nUsage example:\nYou want to move tasks to different days than the algorithm proposes (e.g., due to a trip). Thanks to the lock, when you regenerate the plan (e.g., adding new topics), the algorithm will arrange everything else, but the locked entry will not be moved. It stays exactly where you wanted it.",
 
     "msg_success": "Success",
     "msg_error": "Error",
