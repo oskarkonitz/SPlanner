@@ -58,12 +58,13 @@ class GUI:
         btn_exit = tk.Button(self.root, text=self.txt["btn_exit"], command=self.root.quit, **self.btn_style, activeforeground="red")
         btn_exit.pack(pady=40)
 
-        #  Wybór języka
+        #  Lista wyboru języka
         self.setup_language_selector()
 
         #  Pierwsze obliczenie statystyk
         self.refresh_dashboard()
 
+    # Funkcja odświeżająca statystyki na ekranie początkowym
     def refresh_dashboard(self):
         today = date.today()
 
@@ -75,8 +76,7 @@ class GUI:
         done_topics = len([t for t in active_topics if t["status"] == "done"])
         progress = int((done_topics / total_topics) * 100) if total_topics > 0 else 0
 
-        self.lbl_progress.config(
-            text=self.txt["stats_total_progress"].format(done=done_topics, total=total_topics, progress=progress))
+        self.lbl_progress.config(text=self.txt["stats_total_progress"].format(done=done_topics, total=total_topics, progress=progress))
 
         # B. Postęp dzienny
         today_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
@@ -115,6 +115,7 @@ class GUI:
         else:
             self.lbl_next_exam.config(text=self.txt["stats_no_upcoming"], foreground="green")
 
+    # Funkcja zawierająca selector języka i zmieniająca go po zmianie przez użytkownika
     def setup_language_selector(self):
         bottom_frame = tk.Frame(self.root)
         bottom_frame.pack(side="bottom", fill="x", padx=10, pady=10)
@@ -123,10 +124,11 @@ class GUI:
         self.lang_rev = {v: k for k, v in self.lang_map.items()} #odwrocona mapa jezykow
 
         self.combo_lang = ttk.Combobox(bottom_frame, values=list(self.lang_map.keys()), state="readonly", width=10)
-        current_code = self.data["settings"].get("lang", "en")
-        self.combo_lang.set(self.lang_rev.get(current_code, "English"))
+        current_code = self.data["settings"].get("lang", "en") #pobranie aktualnego kodu z bazy
+        self.combo_lang.set(self.lang_rev.get(current_code, "English")) #ustawienie combobox na aktualny kod
         self.combo_lang.pack(side="right")
 
+        # funkcja zmieniajaca jezyk w bazie danych
         def language_change(event):
             selected_name = self.combo_lang.get()
             new_code = self.lang_map[selected_name]
@@ -135,17 +137,21 @@ class GUI:
                 save(self.data)
                 messagebox.showinfo(self.txt["msg_info"], self.txt["msg_lang_changed"])
 
+        # wykrycie zmiany przez uzytkownika
         self.combo_lang.bind("<<ComboboxSelected>>", language_change)
 
-    #   KOMENDY PRZYCISKOW
+    #   OBSLUGA PRZYCISKOW NA EKRANIE POWITALNYM
+
+    # uruchomienie okna z instrukcja
     def open_manual(self):
         ManualWindow(self.root, self.txt, self.btn_style)
 
+    # uruchomienie glownego okna aplikacji
     def open_plan_window(self):
-        # self.refresh_dashboard, żeby PlanWindow mogło odświeżyć statystyki po zamknięciu/zmianach
+        # dashboard_callback aby po zmianach w planie (np wykonano jakies zadanie) okno powitalne odswiezalo statystyki
         PlanWindow(self.root, self.txt, self.data, self.btn_style, dashboard_callback=self.refresh_dashboard)
 
-
+# uruchomienie aplikacji
 if __name__ == "__main__":
     root = tk.Tk()
     app = GUI(root)

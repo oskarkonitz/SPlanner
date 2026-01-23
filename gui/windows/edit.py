@@ -4,6 +4,7 @@ from tkcalendar import DateEntry
 import uuid
 from core.storage import save
 
+# funkcja sprawdzajaca czy zaznaczony element jest egzaminem czy tematem
 def select_edit_item(parent, data, txt, tree, btn_style, callback=None):
     selected_item = tree.selection()
     if not selected_item:
@@ -24,8 +25,10 @@ def select_edit_item(parent, data, txt, tree, btn_style, callback=None):
             EditTopicWindow(parent, txt, data, btn_style, topic, callback)
             return
 
+    # blad
     messagebox.showerror(txt["msg_error"], txt["msg_cant_edit"])
 
+# edycja egzaminow
 class EditExamWindow():
     def __init__(self, parent, txt, data, btn_style, exam_data, callback=None):
         self.txt = txt
@@ -34,10 +37,12 @@ class EditExamWindow():
         self.exam_data = exam_data
         self.callback = callback
 
+        # ustawienie okna
         self.win = tk.Toplevel(parent)
         self.win.resizable(False, False)
         self.win.title(self.txt["win_edit_exam_title"].format(subject=exam_data["subject"]))
 
+        # ustawienie pól entry data
         tk.Label(self.win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=5, padx=10, sticky="e")
         self.ent_subject = tk.Entry(self.win, width=30)
         self.ent_subject.insert(0, exam_data["subject"])
@@ -63,6 +68,7 @@ class EditExamWindow():
         for t in self.topics_list:
             self.txt_topics.insert(tk.END, t["name"] + "\n")
 
+        #przyciski
         btn_frame = tk.Frame(self.win)
         btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
@@ -109,6 +115,7 @@ class EditExamWindow():
 
         save(self.data)
 
+        # callback dla odswiezenia widoku
         if self.callback:
             self.callback()
 
@@ -123,6 +130,7 @@ class EditExamWindow():
 
             save(self.data)
 
+            # callback dla odswiezenia
             if self.callback:
                 self.callback()
 
@@ -196,6 +204,7 @@ class EditTopicWindow:
 
         save(self.data)
 
+        #callback dla odswiezenia
         if self.callback:
             self.callback()
 
@@ -208,6 +217,7 @@ class EditTopicWindow:
             self.data["topics"] = [t for t in self.data["topics"] if t["id"] != self.topic_data["id"]]
             save(self.data)
 
+            # callback dla odswiezenia
             if self.callback:
                 self.callback()
 

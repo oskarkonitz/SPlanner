@@ -1,12 +1,20 @@
 import uuid
-import argparse
 from core.storage import load, save
 from core.planner import plan
 from datetime import date, timedelta
 
+# terminalowa podstawowa wersja aplikacji zawierająca podstawowe funkcje
+# dodawanie egzaminu
+# planowanie kalendarza
+# oznaczanie tematu jako wykonany
+# wyswietlanie planu na najblizszy tydzień
+
+
+# funkcja nadająca id za pomocą uuid
 def new_id(prefix):
     return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
+# funkcja dodawania egzaminu razem z tematami
 def cmd_add(data):
     subject = input("Przedmiot: ")
     title = input("Forma: ")
@@ -36,6 +44,7 @@ def cmd_add(data):
             "scheduled_date": None
         })
 
+# funkcja wyswietlajaca plan na najblizszy tydzien
 def cmd_week(data):
     today = date.today()
     print("\nPLAN NA NAJBLIŻSZY TYDZIEN:")
@@ -58,41 +67,41 @@ def cmd_week(data):
         if not found:
             print("   brak")
 
+#funkcja oznaczajaca temat jako wykonany
 def cmd_done(data, t_id):
     for topic in data["topics"]:
         if topic["id"] == t_id:
             topic["status"] = "done"
 
+# glowna funkcja z petla programu
 def main():
-    parser = argparse.ArgumentParser()
-    # parser.add_argument("cmd", choices=["add","plan","week"])
-    sub = parser.add_subparsers(dest="cmd", required=True)
+    while True:
+        data = load()
 
-    sub.add_parser("add")
-    sub.add_parser("plan")
-    sub.add_parser("week")
+        print("PLANER NAUKI - CLI")
+        print("1 - Dodaj egzamin")
+        print("2 - Zaplanuj")
+        print("3 - Pokaz tydzien")
+        print("4 - Oznacz jako zrobione")
+        print("X - Wyjscie")
+        choice = input("> ")
 
-    p_done = sub.add_parser("done")
-    p_done.add_argument("topic_id")
+        if choice == "1":
+            cmd_add(data)
+        elif choice == "2":
+            plan(data)
+            print("planowanie zakonczone")
+        elif choice == "3":
+            cmd_week(data)
+        elif choice == "4":
+            t_id = input("ID: ")
+            cmd_done(data, t_id)
+        elif choice == "X":
+            break
+        else:
+            print("Niepoprawna opcja")
 
-    args = parser.parse_args()
-
-    data = load()
-
-    if args.cmd == "add":
-        cmd_add(data)
-
-    if args.cmd == "plan":
-        plan(data)
-        print("planowanie zakonczone")
-
-    if args.cmd == "week":
-        cmd_week(data)
-
-    if args.cmd == "done":
-        cmd_done(data, args.topic_id)
-
-    save(data)
+        save(data)
 
 if __name__ == '__main__':
     main()

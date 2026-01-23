@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 import math
 
-#   FUNKCJA ZMIENIAJACA FORMAT DATY
+#   FUNKCJA ZMIENIAJACA NA FORMAT DATY
 def date_format(text):
     if isinstance(text, date):
         return text
@@ -106,12 +106,12 @@ def plan_old(data):
 
 #   FUNKCJA PLANOWANIA DAT DLA TEMATOW
 def plan(data):
-    pref_max_per_day = data["settings"].get("max_per_day", 2)
     today = date.today()
 
     #stworzenie pustego kalendarza
     callendar = callendar_create(data, today)
 
+    # przypisanie dat dla kazdego egzaminu pokolei
     for exam in data["exams"]:
         exam_date = date_format(exam["date"])
         if exam_date <= today:
@@ -122,14 +122,13 @@ def plan(data):
         if end_study_date < today:
             continue
 
-
         scan_date = end_study_date  #   definicja startu dla egzaminu
         while scan_date > today and "E" not in callendar.get(scan_date, []):
             scan_date -= timedelta(days=1)
 
         start_study_date = scan_date
 
-        # zabezpieczenie: jeśli dziś jest po końcu nauki (błąd logiczny danych)
+        # zabezpieczenie jesli dzis jest po koncu nauki
         if start_study_date > end_study_date:
             continue
 
@@ -147,14 +146,14 @@ def plan(data):
 
         current_day = start_study_date
 
-        if needed_daily == 1:   #   logika planowania, jeśli 1 egzamin dziennie
+        if needed_daily == 1:   #   logika planowania jeśli 1 egzamin dziennie
             tasks_count = len(t_list)
             offset = days_available - tasks_count
             if offset < 0:
                 offset = 0
             current_day = start_study_date + timedelta(days=offset)
 
-        #        PĘTLA PLANUJĄCA
+        #        PETLA PLANUJĄCA
         while current_day <= end_study_date:
             if current_day in callendar:
                 for i in range(needed_daily):
@@ -164,7 +163,7 @@ def plan(data):
 
             current_day += timedelta(days=1)
 
-    #       PRZYPISANIE DAT DLA TEMATOW
+    #       PRZYPISANIE DAT DLA TEMATOW W BAZIE
     for topic in data["topics"]:
         if topic["status"] == "todo" and not topic.get("locked", False):
             topic["scheduled_date"] = None

@@ -15,10 +15,12 @@ class PlanWindow():
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
 
+        #ustawienie okna
         self.win = tk.Toplevel(parent)
         self.win.geometry("800x450")
         self.win.title(self.txt["win_plan_title"])
 
+        #ramka
         frame = tk.Frame(self.win)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -51,7 +53,7 @@ class PlanWindow():
         scrollbar.pack(side="right", fill="y")
         self.tree.pack(side="left", fill="both", expand=True)
 
-        #   PRZYCISKI
+        #   PRZYCISKI W 2 RZEDACH
         btn_frame1 = tk.Frame(self.win)
         btn_frame1.pack(pady=0)
 
@@ -76,9 +78,12 @@ class PlanWindow():
         btn_close = tk.Button(btn_frame2, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style, activeforeground="red")
         btn_close.pack(side="left", padx=5)
 
+        # pierwsze odswiezenia tabeli
         self.refresh_table()
 
+    # funkcja odswiezajaca tabele
     def refresh_table(self):
+        # wyczyszczenie tabeli
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -90,6 +95,7 @@ class PlanWindow():
                and t["status"] == "todo" and t["exam_id"] in active_exams_ids
         ]
 
+        # wstawienie zaleglych tematow do tabeli jako pierwsze
         if overdue_topics:
             self.tree.insert("", "end", values=(self.txt["tag_overdue"], "", ""), tags=("overdue",))
             for topic in overdue_topics:
@@ -98,8 +104,7 @@ class PlanWindow():
                     if exam["id"] == topic["exam_id"]:
                         subj_name = exam["subject"]
                         break
-                self.tree.insert("", "end", iid=topic["id"],
-                                 values=(topic["scheduled_date"], subj_name, topic["name"]), tags=("overdue",))
+                self.tree.insert("", "end", iid=topic["id"], values=(topic["scheduled_date"], subj_name, topic["name"]), tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
         #   DATY I PLAN NA PRZYSZŁOŚĆ
@@ -145,8 +150,7 @@ class PlanWindow():
             for exam in self.data["exams"]:
                 if exam["date"] == day_str:
                     print_date_header()
-                    self.tree.insert("", "end", iid=exam["id"], values=("", exam["subject"], exam["title"]),
-                                     tags=("exam",))
+                    self.tree.insert("", "end", iid=exam["id"], values=("", exam["subject"], exam["title"]), tags=("exam",))
 
             # tematy w tym dniu
             for topic in self.data["topics"]:
@@ -157,12 +161,12 @@ class PlanWindow():
                             subj_name = exam["subject"]
                             break
                     print_date_header()
-                    self.tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]),
-                                     tags=(topic["status"],))
+                    self.tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]), tags=(topic["status"],))
 
             if date_printed:
                 self.tree.insert("", "end", values=("", "", ""))
 
+    # funkcja dla przycisku generuj plan | generuje a nastepnie odswieza plan | jesli wystapi blad to go pokaze
     def run_and_refresh(self):
         try:
             plan(self.data)
@@ -173,7 +177,9 @@ class PlanWindow():
         except Exception as e:
             messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
 
+    # funkcja zmieniajaca status zadania
     def toggle_status(self):
+        #znalezienie zaznaczonego id
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_status"])
@@ -182,6 +188,7 @@ class PlanWindow():
         topic_id = selected[0]
         target_topic = next((t for t in self.data["topics"] if t["id"] == topic_id), None)
 
+        #zmiana statusu i zapisanie
         if target_topic:
             target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
             save(self.data)
@@ -194,8 +201,11 @@ class PlanWindow():
         else:
             messagebox.showwarning(self.txt["msg_error"], self.txt["msg_cant_status"])
 
+    # funkcja czyszczaca baze danych
     def clear_database(self):
+        # potwierdzenie od uzytkownika
         if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_db"]):
+            #ustawienie bazy na dane poczatkowe
             current_lang = self.data["settings"].get("lang", "en")
             self.data["exams"] = []
             self.data["topics"] = []
@@ -204,13 +214,14 @@ class PlanWindow():
                 "max_same_subject_per_day": 1,
                 "lang": current_lang
             }
-            save(self.data)
-            self.refresh_table()
-            if self.dashboard_callback: self.dashboard_callback()
+            save(self.data) # zapisanie
+            self.refresh_table() # odswiezenie
+            if self.dashboard_callback: self.dashboard_callback() # callback dla odswiezenia
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_db_cleared"])
 
-
     #   DO OTWIERANIA INNYCH OKIEN
+
+    # funkcja otwierajaca okno dodawania egzaminu
     def open_add_window(self):
         # callback po dodaniu odswiezajacy tabele i dashboard
         def on_add():
@@ -219,15 +230,18 @@ class PlanWindow():
 
         AddExamWindow(self.win, self.txt, self.data, self.btn_style, callback=on_add)
 
+    # funkcja otwierajaca okno edycji
     def open_edit(self):
+        # callback po edycji odswiezy tabele
         def on_edit():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
         select_edit_item(self.win, self.data, self.txt, self.tree, self.btn_style, callback=on_edit)
 
+    # funkcja otwierajaca okno archiwum
     def open_archive(self):
-        # archiwum potrzebuje dostępu do edycji, wiec odpalam lokalnie
+        # w oknie archiwum sa przyciski do edycji, wiec przekazuje im te funkcje
         def edit_exam_wrapper(exam_data, callback):
             EditExamWindow(self.win, self.txt, self.data, self.btn_style, exam_data, callback)
 
@@ -237,8 +251,4 @@ class PlanWindow():
         # archiwum po usunięciu też powinno odświeżyć dashboard
         archive_dashboard_cb = self.dashboard_callback
 
-        ArchiveWindow(
-            self.win, self.txt, self.data, self.btn_style,
-            edit_exam_func=edit_exam_wrapper,
-            edit_topic_func=edit_topic_wrapper
-        )
+        ArchiveWindow(self.win, self.txt, self.data, self.btn_style, edit_exam_func=edit_exam_wrapper, edit_topic_func=edit_topic_wrapper)
