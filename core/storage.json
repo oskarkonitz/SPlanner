@@ -1,21 +1,27 @@
 {
   "settings": {
-    "max_per_day": 2,
-    "max_same_subject_per_day": 1,
+    "max_per_day": 3,
+    "max_same_subject_per_day": 2,
     "lang": "pl"
   },
   "exams": [
     {
-      "id": "exam_a1bf49c2",
+      "id": "exam_past_1",
       "subject": "Fizyka",
       "title": "Egzamin pisemny",
       "date": "2026-01-15"
     },
     {
-      "id": "exam_c3d58e11",
+      "id": "exam_past_2",
       "subject": "Chemia",
       "title": "Kolokwium",
       "date": "2026-01-20"
+    },
+    {
+      "id": "exam_urgent",
+      "subject": "Statystyka",
+      "title": "Egzamin Zerowy",
+      "date": "2026-01-24"
     },
     {
       "id": "exam_9f2a7b30",
@@ -34,97 +40,99 @@
       "subject": "Informatyka",
       "title": "Obrona projektu",
       "date": "2026-02-12"
-    },
-    {
-      "id": "exam_5e1f00a8",
-      "subject": "Historia",
-      "title": "Esej zaliczeniowy",
-      "date": "2026-02-20"
     }
   ],
   "topics": [
     {
-      "id": "topic_1a2b3c4d",
-      "exam_id": "exam_a1bf49c2",
+      "id": "topic_done_1",
+      "exam_id": "exam_past_1",
       "name": "Kinematyka",
       "status": "done",
       "scheduled_date": "2026-01-10",
       "locked": true
     },
     {
-      "id": "topic_5e6f7080",
-      "exam_id": "exam_a1bf49c2",
-      "name": "Dynamika Newtona",
-      "status": "done",
-      "scheduled_date": "2026-01-11",
-      "locked": true
-    },
-    {
-      "id": "topic_90011222",
-      "exam_id": "exam_a1bf49c2",
-      "name": "Pęd i energia",
-      "status": "done",
-      "scheduled_date": "2026-01-12",
-      "locked": true
-    },
-    {
-      "id": "topic_cafebabe",
-      "exam_id": "exam_c3d58e11",
-      "name": "Układ okresowy",
+      "id": "topic_done_2",
+      "exam_id": "exam_past_2",
+      "name": "Wiązania chemiczne",
       "status": "done",
       "scheduled_date": "2026-01-18",
       "locked": true
     },
     {
-      "id": "topic_deadbeef",
-      "exam_id": "exam_c3d58e11",
-      "name": "Wiązania chemiczne",
-      "status": "done",
-      "scheduled_date": "2026-01-19",
-      "locked": true
-    },
-    {
-      "id": "topic_12345678",
+      "id": "topic_math_done",
       "exam_id": "exam_9f2a7b30",
       "name": "Liczby zespolone",
       "status": "done",
-      "scheduled_date": "2026-01-24",
+      "scheduled_date": "2026-01-21",
       "locked": true
     },
     {
-      "id": "topic_87654321",
+      "id": "topic_stat_done",
+      "exam_id": "exam_urgent",
+      "name": "Prawdopodobieństwo",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": true
+    },
+    {
+      "id": "topic_OVERDUE",
       "exam_id": "exam_9f2a7b30",
       "name": "Macierze i wyznaczniki",
-      "status": "done",
-      "scheduled_date": "2026-01-25",
-      "locked": true
+      "status": "todo",
+      "scheduled_date": "2026-01-22",
+      "locked": false
     },
     {
-      "id": "topic_abcdef01",
+      "id": "topic_TODAY_1",
+      "exam_id": "exam_urgent",
+      "name": "Rozkłady zmiennych",
+      "status": "done",
+      "scheduled_date": "2026-01-23",
+      "locked": false
+    },
+    {
+      "id": "topic_TODAY_2",
+      "exam_id": "exam_urgent",
+      "name": "Testy hipotez",
+      "status": "done",
+      "scheduled_date": "2026-01-23",
+      "locked": false
+    },
+    {
+      "id": "topic_TODAY_3",
       "exam_id": "exam_9f2a7b30",
       "name": "Ciągi liczbowe",
       "status": "todo",
-      "scheduled_date": "2026-01-26",
+      "scheduled_date": "2026-01-23",
       "locked": false
     },
     {
-      "id": "topic_11112222",
-      "exam_id": "exam_4d6e81fa",
-      "name": "Słownictwo - Business",
-      "status": "todo",
-      "scheduled_date": "2026-01-26",
-      "locked": false
-    },
-    {
-      "id": "topic_bcdef012",
+      "id": "topic_future_1",
       "exam_id": "exam_9f2a7b30",
       "name": "Granice funkcji",
       "status": "todo",
-      "scheduled_date": "2026-01-27",
+      "scheduled_date": "2026-01-25",
       "locked": false
     },
     {
-      "id": "topic_33334444",
+      "id": "topic_future_2",
+      "exam_id": "exam_4d6e81fa",
+      "name": "Słownictwo - Business",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": false
+    },
+    {
+      "id": "topic_future_3",
+      "exam_id": "exam_9f2a7b30",
+      "name": "Pochodne",
+      "status": "todo",
+      "scheduled_date": "2026-01-26",
+      "locked": false
+    },
+    {
+      "id": "topic_future_4",
       "exam_id": "exam_4d6e81fa",
       "name": "Czasy przeszłe",
       "status": "todo",
@@ -132,15 +140,15 @@
       "locked": false
     },
     {
-      "id": "topic_cdef0123",
+      "id": "topic_future_5",
       "exam_id": "exam_9f2a7b30",
-      "name": "Pochodne",
+      "name": "Całki nieoznaczone",
       "status": "todo",
-      "scheduled_date": "2026-01-28",
+      "scheduled_date": "2026-01-27",
       "locked": false
     },
     {
-      "id": "topic_99990000",
+      "id": "topic_future_6",
       "exam_id": "exam_b2c944d7",
       "name": "Struktura bazy danych",
       "status": "todo",
@@ -148,83 +156,11 @@
       "locked": false
     },
     {
-      "id": "topic_def01234",
-      "exam_id": "exam_9f2a7b30",
-      "name": "Całki nieoznaczone",
-      "status": "todo",
-      "scheduled_date": "2026-01-29",
-      "locked": false
-    },
-    {
-      "id": "topic_55556666",
-      "exam_id": "exam_4d6e81fa",
-      "name": "Phrasal verbs",
-      "status": "todo",
-      "scheduled_date": "2026-01-30",
-      "locked": false
-    },
-    {
-      "id": "topic_77778888",
-      "exam_id": "exam_4d6e81fa",
-      "name": "E-mail formalny",
-      "status": "todo",
-      "scheduled_date": "2026-02-01",
-      "locked": false
-    },
-    {
-      "id": "topic_aaaa1111",
-      "exam_id": "exam_b2c944d7",
-      "name": "Interfejs użytkownika",
-      "status": "todo",
-      "scheduled_date": "2026-02-06",
-      "locked": false
-    },
-    {
-      "id": "topic_bbbb2222",
-      "exam_id": "exam_b2c944d7",
-      "name": "Testowanie aplikacji",
-      "status": "todo",
-      "scheduled_date": "2026-02-08",
-      "locked": false
-    },
-    {
-      "id": "topic_cccc3333",
-      "exam_id": "exam_b2c944d7",
-      "name": "Przygotowanie prezentacji",
-      "status": "todo",
-      "scheduled_date": "2026-02-10",
-      "locked": false
-    },
-    {
-      "id": "topic_dddd4444",
-      "exam_id": "exam_5e1f00a8",
-      "name": "Przyczyny wojny",
-      "status": "todo",
-      "scheduled_date": "2026-02-14",
-      "locked": false
-    },
-    {
-      "id": "topic_eeee5555",
-      "exam_id": "exam_5e1f00a8",
-      "name": "Przebieg działań",
-      "status": "todo",
-      "scheduled_date": "2026-02-15",
-      "locked": false
-    },
-    {
-      "id": "topic_ffff6666",
-      "exam_id": "exam_5e1f00a8",
-      "name": "Skutki polityczne",
-      "status": "todo",
-      "scheduled_date": "2026-02-16",
-      "locked": false
-    },
-    {
-      "id": "topic_0e055dc7",
+      "id": "topic_future_7",
       "exam_id": "exam_9f2a7b30",
       "name": "Funkcje Cyklometryczne",
       "status": "todo",
-      "scheduled_date": "2026-01-25",
+      "scheduled_date": "2026-01-28",
       "locked": false
     }
   ]

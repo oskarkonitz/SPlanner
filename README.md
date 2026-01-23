@@ -1,6 +1,8 @@
 # PROJEKT WDP - Aplikacja do zarzadzania nauką
 
-Aby uruchomić aplikację należy pobrać wymagane biblioteki `pip install requirements.txt`
+Aby uruchomić aplikację należy pobrać wymagane biblioteki `pip install -r requirements.txt`
+
+Wymagane biblioteki: `tkcalendar` `babel` `platformdirs`
 
 Pliki do uruchomienia:
 - `main.py` - pełna wersja aplikacji [GUI]
@@ -69,10 +71,11 @@ Chcesz przełożyć zadania na inne dni niż proponuje algorytm (np. przez wyjaz
 - Przy artykułach tam gdzie znalazłem autora to go wpisałem, ale na stronie docs.python.org nie ma takich informacji, a wiekszosc informacji czerpałem z tamtąd
 
 ## Wstępne informacje:
-- folder `_dev_tools` ***nie jest częścią projektu*** (zawiera własne README), a powstał, bo to testowania aplikacji zacząłem z niej korzystać i aby nie musieć cały czas jej uruchamiać przez IDE to postanowiłem wyeksportować ją do pliku wykonywalnego.
+- folder `_dev_tools` ***nie jest częścią projektu*** (zawiera własne README), a powstał, bo do testowania aplikacji zacząłem z niej korzystać i aby nie musieć cały czas jej uruchamiać przez IDE to postanowiłem wyeksportować ją do pliku wykonywalnego.
 - pliki językowe w folderze `languages` działają na zasadzie map (słowników) i powstały z pomocą AI a dokladniej poprosiłem Google Gemini aby zebrał z kodu wszystkie frazy i stworzył słownik. Potem mi zostało podmienienie fraz w kodzie na odpowiedniki w tym słowniku, a to pozwoliło na dodanie różnych wersji językowych aplikacji. Tłumaczenie również zrobiło AI.
 - `cli.py` to pierwotna wersja, ktorej uzywalem do testowania algorytmu planującego. Zródła:
   - uuid - https://docs.python.org/3/library/uuid.html [13.12.2025]
+- Baza danych jest w pliku `storage.json`
 - Projekt zaczął powstawać 10.12.2025. Cała historia jest na gitlabie.
 
 ## Opis projektu z podziałem na pliki:
