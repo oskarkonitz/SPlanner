@@ -236,6 +236,7 @@ class PlanWindow():
                 if exam["date"] == day_str:
                     print_date_header()
                     self.tree.insert("", "end", iid=exam["id"], values=("│", exam["subject"], exam["title"]), tags=("exam",))
+                    self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
             # tematy w tym dniu
             for topic in self.data["topics"]:
