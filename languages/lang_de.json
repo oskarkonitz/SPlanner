@@ -34,13 +34,13 @@
     "btn_confirm": "Bestätigen",
 
     "stats_no_today": "Keine Aufgaben für heute geplant",
-    "stats_progress_today": "Fortschritt heute: {done}/{total} ({prog}%)",
+    "stats_progress_today": "Fortschritt heute:\n{done}/{total} ({prog}%)",
     "stats_no_upcoming": "Keine anstehenden Prüfungen",
     "stats_exam_today": "Heute:\n\n{subject}",
     "stats_exam_tomorrow": "Morgen:\n\n{subject}",
     "stats_exam_days": "In {days} Tagen:\n\n{subject}",
     "stats_tasks_today": "Aufgaben für heute: {count}",
-    "stats_total_progress": "Gesamtfortschritt: {done}/{total} ({progress}%)",
+    "stats_total_progress": "Gesamtfortschritt:\n{done}/{total} ({progress}%)",
 
     "form_subject": "Fach:",
     "form_type": "Art:",

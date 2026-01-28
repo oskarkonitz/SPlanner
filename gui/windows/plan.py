@@ -249,6 +249,8 @@ class PlanWindow():
                     print_date_header()
                     self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]), tags=(topic["status"],))
 
+            self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+
             if date_printed:
                 self.tree.insert("", "end", values=("", "", ""))
 

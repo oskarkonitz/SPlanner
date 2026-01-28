@@ -34,13 +34,13 @@
     "btn_confirm": "Confirm",
 
     "stats_no_today": "No tasks scheduled for today",
-    "stats_progress_today": "Today's progress: {done}/{total} ({prog}%)",
+    "stats_progress_today": "Today's progress:\n{done}/{total} ({prog}%)",
     "stats_no_upcoming": "No upcoming exams",
     "stats_exam_today": "Today:\n\n{subject}",
     "stats_exam_tomorrow": "Tomorrow:\n\n{subject}",
     "stats_exam_days": "In {days} days:\n\n{subject}",
     "stats_tasks_today": "Tasks for today: {count}",
-    "stats_total_progress": "Total Progress: {done}/{total} ({progress}%)",
+    "stats_total_progress": "Total Progress:\n{done}/{total} ({progress}%)",
 
     "form_subject": "Subject:",
     "form_type": "Type:",

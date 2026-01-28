@@ -100,7 +100,7 @@ class GUI:
         self.sidebar.pack_propagate(False)
 
         #  Tytuł aplikacji
-        self.label_title = tk.Label(self.sidebar, text=self.txt["menu_app_title"], font=("Arial", 20, "bold"))
+        self.label_title = tk.Label(self.sidebar, text=self.txt["menu_app_title"], font=("Arial", 20, "bold"), wraplength=230, justify="center")
         self.label_title.pack(pady=(20, 10))
 
         #  Ramka statystyk (Dashboard)

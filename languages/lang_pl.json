@@ -34,13 +34,13 @@
     "btn_confirm": "Zatwierdź",
 
     "stats_no_today": "Brak zadań zaplanowanych na dzisiaj",
-    "stats_progress_today": "Postęp dzisiaj: {done}/{total} ({prog}%)",
+    "stats_progress_today": "Postęp dzisiaj:\n{done}/{total} ({prog}%)",
     "stats_no_upcoming": "Brak nadchodzących egzaminów",
     "stats_exam_today": "Dzisiaj:\n\n{subject}",
     "stats_exam_tomorrow": "Jutro:\n\n{subject}",
     "stats_exam_days": "Za {days} dni:\n\n{subject}",
     "stats_tasks_today": "Zadania na dziś: {count}",
-    "stats_total_progress": "Postęp: {done}/{total} ({progress}%)",
+    "stats_total_progress": "Postęp:\n{done}/{total} ({progress}%)",
 
     "form_subject": "Przedmiot:",
     "form_type": "Forma:",

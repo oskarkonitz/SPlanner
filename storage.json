@@ -1,0 +1,51 @@
+{
+  "settings": {
+    "max_per_day": 2,
+    "max_same_subject_per_day": 1
+  },
+  "exams": [
+    {
+      "id": "exam_548511b9",
+      "subject": "test1",
+      "title": "kolos",
+      "date": "2026-01-04"
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic_ebe3fe81",
+      "exam_id": "exam_548511b9",
+      "name": "a",
+      "status": "todo",
+      "scheduled_date": "2025-12-31"
+    },
+    {
+      "id": "topic_8ac8aff8",
+      "exam_id": "exam_548511b9",
+      "name": "b",
+      "status": "done",
+      "scheduled_date": "2025-12-31"
+    },
+    {
+      "id": "topic_71a68eb9",
+      "exam_id": "exam_548511b9",
+      "name": "c",
+      "status": "done",
+      "scheduled_date": "2026-01-01"
+    },
+    {
+      "id": "topic_47d33f5e",
+      "exam_id": "exam_548511b9",
+      "name": "d",
+      "status": "done",
+      "scheduled_date": "2026-01-02"
+    },
+    {
+      "id": "topic_a6fe67f6",
+      "exam_id": "exam_548511b9",
+      "name": "e",
+      "status": "done",
+      "scheduled_date": "2026-01-03"
+    }
+  ]
+}
