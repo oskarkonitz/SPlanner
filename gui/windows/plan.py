@@ -16,9 +16,11 @@ class PlanWindow():
         self.dashboard_callback = dashboard_callback
 
         #ustawienie okna
-        self.win = tk.Toplevel(parent)
-        self.win.geometry("800x450")
-        self.win.title(self.txt["win_plan_title"])
+        # self.win = tk.Toplevel(parent)
+        # self.win.geometry("800x450")
+        # self.win.title(self.txt["win_plan_title"])
+
+        self.win = parent
 
         #ramka
         frame = tk.Frame(self.win)
@@ -53,33 +55,65 @@ class PlanWindow():
         scrollbar.pack(side="right", fill="y")
         self.tree.pack(side="left", fill="both", expand=True)
 
+        self.tree.bind("<Button-1>", self.on_tree_click)
+
         #   PRZYCISKI W 2 RZEDACH
-        btn_frame1 = tk.Frame(self.win)
-        btn_frame1.pack(pady=0)
-
-        btn_frame2 = tk.Frame(self.win)
-        btn_frame2.pack(pady=5)
-
-        btn_refresh = tk.Button(btn_frame1, text=self.txt["btn_refresh"], command=self.refresh_table, **self.btn_style)
-        btn_refresh.pack(side="left", padx=5)
-        btn_gen = tk.Button(btn_frame1, text=self.txt["btn_gen_plan"], command=self.run_and_refresh, **self.btn_style)
-        btn_gen.pack(side="left", padx=5)
-        btn_toggle = tk.Button(btn_frame1, text=self.txt["btn_toggle_status"], command=self.toggle_status, **self.btn_style)
-        btn_toggle.pack(side="left", padx=5)
-        btn_add = tk.Button(btn_frame1, text=self.txt["btn_add_exam"], command=self.open_add_window, **self.btn_style)
-        btn_add.pack(side="left", padx=5)
-
-        btn_edit = tk.Button(btn_frame2, text=self.txt["btn_edit"], command=self.open_edit, **self.btn_style)
-        btn_edit.pack(side="left", padx=5)
-        btn_archive = tk.Button(btn_frame2, text=self.txt["btn_all_exams"], command=self.open_archive, **self.btn_style)
-        btn_archive.pack(side="left", padx=5)
-        btn_clear = tk.Button(btn_frame2, text=self.txt["btn_clear_data"], command=self.clear_database, **self.btn_style, foreground="red")
-        btn_clear.pack(side="left", padx=5)
-        btn_close = tk.Button(btn_frame2, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style, activeforeground="red")
-        btn_close.pack(side="left", padx=5)
+        # btn_frame1 = tk.Frame(self.win)
+        # btn_frame1.pack(pady=0)
+        #
+        # btn_frame2 = tk.Frame(self.win)
+        # btn_frame2.pack(pady=5)
+        #
+        # btn_refresh = tk.Button(btn_frame1, text=self.txt["btn_refresh"], command=self.refresh_table, **self.btn_style)
+        # btn_refresh.pack(side="left", padx=5)
+        # btn_gen = tk.Button(btn_frame1, text=self.txt["btn_gen_plan"], command=self.run_and_refresh, **self.btn_style)
+        # btn_gen.pack(side="left", padx=5)
+        # btn_toggle = tk.Button(btn_frame1, text=self.txt["btn_toggle_status"], command=self.toggle_status, **self.btn_style)
+        # btn_toggle.pack(side="left", padx=5)
+        # btn_add = tk.Button(btn_frame1, text=self.txt["btn_add_exam"], command=self.open_add_window, **self.btn_style)
+        # btn_add.pack(side="left", padx=5)
+        #
+        # btn_edit = tk.Button(btn_frame2, text=self.txt["btn_edit"], command=self.open_edit, **self.btn_style)
+        # btn_edit.pack(side="left", padx=5)
+        # btn_archive = tk.Button(btn_frame2, text=self.txt["btn_all_exams"], command=self.open_archive, **self.btn_style)
+        # btn_archive.pack(side="left", padx=5)
+        # btn_clear = tk.Button(btn_frame2, text=self.txt["btn_clear_data"], command=self.clear_database, **self.btn_style, foreground="red")
+        # btn_clear.pack(side="left", padx=5)
+        # btn_close = tk.Button(btn_frame2, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style, activeforeground="red")
+        # btn_close.pack(side="left", padx=5)
 
         # pierwsze odswiezenia tabeli
         self.refresh_table()
+
+    def on_tree_click(self, event):
+        # Sprawdzamy, w który wiersz kliknięto
+        item_id = self.tree.identify_row(event.y)
+
+        if not item_id:
+            # Kliknięto w puste białe tło pod tabelą -> odznacz wszystko
+            self.deselect_all()
+            return
+
+        tags = self.tree.item(item_id, "tags")
+        values = self.tree.item(item_id, "values")
+
+        # WARUNEK 1: Czy to nagłówek daty?
+        if "date_header" in tags:
+            return "break"  # "break" przerywa zdarzenie - zaznaczenie się nie uda
+
+        # WARUNEK 2: Czy to pusta linia (separator)?
+        # Sprawdzamy czy pierwszy element values jest pusty lub jest znakiem "^" (używanym jako odstęp)
+        # Oraz czy nie ma ID tematu/egzaminu (tematy mają iid="topic_...", egzaminy "exam_...")
+        if not values or values[0] == "" or values[0] == "^" or "active" in tags or "past" in tags:
+            # Sprawdźmy czy to nie jest nagłówek "ZALEGŁE" (on ma tag overdue, ale nie ma ID)
+            # Najprościej: jeśli nie ma ID w bazie (item_id nie zaczyna się od 'exam_' ani 'topic_') to blokuj
+            if not (item_id.startswith("exam_") or item_id.startswith("topic_")):
+                return "break"
+
+    def deselect_all(self):
+        selection = self.tree.selection()
+        if selection:
+            self.tree.selection_remove(selection)
 
     # funkcja odswiezajaca tabele
     def refresh_table(self):
@@ -150,7 +184,7 @@ class PlanWindow():
             for exam in self.data["exams"]:
                 if exam["date"] == day_str:
                     print_date_header()
-                    self.tree.insert("", "end", iid=exam["id"], values=("", exam["subject"], exam["title"]), tags=("exam",))
+                    self.tree.insert("", "end", iid=exam["id"], values=("|", exam["subject"], exam["title"]), tags=("exam",))
 
             # tematy w tym dniu
             for topic in self.data["topics"]:
@@ -161,10 +195,10 @@ class PlanWindow():
                             subj_name = exam["subject"]
                             break
                     print_date_header()
-                    self.tree.insert("", "end", iid=topic["id"], values=("", subj_name, topic["name"]), tags=(topic["status"],))
+                    self.tree.insert("", "end", iid=topic["id"], values=("|", subj_name, topic["name"]), tags=(topic["status"],))
 
             if date_printed:
-                self.tree.insert("", "end", values=("", "", ""))
+                self.tree.insert("", "end", values=("^", "", ""))
 
     # funkcja dla przycisku generuj plan | generuje a nastepnie odswieza plan | jesli wystapi blad to go pokaze
     def run_and_refresh(self):

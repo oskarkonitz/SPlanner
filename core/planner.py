@@ -108,7 +108,7 @@ def plan_old(data):
 def plan(data):
     today = date.today()
 
-    #stworzenie pustego kalendarza
+    # stworzenie pustego kalendarza
     callendar = callendar_create(data, today)
 
     # przypisanie dat dla kazdego egzaminu pokolei
@@ -117,12 +117,14 @@ def plan(data):
         if exam_date <= today:
             continue
 
-        end_study_date = exam_date - timedelta(days=1) #    definicja konca dla egzaminu
+        end_study_date = exam_date - timedelta(days=1)  # definicja konca dla egzaminu
 
         if end_study_date < today:
             continue
 
-        scan_date = end_study_date  #   definicja startu dla egzaminu
+        scan_date = end_study_date  # definicja startu dla egzaminu
+
+        # Szukamy najwcześniejszego możliwego dnia startu
         while scan_date > today and "E" not in callendar.get(scan_date, []):
             scan_date -= timedelta(days=1)
 
@@ -132,38 +134,49 @@ def plan(data):
         if start_study_date > end_study_date:
             continue
 
-        t_list = topics_list_create(data, exam["id"])   #   liczenie tematów
+        t_list = topics_list_create(data, exam["id"])  # liczenie tematów
         if not t_list:
             continue
 
-        days_available = (end_study_date - start_study_date).days + 1
+        # Całkowita liczba dni dostępnych w okienku nauki
+        days_window = (end_study_date - start_study_date).days + 1
 
-        # zabezpieczenie przed dzieleniem przez zero
-        if days_available <= 0:
-            days_available = 1
+        # --- LOGIKA PRZESUNIĘCIA (BACK-LOADING) ---
+        # Jeśli mamy więcej dni niż tematów (np. 4 dni, 2 tematy),
+        # to chcemy zacząć później, żeby tematy były tuż przed egzaminem.
 
-        needed_daily = math.ceil(len(t_list) / days_available)
+        tasks_count = len(t_list)
 
-        current_day = start_study_date
+        # Obliczamy ile dni "luzu" mamy
+        surplus_days = 0
+        if days_window > tasks_count:
+            surplus_days = days_window - tasks_count
 
-        if needed_daily == 1:   #   logika planowania jeśli 1 egzamin dziennie
-            tasks_count = len(t_list)
-            offset = days_available - tasks_count
-            if offset < 0:
-                offset = 0
-            current_day = start_study_date + timedelta(days=offset)
+        # Przesuwamy start o te dni luzu
+        current_day = start_study_date + timedelta(days=surplus_days)
 
-        #        PETLA PLANUJĄCA
+        # Pętla planująca (Dynamiczna)
         while current_day <= end_study_date:
             if current_day in callendar:
-                for i in range(needed_daily):
+
+                # Dynamicznie liczymy ile dni zostało od TERAZ do końca
+                days_left = (end_study_date - current_day).days + 1
+                topics_left = len(t_list)
+
+                if days_left > 0 and topics_left > 0:
+                    # Dzielimy pozostałą pracę przez pozostały czas
+                    daily_count = math.ceil(topics_left / days_left)
+                else:
+                    daily_count = 0
+
+                for i in range(daily_count):
                     if len(t_list) > 0:
                         callendar[current_day].append(t_list[0])
                         del t_list[0]
 
             current_day += timedelta(days=1)
 
-    #       PRZYPISANIE DAT DLA TEMATOW W BAZIE
+    # PRZYPISANIE DAT DLA TEMATOW W BAZIE
     for topic in data["topics"]:
         if topic["status"] == "todo" and not topic.get("locked", False):
             topic["scheduled_date"] = None

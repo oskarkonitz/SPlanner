@@ -2,7 +2,16 @@
     "app_title": "Splanner",
     "menu_app_title": "Studienplaner",
     "menu_title": "Wählen Sie eine Option:",
-    "lang_label": "Sprache / Language:",
+    "lang_label": "Sprache / Language",
+
+    "menu_file": "Datei",
+    "menu_tools": "Werkzeuge",
+    "menu_help": "Hilfe",
+    "menu_settings": "Einstellungen",
+    "menu_colors": "Farben",
+    "theme_system": "System",
+    "theme_light": "Hell",
+    "theme_dark": "Dunkel",
 
     "btn_run": "Starten",
     "btn_manual": "Bedienungsanleitung",
@@ -27,9 +36,9 @@
     "stats_no_today": "Keine Aufgaben für heute geplant",
     "stats_progress_today": "Fortschritt heute: {done}/{total} ({prog}%)",
     "stats_no_upcoming": "Keine anstehenden Prüfungen",
-    "stats_exam_today": "Heute: {subject}!",
-    "stats_exam_tomorrow": "Morgen: {subject}!",
-    "stats_exam_days": "In {days} Tagen: {subject}!",
+    "stats_exam_today": "Heute:\n\n{subject}",
+    "stats_exam_tomorrow": "Morgen:\n\n{subject}",
+    "stats_exam_days": "In {days} Tagen:\n\n{subject}",
     "stats_tasks_today": "Aufgaben für heute: {count}",
     "stats_total_progress": "Gesamtfortschritt: {done}/{total} ({progress}%)",
 
@@ -100,6 +109,6 @@
     "msg_exam_date": "Prüfungsdatum: {date}",
     "msg_double_click_edit": "Doppelklick auf das Thema zum Bearbeiten",
     "msg_select_topic": "Wählen Sie ein Thema aus.",
-    "msg_lang_changed": "Sprache geändert. Starten Sie das Programm neu, um die Änderungen zu sehen.",
+    "msg_lang_changed": "Sprache geändert. Starten Sie das Programm neu, um die Änderungen zu sehen. Jetzt neu starten?\n\nLanguage changed. Please restart the application to see changes. Restart now?",
     "msg_date_format_err": "Das Datum muss im Format YYYY-MM-DD sein (z. B. 2026-05-20)!"
 }

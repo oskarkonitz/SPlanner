@@ -2,7 +2,16 @@
     "app_title": "Splanner",
     "menu_app_title": "Study Planner",
     "menu_title": "Choose an option:",
-    "lang_label": "Language / Język:",
+    "lang_label": "Language",
+
+    "menu_file": "File",
+    "menu_tools": "Tools",
+    "menu_help": "Help",
+    "menu_settings": "Settings",
+    "menu_colors": "Colors",
+    "theme_system": "System",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
 
     "btn_run": "Open Planner",
     "btn_manual": "User Manual",
@@ -27,9 +36,9 @@
     "stats_no_today": "No tasks scheduled for today",
     "stats_progress_today": "Today's progress: {done}/{total} ({prog}%)",
     "stats_no_upcoming": "No upcoming exams",
-    "stats_exam_today": "Today: {subject}!",
-    "stats_exam_tomorrow": "Tomorrow: {subject}!",
-    "stats_exam_days": "In {days} days: {subject}!",
+    "stats_exam_today": "Today:\n\n{subject}",
+    "stats_exam_tomorrow": "Tomorrow:\n\n{subject}",
+    "stats_exam_days": "In {days} days:\n\n{subject}",
     "stats_tasks_today": "Tasks for today: {count}",
     "stats_total_progress": "Total Progress: {done}/{total} ({progress}%)",
 
@@ -100,6 +109,6 @@
     "msg_exam_date": "Exam date: {date}",
     "msg_double_click_edit": "Double-click a topic to edit it",
     "msg_select_topic": "Select a topic.",
-    "msg_lang_changed": "Language changed. Please restart the application to see changes.",
+    "msg_lang_changed": "Language changed. Please restart the application to see changes. Restart now?",
     "msg_date_format_err": "Date must be in YYYY-MM-DD format (e.g., 2026-05-20)!"
 }

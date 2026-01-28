@@ -2,8 +2,17 @@
     "app_title": "Splanner",
     "menu_app_title": "Planer Nauki",
     "menu_title": "Wybierz opcje:",
-    "lang_label": "Język / Language:",
-    
+    "lang_label": "Język / Language",
+
+    "menu_file": "Plik",
+    "menu_tools": "Narzędzia",
+    "menu_help": "Pomoc",
+    "menu_settings": "Ustawienia",
+    "menu_colors": "Kolory",
+    "theme_system": "Systemowy",
+    "theme_light": "Jasny",
+    "theme_dark": "Ciemny",
+
     "btn_run": "Uruchom",
     "btn_manual": "Instrukcja Obsługi",
     "btn_exit": "Wyjście",
@@ -27,9 +36,9 @@
     "stats_no_today": "Brak zadań zaplanowanych na dzisiaj",
     "stats_progress_today": "Postęp dzisiaj: {done}/{total} ({prog}%)",
     "stats_no_upcoming": "Brak nadchodzących egzaminów",
-    "stats_exam_today": "Dzisiaj: {subject}!",
-    "stats_exam_tomorrow": "Jutro: {subject}!",
-    "stats_exam_days": "Za {days} dni: {subject}!",
+    "stats_exam_today": "Dzisiaj:\n\n{subject}",
+    "stats_exam_tomorrow": "Jutro:\n\n{subject}",
+    "stats_exam_days": "Za {days} dni:\n\n{subject}",
     "stats_tasks_today": "Zadania na dziś: {count}",
     "stats_total_progress": "Postęp: {done}/{total} ({progress}%)",
 
@@ -100,6 +109,6 @@
     "msg_exam_date": "Data egzaminu: {date}",
     "msg_double_click_edit": "Kliknij podwójnie w temat, aby go edytować",
     "msg_select_topic": "Zaznacz temat.",
-    "msg_lang_changed": "Język został zmieniony. Uruchom program ponownie, aby zobaczyć zmiany.",
+    "msg_lang_changed": "Język został zmieniony. Uruchom program ponownie, aby zobaczyć zmiany. Zrestartować teraz?\n\nLanguage changed. Please restart the application to see changes. Restart now?",
     "msg_date_format_err": "Data musi być w formacie YYYY-MM-DD (np. 2026-05-20)!"
 }

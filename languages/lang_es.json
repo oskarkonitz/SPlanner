@@ -2,7 +2,16 @@
     "app_title": "Splanner",
     "menu_app_title": "Planificador de Estudio",
     "menu_title": "Seleccione una opción:",
-    "lang_label": "Idioma / Language:",
+    "lang_label": "Idioma / Language",
+
+    "menu_file": "Archivo",
+    "menu_tools": "Herramientas",
+    "menu_help": "Ayuda",
+    "menu_settings": "Ajustes",
+    "menu_colors": "Colores",
+    "theme_system": "Sistema",
+    "theme_light": "Claro",
+    "theme_dark": "Oscuro",
 
     "btn_run": "Ejecutar",
     "btn_manual": "Manual de Usuario",
@@ -27,9 +36,9 @@
     "stats_no_today": "No hay tareas programadas para hoy",
     "stats_progress_today": "Progreso hoy: {done}/{total} ({prog}%)",
     "stats_no_upcoming": "No hay exámenes próximos",
-    "stats_exam_today": "¡Hoy: {subject}!",
-    "stats_exam_tomorrow": "¡Mañana: {subject}!",
-    "stats_exam_days": "En {days} días: {subject}!",
+    "stats_exam_today": "¡Hoy:\n\n{subject}",
+    "stats_exam_tomorrow": "¡Mañana:\n\n{subject}",
+    "stats_exam_days": "En {days} días:\n\n{subject}",
     "stats_tasks_today": "Tareas para hoy: {count}",
     "stats_total_progress": "Progreso total: {done}/{total} ({progress}%)",
 
@@ -100,6 +109,6 @@
     "msg_exam_date": "Fecha del examen: {date}",
     "msg_double_click_edit": "Haz doble clic en el tema para editarlo",
     "msg_select_topic": "Selecciona un tema.",
-    "msg_lang_changed": "Idioma cambiado. Reinicia el programa para ver los cambios.",
+    "msg_lang_changed": "Idioma cambiado. Reinicia el programa para ver los cambios. ¿Reiniciar ahora?\n\nLanguage changed. Please restart the application to see changes. Restart now?",
     "msg_date_format_err": "¡La fecha debe tener el formato YYYY-MM-DD (ej. 2026-05-20)!"
 }
