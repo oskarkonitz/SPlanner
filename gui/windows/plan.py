@@ -164,11 +164,13 @@ class PlanWindow():
 
     # funkcja odswiezajaca tabele
     def refresh_table(self):
-        # wyczyszczenie tabeli
+        # 1. Wyczyszczenie tabeli
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        #   ZALEGŁE TEMATY
+        # ---------------------------------------------------------
+        # 2. ZALEGŁE TEMATY (Overdue) - bez zmian
+        # ---------------------------------------------------------
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= date.today()}
         overdue_topics = [
             t for t in self.data["topics"]
@@ -176,19 +178,20 @@ class PlanWindow():
                and t["status"] == "todo" and t["exam_id"] in active_exams_ids
         ]
 
-        # wstawienie zaleglych tematow do tabeli jako pierwsze
         if overdue_topics:
-            self.tree.insert("", "end", values=(self.txt["tag_overdue"], "", ""), tags=("overdue",))
+            self.tree.insert("", "end", values=("", self.txt["tag_overdue"], ""), tags=("overdue",))
             for topic in overdue_topics:
                 subj_name = self.txt["val_other"]
                 for exam in self.data["exams"]:
                     if exam["id"] == topic["exam_id"]:
                         subj_name = exam["subject"]
                         break
-                self.tree.insert("", "end", iid=topic["id"], values=(topic["scheduled_date"], subj_name, topic["name"]), tags=("overdue",))
+                self.tree.insert("", "end", iid=topic["id"], values=("", f"{topic["scheduled_date"]}\t{subj_name}", topic["name"]), tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
-        #   DATY I PLAN NA PRZYSZŁOŚĆ
+        # ---------------------------------------------------------
+        # 3. DATY I PLAN NA PRZYSZŁOŚĆ
+        # ---------------------------------------------------------
         all_dates = set()
         for exam in self.data["exams"]:
             if date_format(exam["date"]) >= date.today():
@@ -200,59 +203,60 @@ class PlanWindow():
         sorted_dates = sorted(list(all_dates))
 
         for day_str in sorted_dates:
-            self.tree.insert("", "end", values=("", "", ""))
-            date_printed = False
+            # A. Pobieramy listy na ten konkretny dzień
+            todays_exams = [e for e in self.data["exams"] if e["date"] == day_str]
+            todays_topics = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == day_str]
 
-            # funkcja pomocnicza do nagłówka daty
-            def print_date_header():
-                nonlocal date_printed
-                if not date_printed:
-                    days_left = (date_format(day_str) - date.today()).days
-                    display_text = ""
-                    tag = "normal"
+            # B. Obliczamy nagłówek (tekst i kolor)
+            days_left = (date_format(day_str) - date.today()).days
+            display_text = ""
+            tag = "normal"
 
-                    if days_left == 0:
-                        display_text = self.txt["tag_today"]
-                        tag = "today"
-                    elif days_left == 1:
-                        display_text = self.txt["tag_1_day"]
-                        tag = "red"
-                    else:
-                        display_text = self.txt["tag_x_days"].format(days=days_left)
-                        if days_left <= 3:
-                            tag = "orange"
-                        elif days_left <= 6:
-                            tag = "yellow"
+            if days_left == 0:
+                display_text = self.txt["tag_today"]
+                tag = "today"
+            elif days_left == 1:
+                display_text = self.txt["tag_1_day"]
+                tag = "red"
+            else:
+                display_text = self.txt["tag_x_days"].format(days=days_left)
+                if days_left <= 3:
+                    tag = "orange"
+                elif days_left <= 6:
+                    tag = "yellow"
 
-                    full_label = f"{display_text} ({day_str})"
+            full_label = f"{display_text} ({day_str})"
 
-                    self.tree.insert("", "end", values=("●", full_label, ""), tags=(tag,))
-                    self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+            # --- RYSOWANIE DRABINKI ---
 
-                    date_printed = True
+            # 1. KROPKA I NAGŁÓWEK
+            self.tree.insert("", "end", values=("●", full_label, ""), tags=(tag,))
 
-            # egzaminy w tym dniu
-            for exam in self.data["exams"]:
-                if exam["date"] == day_str:
-                    print_date_header()
-                    self.tree.insert("", "end", iid=exam["id"], values=("│", exam["subject"], exam["title"]), tags=("exam",))
-                    self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
-
-            # tematy w tym dniu
-            for topic in self.data["topics"]:
-                if str(topic.get("scheduled_date")) == day_str:
-                    subj_name = self.txt["val_other"]
-                    for exam in self.data["exams"]:
-                        if exam["id"] == topic["exam_id"]:
-                            subj_name = exam["subject"]
-                            break
-                    print_date_header()
-                    self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]), tags=(topic["status"],))
-
+            # 2. ODSTĘP GÓRNY (Pusta linia z kreską)
             self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
-            if date_printed:
-                self.tree.insert("", "end", values=("", "", ""))
+            # 3. EGZAMINY (Wypisujemy jeden pod drugim, bez przerw)
+            for exam in todays_exams:
+                self.tree.insert("", "end", iid=exam["id"], values=("│", exam["subject"], exam["title"]), tags=("exam",))
+
+            # 4. SEPARATOR ŚRODKOWY (Tylko jeśli są I egzaminy I tematy)
+            if len(todays_exams) > 0 and len(todays_topics) > 0:
+                self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+
+            # 5. TEMATY (Wypisujemy jeden pod drugim)
+            for topic in todays_topics:
+                subj_name = self.txt["val_other"]
+                for exam in self.data["exams"]:
+                    if exam["id"] == topic["exam_id"]:
+                        subj_name = exam["subject"]
+                        break
+                self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]), tags=(topic["status"],))
+
+            # 6. ODSTĘP DOLNY (Pusta linia z kreską - zamknięcie dnia)
+            self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+
+            # 7. PRZERWA MIĘDZY DNIAMI (Pusty wiersz bez kreski)
+            self.tree.insert("", "end", values=("", "", ""))
 
 
     # funkcja dla przycisku generuj plan | generuje a nastepnie odswieza plan | jesli wystapi blad to go pokaze
