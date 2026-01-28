@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+import customtkinter as ctk
 from tkcalendar import DateEntry
 import uuid
 from core.storage import save
@@ -38,28 +39,28 @@ class EditExamWindow():
         self.callback = callback
 
         # ustawienie okna
-        self.win = tk.Toplevel(parent)
+        self.win = ctk.CTkToplevel(parent)
         self.win.resizable(False, False)
         self.win.title(self.txt["win_edit_exam_title"].format(subject=exam_data["subject"]))
 
         # ustawienie pól entry data
-        tk.Label(self.win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=5, padx=10, sticky="e")
+        ctk.CTkLabel(self.win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=5, padx=10, sticky="e")
         self.ent_subject = tk.Entry(self.win, width=30)
         self.ent_subject.insert(0, exam_data["subject"])
         self.ent_subject.grid(row=0, column=1, padx=10, pady=5)
 
-        tk.Label(self.win, text=self.txt["form_type"]).grid(row=1, column=0, pady=5, padx=10, sticky="e")
+        ctk.CTkLabel(self.win, text=self.txt["form_type"]).grid(row=1, column=0, pady=5, padx=10, sticky="e")
         self.ent_title = tk.Entry(self.win, width=30)
         self.ent_title.insert(0, exam_data["title"])
         self.ent_title.grid(row=1, column=1, padx=10, pady=5)
 
-        tk.Label(self.win, text=self.txt["form_date"]).grid(row=2, column=0, pady=5, padx=10, sticky="e")
+        ctk.CTkLabel(self.win, text=self.txt["form_date"]).grid(row=2, column=0, pady=5, padx=10, sticky="e")
         self.ent_date = DateEntry(self.win, width=27, date_pattern='y-mm-dd')
         self.ent_date.grid(row=2, column=1, padx=10, pady=5)
         if exam_data["date"]:
             self.ent_date.set_date(exam_data["date"])
 
-        tk.Label(self.win, text=self.txt["form_topics_edit"]).grid(row=3, column=0, pady=5, columnspan=2)
+        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=3, column=0, pady=5, columnspan=2)
         self.txt_topics = tk.Text(self.win, width=40, height=10)
         self.txt_topics.grid(row=4, column=0, columnspan=2, padx=10)
 
@@ -69,15 +70,17 @@ class EditExamWindow():
             self.txt_topics.insert(tk.END, t["name"] + "\n")
 
         #przyciski
-        btn_frame = tk.Frame(self.win)
+        btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
         btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
-        btn_save = tk.Button(btn_frame, text=self.txt["btn_save_changes"], command=self.save_changes, **self.btn_style)
+        btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save_changes"], command=self.save_changes, **self.btn_style)
         btn_save.pack(side="left", padx=5)
-        btn_delete = tk.Button(btn_frame, text=self.txt["btn_delete"], command=self.delete_exam, **self.btn_style, foreground="red")
+        btn_delete = ctk.CTkButton(btn_frame, text=self.txt["btn_delete"], command=self.delete_exam, **self.btn_style)
         btn_delete.pack(side="left", padx=5)
-        btn_cancel = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style, activeforeground="red")
+        btn_delete.configure(fg_color="#e74c3c", hover_color="#c0392b")
+        btn_cancel = ctk.CTkButton(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style)
         btn_cancel.pack(side="left", padx=5)
+        btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
 
     def save_changes(self):
         # aktualizacja egzaminu
@@ -149,12 +152,12 @@ class EditTopicWindow:
         self.win.title(self.txt["win_edit_topic_title"].format(name=topic_data["name"]))
         self.win.resizable(width=False, height=False)
 
-        tk.Label(self.win, text=self.txt["form_topic"]).grid(row=0, column=0, padx=10, pady=10, sticky="e")
+        ctk.CTkLabel(self.win, text=self.txt["form_topic"]).grid(row=0, column=0, padx=10, pady=10, sticky="e")
         self.ent_name = tk.Entry(self.win, width=30)
         self.ent_name.insert(0, topic_data["name"])
         self.ent_name.grid(row=0, column=1, padx=10, pady=10)
 
-        tk.Label(self.win, text=self.txt["form_date"]).grid(row=1, column=0, padx=10, pady=10, sticky="e")
+        ctk.CTkLabel(self.win, text=self.txt["form_date"]).grid(row=1, column=0, padx=10, pady=10, sticky="e")
         self.ent_date = DateEntry(self.win, width=27, date_pattern='y-mm-dd')
         self.ent_date.grid(row=1, column=1, padx=10, pady=10)
 
@@ -171,12 +174,14 @@ class EditTopicWindow:
         btn_frame = tk.Frame(self.win)
         btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
-        btn_save = tk.Button(btn_frame, text=self.txt["btn_save"], command=self.save_changes, **self.btn_style)
+        btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save"], command=self.save_changes, **self.btn_style)
         btn_save.pack(side="left", padx=5)
-        btn_delete = tk.Button(btn_frame, text=self.txt["btn_delete"], command=self.delete_topic, **self.btn_style, foreground="red")
+        btn_delete = ctk.CTkButton(btn_frame, text=self.txt["btn_delete"], command=self.delete_topic, **self.btn_style)
         btn_delete.pack(side="left", padx=5)
-        btn_cancel = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style, activeforeground="red")
+        btn_delete.configure(fg_color="#e74c3c", hover_color="#c0392b")
+        btn_cancel = ctk.CTkButton(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style)
         btn_cancel.pack(side="left", padx=5)
+        btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
 
     def save_changes(self):
         new_name = self.ent_name.get()

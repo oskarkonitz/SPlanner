@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import customtkinter as ctk
 from datetime import date
 from core.storage import save
 from core.planner import plan, date_format
@@ -8,12 +9,13 @@ from gui.windows.archive import ArchiveWindow
 from gui.windows.edit import select_edit_item, EditExamWindow, EditTopicWindow
 
 class PlanWindow():
-    def __init__(self, parent, txt, data, btn_style, dashboard_callback):
+    def __init__(self, parent, txt, data, btn_style, dashboard_callback, selection_callback):
         self.parent = parent
         self.txt = txt
         self.data = data
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
+        self.selection_callback = selection_callback
 
         #ustawienie okna
         # self.win = tk.Toplevel(parent)
@@ -23,7 +25,7 @@ class PlanWindow():
         self.win = parent
 
         #ramka
-        frame = tk.Frame(self.win)
+        frame = ctk.CTkFrame(self.win, fg_color="transparent")
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # konfiguracja tabeli
@@ -50,12 +52,19 @@ class PlanWindow():
         self.tree.tag_configure("overdue", foreground="gray", font=("Arial", 12, "italic", "bold"))
 
         # scrollbar
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
+        scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=self.tree.yview, fg_color="transparent", bg_color="transparent")
         self.tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
+
+        # 1. Najpierw pakujemy scrollbar
+        scrollbar.pack(side="right", fill="y", padx=(2, 0))
+
+        # 2. A TERAZ PAKUJEMY TABELĘ (Tego prawdopodobnie brakowało)
         self.tree.pack(side="left", fill="both", expand=True)
 
         self.tree.bind("<Button-1>", self.on_tree_click)
+        # Wykrywanie zmiany zaznaczenia (nie tylko kliknięcia myszką, ale też strzałkami)
+        self.tree.bind("<<TreeviewSelect>>", self.on_selection_change)
+
 
         #   PRZYCISKI W 2 RZEDACH
         # btn_frame1 = tk.Frame(self.win)
@@ -85,35 +94,73 @@ class PlanWindow():
         # pierwsze odswiezenia tabeli
         self.refresh_table()
 
+    def on_selection_change(self, event):
+        selected = self.tree.selection()
+
+        # 1. Nic nie zaznaczone -> Oba przyciski domyślne
+        if not selected:
+            self.selection_callback("default", "default")
+            return
+
+        item_id = selected[0]
+        tags = self.tree.item(item_id, "tags")
+
+        status_mode = "default"
+        edit_mode = "locked"  # Domyślnie zakładamy, że nie da się edytować (np. daty)
+
+        # 2. Sprawdzamy co to jest
+        if item_id.startswith("topic_"):
+            # Temat jest edytowalny
+            edit_mode = "editable"
+
+            # Status tematu
+            if "todo" in tags:
+                status_mode = "todo"
+            elif "done" in tags:
+                status_mode = "done"
+            else:
+                status_mode = "default"
+
+        elif item_id.startswith("exam_"):
+            # Egzamin jest edytowalny, ale nie ma statusu todo/done
+            edit_mode = "editable"
+            status_mode = "locked"  # Czerwony dla Change Status (bo egzaminu nie 'odfajkowujemy')
+
+        else:
+            # Daty, nagłówki itp. -> Wszystko zablokowane
+            status_mode = "locked"
+            edit_mode = "locked"
+
+        # 3. Wysyłamy oba tryby do main.py
+        self.selection_callback(status_mode, edit_mode)
+
     def on_tree_click(self, event):
         # Sprawdzamy, w który wiersz kliknięto
         item_id = self.tree.identify_row(event.y)
 
+        # 1. Kliknięcie w puste tło (poza wierszami)
         if not item_id:
-            # Kliknięto w puste białe tło pod tabelą -> odznacz wszystko
             self.deselect_all()
             return
 
-        tags = self.tree.item(item_id, "tags")
-        values = self.tree.item(item_id, "values")
+        # 2. Sprawdzamy ID wiersza
+        # Egzaminy mają ID "exam_...", tematy "topic_..."
+        # Wszystko inne (daty, liczniki dni, separatory) to elementy ozdobne
+        is_interactive = item_id.startswith("exam_") or item_id.startswith("topic_")
 
-        # WARUNEK 1: Czy to nagłówek daty?
-        if "date_header" in tags:
-            return "break"  # "break" przerywa zdarzenie - zaznaczenie się nie uda
-
-        # WARUNEK 2: Czy to pusta linia (separator)?
-        # Sprawdzamy czy pierwszy element values jest pusty lub jest znakiem "^" (używanym jako odstęp)
-        # Oraz czy nie ma ID tematu/egzaminu (tematy mają iid="topic_...", egzaminy "exam_...")
-        if not values or values[0] == "" or values[0] == "^" or "active" in tags or "past" in tags:
-            # Sprawdźmy czy to nie jest nagłówek "ZALEGŁE" (on ma tag overdue, ale nie ma ID)
-            # Najprościej: jeśli nie ma ID w bazie (item_id nie zaczyna się od 'exam_' ani 'topic_') to blokuj
-            if not (item_id.startswith("exam_") or item_id.startswith("topic_")):
-                return "break"
+        if not is_interactive:
+            # Jeśli kliknięto w element ozdobny (np. "2 days", data, pusta linia)
+            self.deselect_all() # Usuń zaznaczenie z innych elementów
+            return "break"      # Zablokuj zaznaczenie tego elementu
 
     def deselect_all(self):
         selection = self.tree.selection()
         if selection:
             self.tree.selection_remove(selection)
+
+        # Reset przycisku w main.py
+        if self.selection_callback:
+            self.selection_callback("default", "default")
 
     # funkcja odswiezajaca tabele
     def refresh_table(self):
@@ -177,14 +224,14 @@ class PlanWindow():
                             tag = "yellow"
 
                     self.tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
-                    self.tree.insert("", "end", values=(display_text, "", ""), tags=("date_header", tag))
+                    self.tree.insert("", "end", values=(f"● {display_text}", "", ""), tags=(tag,))
                     date_printed = True
 
             # egzaminy w tym dniu
             for exam in self.data["exams"]:
                 if exam["date"] == day_str:
                     print_date_header()
-                    self.tree.insert("", "end", iid=exam["id"], values=("|", exam["subject"], exam["title"]), tags=("exam",))
+                    self.tree.insert("", "end", iid=exam["id"], values=("│", exam["subject"], exam["title"]), tags=("exam",))
 
             # tematy w tym dniu
             for topic in self.data["topics"]:
@@ -195,10 +242,10 @@ class PlanWindow():
                             subj_name = exam["subject"]
                             break
                     print_date_header()
-                    self.tree.insert("", "end", iid=topic["id"], values=("|", subj_name, topic["name"]), tags=(topic["status"],))
+                    self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]), tags=(topic["status"],))
 
             if date_printed:
-                self.tree.insert("", "end", values=("^", "", ""))
+                self.tree.insert("", "end", values=("", "", ""))
 
     # funkcja dla przycisku generuj plan | generuje a nastepnie odswieza plan | jesli wystapi blad to go pokaze
     def run_and_refresh(self):
@@ -213,25 +260,33 @@ class PlanWindow():
 
     # funkcja zmieniajaca status zadania
     def toggle_status(self):
-        #znalezienie zaznaczonego id
+        # znalezienie zaznaczonego id
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_status"])
             return
 
         topic_id = selected[0]
+        # Szukamy tematu w danych
         target_topic = next((t for t in self.data["topics"] if t["id"] == topic_id), None)
 
-        #zmiana statusu i zapisanie
+        # zmiana statusu i zapisanie
         if target_topic:
+            # Zamiana todo <-> done
             target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
             save(self.data)
 
-            # odswiezenie widoku
+            # Odswiezenie widoku (zmiana tagu w tabeli)
             new_tag = target_topic["status"]
             self.tree.item(topic_id, tags=(new_tag,))
 
-            if self.dashboard_callback: self.dashboard_callback()
+            if self.dashboard_callback:
+                self.dashboard_callback()
+
+            # --- DODAJ TĘ LINIJKĘ: ---
+            # To wymusi natychmiastowe sprawdzenie nowego statusu i zmianę koloru przycisku
+            self.on_selection_change(None)
+
         else:
             messagebox.showwarning(self.txt["msg_error"], self.txt["msg_cant_status"])
 

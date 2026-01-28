@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import customtkinter as ctk
 from datetime import date
 from core.planner import date_format
 from core.storage import save
@@ -14,15 +15,15 @@ class ArchiveWindow:
         self.edit_topic_func = edit_topic_func
 
         # USTAWIENIE OKNA
-        self.win = tk.Toplevel(parent)
+        self.win = ctk.CTkToplevel(parent)
         self.win.title(self.txt["win_archive_title"])
 
         # LABELE
-        tk.Label(self.win, text=self.txt["msg_archive_header"], font=("Arial", 16, "bold")).pack(pady=10)
-        tk.Label(self.win, text=self.txt["msg_archive_sub"], font=("Arial", 12, "bold")).pack(pady=5)
+        ctk.CTkLabel(self.win, text=self.txt["msg_archive_header"], font=("Arial", 16, "bold")).pack(pady=10)
+        ctk.CTkLabel(self.win, text=self.txt["msg_archive_sub"], font=("Arial", 12, "bold")).pack(pady=5)
 
         # RAMKA
-        frame = tk.Frame(self.win)
+        frame = ctk.CTkFrame(self.win, fg_color="transparent")
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # TREE - LISTA Z DANYMI
@@ -43,25 +44,27 @@ class ArchiveWindow:
         self.tree.tag_configure("past", foreground="gray", font=("Arial", 12, "bold"))
 
         # scroll
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
+        scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=self.tree.yview, fg_color="transparent", bg_color="transparent")
         self.tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
+        scrollbar.pack(side="right", fill="y", padx=(2, 0))
         self.tree.pack(side="left", fill="both", expand=True)
 
         # podwojne klikniecie otwiera szczegoły
         self.tree.bind("<Double-1>", self.on_double_click)
 
         # PRZYCISKI
-        btn_frame = tk.Frame(self.win)
+        btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
         btn_frame.pack(pady=10)
 
-        btn_del_sel = tk.Button(btn_frame, text=self.txt["btn_del_selected"], command=self.delete_selected, **self.btn_style)
+        btn_del_sel = ctk.CTkButton(btn_frame, text=self.txt["btn_del_selected"], command=self.delete_selected, **self.btn_style)
         btn_del_sel.pack(side="left", padx=5)
 
-        btn_del_all = tk.Button(btn_frame, text=self.txt["btn_clear_archive"], command=self.delete_all_archive, **self.btn_style, foreground="red")
+        btn_del_all = ctk.CTkButton(btn_frame, text=self.txt["btn_clear_archive"], command=self.delete_all_archive, **self.btn_style)
+        btn_del_all.configure(fg_color="#e74c3c", hover_color="#c0392b")
         btn_del_all.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style, activeforeground="red")
+        btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style)
+        btn_close.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_close.pack(side="left", padx=5)
 
         # pierwsze odswiezenie listy
@@ -190,18 +193,18 @@ class ArchiveWindow:
     def open_details_window(self, exam_data):
         hist_window = tk.Toplevel(self.win)
 
-        info_frame = tk.Frame(hist_window)
+        info_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
         info_frame.pack(pady=10)
 
-        lbl_subject = tk.Label(info_frame, text="", font=("Arial", 12, "bold"))
+        lbl_subject = ctk.CTkLabel(info_frame, text="", font=("Arial", 12, "bold"))
         lbl_subject.pack()
-        lbl_date = tk.Label(info_frame, text="", font=("Arial", 12, "bold"))
+        lbl_date = ctk.CTkLabel(info_frame, text="", font=("Arial", 12, "bold"))
         lbl_date.pack()
 
         # odswiezenie danych o egzaminie
         def refresh_info():
-            lbl_subject.config(text=f"{exam_data['subject']} ({exam_data['title']})")
-            lbl_date.config(text=self.txt["msg_exam_date"].format(date=exam_data['date']))
+            lbl_subject.configure(text=f"{exam_data['subject']} ({exam_data['title']})")
+            lbl_date.configure(text=self.txt["msg_exam_date"].format(date=exam_data['date']))
             hist_window.title(self.txt["win_archive_details_title"].format(subject=exam_data['subject']))
 
         refresh_info()
@@ -226,9 +229,14 @@ class ArchiveWindow:
         tree.tag_configure("todo", foreground="red", font=("Arial", 13, "bold"))
 
         #scroll
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        # scroll
+        scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=tree.yview, fg_color="transparent", bg_color="transparent")
         tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
+
+        # Pakujemy scrollbar
+        scrollbar.pack(side="right", fill="y", padx=(2, 0))
+
+        # Pakujemy tabelę
         tree.pack(side="left", fill="both", expand=True)
 
         # odswiezenie szczegolow
@@ -297,17 +305,18 @@ class ArchiveWindow:
         # wykrywanie podwojnego klikniecia
         tree.bind("<Double-1>", lambda event: edit_topic_local())
 
-        tk.Label(hist_window, text=self.txt["msg_double_click_edit"], font=("Arial", 12, "bold")).pack()
+        ctk.CTkLabel(hist_window, text=self.txt["msg_double_click_edit"], font=("Arial", 12, "bold")).pack()
 
         # przyciski
-        btn_frame = tk.Frame(hist_window)
+        btn_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
         btn_frame.pack(pady=10)
 
-        btn_status = tk.Button(btn_frame, text=self.txt["btn_toggle_status"], command=toggle_status_local, **self.btn_style)
+        btn_status = ctk.CTkButton(btn_frame, text=self.txt["btn_toggle_status"], command=toggle_status_local, **self.btn_style)
         btn_status.pack(side="left", padx=5)
 
-        btn_edit = tk.Button(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local, **self.btn_style)
+        btn_edit = ctk.CTkButton(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local, **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
-        btn_close = tk.Button(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy, **self.btn_style, activeforeground="red")
+        btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy, **self.btn_style)
+        btn_close.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_close.pack(side="left", padx=5)

@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+import customtkinter as ctk
 from tkcalendar import DateEntry
 from datetime import datetime, timedelta
 import uuid
@@ -13,7 +14,7 @@ class AddExamWindow:
         self.callback = callback
 
         #   TWORZENIE NOWEGO OKNA
-        self.win = tk.Toplevel(parent)
+        self.win = ctk.CTkToplevel(parent)
         self.win.resizable(False, False)
         self.win.title(self.txt["win_add_title"])
 
@@ -43,10 +44,11 @@ class AddExamWindow:
         btn_frame = tk.Frame(self.win)
         btn_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20)
 
-        btn_save = tk.Button(btn_frame, text=self.txt["btn_save"], command=self.save_new_exam, **self.btn_style)
+        btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save"], command=self.save_new_exam, **self.btn_style)
         btn_save.pack(side="left", padx=5)
 
-        btn_exit = tk.Button(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style, activeforeground="red")
+        btn_exit = ctk.CTkButton(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style)
+        btn_exit.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_exit.pack(side="left", padx=5)
 
     # FUNKCJA ZAPISUJACA NOWY EGZAMIN W BAZIE DANYCH
