@@ -32,8 +32,8 @@ class PlanWindow():
         columns = ("data", "przedmiot", "temat")
         self.tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
 
-        self.tree.heading("data", text=self.txt["col_date"])
-        self.tree.column("data", width=100, anchor="center")
+        self.tree.heading("data", text="") #self.txt["col_date"]
+        self.tree.column("data", width=45, anchor="e", stretch=False)
         self.tree.heading("przedmiot", text=self.txt["col_subject"])
         self.tree.column("przedmiot", width=150, anchor="w")
         self.tree.heading("temat", text=self.txt["col_topic_long"])
@@ -46,7 +46,7 @@ class PlanWindow():
         self.tree.tag_configure("todo", font=("Arial", 13, "bold"))
         self.tree.tag_configure("normal", font=("Arial", 12, "bold"))
         self.tree.tag_configure("today", font=("Arial", 12, "bold"), foreground="violet")
-        self.tree.tag_configure("red", font=("Arial", 13, "bold"), foreground="red")
+        self.tree.tag_configure("red", font=("Arial", 13, "bold"), foreground="#ff007f")
         self.tree.tag_configure("orange", font=("Arial", 12, "bold"), foreground="orange")
         self.tree.tag_configure("yellow", foreground="yellow", font=("Arial", 12, "bold"))
         self.tree.tag_configure("overdue", foreground="gray", font=("Arial", 12, "italic", "bold"))
@@ -200,6 +200,7 @@ class PlanWindow():
         sorted_dates = sorted(list(all_dates))
 
         for day_str in sorted_dates:
+            self.tree.insert("", "end", values=("", "", ""))
             date_printed = False
 
             # funkcja pomocnicza do nagłówka daty
@@ -223,8 +224,11 @@ class PlanWindow():
                         elif days_left <= 6:
                             tag = "yellow"
 
-                    self.tree.insert("", "end", values=(day_str, "", ""), tags=("date_header",))
-                    self.tree.insert("", "end", values=(f"● {display_text}", "", ""), tags=(tag,))
+                    full_label = f"{display_text} ({day_str})"
+
+                    self.tree.insert("", "end", values=("●", full_label, ""), tags=(tag,))
+                    self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+
                     date_printed = True
 
             # egzaminy w tym dniu
@@ -246,6 +250,7 @@ class PlanWindow():
 
             if date_printed:
                 self.tree.insert("", "end", values=("", "", ""))
+
 
     # funkcja dla przycisku generuj plan | generuje a nastepnie odswieza plan | jesli wystapi blad to go pokaze
     def run_and_refresh(self):

@@ -166,7 +166,7 @@ def apply_theme(app, theme_name):
         # B. TERAZ WYMUSZAMY KOLORY (nadpisujemy date_header w tych miejscach)
         # Dzięki temu, że robimy to tutaj, motyw nie "zamazuje" kolorów
         tree.tag_configure("today", foreground="violet")
-        tree.tag_configure("red", foreground="#ff4444")  # Lekko jaśniejszy czerwony, czytelny na ciemnym
+        tree.tag_configure("red", foreground="#ff007f")  # Lekko jaśniejszy czerwony, czytelny na ciemnym
         tree.tag_configure("orange", foreground="orange")
 
         # Żółty jest słabo widoczny na białym tle, więc dajemy ciemniejszy złoty dla Light mode
