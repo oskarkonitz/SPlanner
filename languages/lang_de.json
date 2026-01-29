@@ -133,5 +133,8 @@
     "months": [
         "Januar", "Februar", "März", "April", "Mai", "Juni",
         "Juli", "August", "September", "Oktober", "November", "Dezember"
-    ]
+    ],
+
+    "menu_notes": "Notizen",
+    "win_note_title": "Notizen"
 }

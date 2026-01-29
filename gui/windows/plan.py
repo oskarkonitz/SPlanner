@@ -7,6 +7,7 @@ from core.planner import plan, date_format
 from gui.windows.add_exam import AddExamWindow
 from gui.windows.archive import ArchiveWindow
 from gui.windows.edit import select_edit_item, EditExamWindow, EditTopicWindow
+from gui.windows.note import NoteWindow
 
 
 class PlanWindow():
@@ -22,7 +23,7 @@ class PlanWindow():
 
         # --- Zmienne Drag & Drop ---
         self.dragged_item = None
-        self.drag_tooltip = None  # Okno "dymka"
+        self.drag_tooltip = None
 
         # ramka
         frame = ctk.CTkFrame(self.win, fg_color="transparent")
@@ -68,17 +69,102 @@ class PlanWindow():
         self.tree.bind("<B1-Motion>", self.on_drag_motion)
         self.tree.bind("<ButtonRelease-1>", self.on_drag_drop)
 
+        # --- Menu Kontekstowe ---
+        self.context_menu = tk.Menu(self.tree, tearoff=0)
+        self.context_menu.add_command(label=self.txt.get("btn_toggle_status", "Change Status"),
+                                      command=self.toggle_status)
+        self.context_menu.add_command(label=self.txt.get("btn_edit", "Edit"), command=self.open_edit)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label=self.txt.get("menu_notes", "Notatki"), command=self.open_notes)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label=self.txt.get("menu_move_tomorrow", "Move to Tomorrow"),
+                                      command=self.move_to_tomorrow)
+
+        # Binding Prawego przycisku
+        if self.win.tk.call('tk', 'windowingsystem') == 'aqua':
+            self.tree.bind("<Button-2>", self.show_context_menu)
+            self.tree.bind("<Control-1>", self.show_context_menu)
+        else:
+            self.tree.bind("<Button-3>", self.show_context_menu)
+
         # pierwsze odswiezenia tabeli
         self.refresh_table()
 
-    # --- DRAG & DROP: Start ---
+    # --- Notatki ---
+    def open_notes(self):
+        selected = self.tree.selection()
+        if not selected: return
+
+        item_id = selected[0]
+        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
+
+        if target_topic:
+            # Przekazujemy callback, żeby po zamknięciu notatek odświeżyć tabelę (żeby ikonka się pojawiła)
+            def on_close():
+                self.refresh_table()
+
+            # Musimy lekko zmodyfikować NoteWindow lub po prostu odświeżyć ręcznie
+            # Ale NoteWindow niszczy się samo.
+            # Zrobimy trick: czekamy aż okno się zamknie? Nie, prościej:
+            # NoteWindow zapisuje do `data`. My odświeżymy tabelę przy następnej interakcji,
+            # albo przekażemy callback do NoteWindow (wymagałoby zmiany w note.py).
+            # Na razie zostawmy standardowe otwarcie. Ikonka pojawi się po odświeżeniu (np. kliknięciu w inną zakładkę).
+
+            # Żeby było PRO: dodamy on_close do NoteWindow w note.py?
+            # Skoro nie chcemy zmieniać note.py, to ikonka pojawi się np. po zmianie statusu lub przeładowaniu.
+            # Ale dla lepszego efektu, możesz dodać `self.win.wait_window(note_window.win)` i potem `refresh`.
+
+            win = NoteWindow(self.win, self.txt, self.data, self.btn_style, target_topic)
+            # Czekamy aż okno notatek zostanie zamknięte, a potem odświeżamy tabelę
+            self.win.wait_window(win.win)
+            self.refresh_table()
+
+    # --- Menu Kontekstowe ---
+    def show_context_menu(self, event):
+        item_id = self.tree.identify_row(event.y)
+        if item_id:
+            self.tree.selection_set(item_id)
+            self.on_selection_change(None)
+
+            is_topic = False
+            for t in self.data["topics"]:
+                if str(t["id"]) == str(item_id):
+                    is_topic = True
+                    break
+
+            if is_topic:
+                try:
+                    self.context_menu.tk_popup(event.x_root, event.y_root)
+                finally:
+                    self.context_menu.grab_release()
+
+    def move_to_tomorrow(self):
+        selected = self.tree.selection()
+        if not selected: return
+
+        item_id = selected[0]
+        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
+
+        if target_topic:
+            if target_topic.get("locked", False):
+                messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
+                return
+
+            today = date.today()
+            tomorrow = today + timedelta(days=1)
+
+            target_topic["scheduled_date"] = str(tomorrow)
+            save(self.data)
+            self.refresh_table()
+            if self.dashboard_callback: self.dashboard_callback()
+
+    # --- DRAG & DROP ---
     def on_drag_start(self, event):
         item_id = self.tree.identify_row(event.y)
         if not item_id:
             self.dragged_item = None
             return
 
-        # Sprawdzamy czy to temat
         is_topic = False
         target_topic_data = None
         for topic in self.data["topics"]:
@@ -95,14 +181,12 @@ class PlanWindow():
         else:
             self.dragged_item = None
 
-    # --- DRAG & DROP: Ruch ---
     def on_drag_motion(self, event):
         if self.dragged_item and self.drag_tooltip:
             x = event.x_root + 15
             y = event.y_root + 10
             self.drag_tooltip.geometry(f"+{x}+{y}")
 
-    # --- DRAG & DROP: Upuszczenie ---
     def on_drag_drop(self, event):
         if self.drag_tooltip:
             self.drag_tooltip.destroy()
@@ -133,7 +217,6 @@ class PlanWindow():
             self.dragged_item = None
             return
 
-        # Zapis zmian
         topic_found = False
         for topic in self.data["topics"]:
             if str(topic["id"]) == str(self.dragged_item):
@@ -154,7 +237,6 @@ class PlanWindow():
 
         self.dragged_item = None
 
-    # --- Helper: Dymek ---
     def create_drag_tooltip(self, text, event):
         if self.drag_tooltip:
             self.drag_tooltip.destroy()
@@ -171,7 +253,7 @@ class PlanWindow():
                          relief="solid", borderwidth=1, padx=5, pady=2, font=("Arial", 10))
         label.pack()
 
-    # --- Reszta metod ---
+    # --- Reszta ---
     def on_selection_change(self, event):
         selected = self.tree.selection()
         if not selected:
@@ -210,34 +292,21 @@ class PlanWindow():
         self.selection_callback(status_mode, edit_mode)
 
     def on_tree_click(self, event):
-        """
-        Zabezpiecza przed zaznaczaniem pustych wierszy i separatorów.
-        Kliknięcie w 'puste' odznacza wszystko.
-        """
         item_id = self.tree.identify_row(event.y)
-
-        # 1. Kliknięcie w pustą przestrzeń (poza wierszami)
         if not item_id:
             self.deselect_all()
             return "break"
 
-        # 2. Sprawdzamy czy to: Egzamin lub Data
         is_interactive = str(item_id).startswith("exam_") or str(item_id).startswith("date_")
-
-        # 3. Sprawdzamy czy to Temat
         if not is_interactive:
             for t in self.data["topics"]:
                 if str(t["id"]) == str(item_id):
                     is_interactive = True
                     break
 
-        # 4. Jeśli to NIE jest żadne z powyższych (czyli separator lub pusta linia formatująca)
         if not is_interactive:
-            # --- ZMIANA: Dodajemy odznaczanie (deselect) przed blokadą ---
             self.deselect_all()
-            return "break"  # Blokuje zaznaczenie pustego wiersza
-
-        # Jeśli interaktywne -> normalne zachowanie
+            return "break"
         return
 
     def deselect_all(self):
@@ -260,6 +329,7 @@ class PlanWindow():
                and t["status"] == "todo" and t["exam_id"] in active_exams_ids
         ]
 
+        # --- ZMIANA: Wyświetlanie ikonki w Zaległych ---
         if overdue_topics:
             self.tree.insert("", "end", values=("", self.txt["tag_overdue"], ""), tags=("overdue",))
             for topic in overdue_topics:
@@ -268,8 +338,13 @@ class PlanWindow():
                     if exam["id"] == topic["exam_id"]:
                         subj_name = exam["subject"]
                         break
+
+                # IKONKA 📝
+                has_note = topic.get("note", "").strip()
+                note_mark = " 📝" if has_note else ""
+
                 self.tree.insert("", "end", iid=topic["id"],
-                                 values=("", f"{topic['scheduled_date']}\t{subj_name}", topic["name"]),
+                                 values=("", f"{topic['scheduled_date']}\t{subj_name}", topic["name"] + note_mark),
                                  tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
@@ -332,13 +407,19 @@ class PlanWindow():
                 if len(todays_exams) > 0 and len(todays_topics) > 0:
                     self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
+                # --- ZMIANA: Wyświetlanie ikonki w Dniu ---
                 for topic in todays_topics:
                     subj_name = self.txt["val_other"]
                     for exam in self.data["exams"]:
                         if exam["id"] == topic["exam_id"]:
                             subj_name = exam["subject"]
                             break
-                    self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]),
+
+                    # IKONKA 📝
+                    has_note = topic.get("note", "").strip()
+                    note_mark = " 📝" if has_note else ""
+
+                    self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"] + note_mark),
                                      tags=(topic["status"],))
 
                 self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))

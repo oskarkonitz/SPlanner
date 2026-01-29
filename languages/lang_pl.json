@@ -133,5 +133,8 @@
     "months": [
         "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
         "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
-    ]
+    ],
+
+    "menu_notes": "Notatki",
+    "win_note_title": "Notatki"
 }
