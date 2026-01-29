@@ -122,6 +122,7 @@
         "Mistrz planowania!\nZadania ukończone.",
         "Koniec na dziś!\nJesteś super!"
     ],
+    "msg_task_locked": "To zadanie jest zablokowane!",
 
     "menu_days_off": "Dni Wolne",
     "win_blocked_title": "Zarządzaj Dniami Wolnymi",

@@ -122,6 +122,7 @@
         "Tolle Arbeit heute!\nBis morgen.",
         "Geschafft!\n100% erledigt."
     ],
+    "msg_task_locked": "Diese Aufgabe ist gesperrt!",
 
     "menu_days_off": "Freie Tage",
     "win_blocked_title": "Freie Tage verwalten",

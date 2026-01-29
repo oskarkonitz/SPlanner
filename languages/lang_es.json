@@ -122,6 +122,7 @@
         "¡Gran trabajo hoy!\nHasta mañana.",
         "¡Lo lograste!\n100% completado."
     ],
+    "msg_task_locked": "¡Esta tarea está bloqueada!",
 
     "menu_days_off": "Días Libres",
     "win_blocked_title": "Gestionar días libres",

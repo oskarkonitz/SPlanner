@@ -20,6 +20,10 @@ class PlanWindow():
 
         self.win = parent
 
+        # --- Zmienne Drag & Drop ---
+        self.dragged_item = None
+        self.drag_tooltip = None  # Okno "dymka"
+
         # ramka
         frame = ctk.CTkFrame(self.win, fg_color="transparent")
         frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -55,16 +59,121 @@ class PlanWindow():
         scrollbar.pack(side="right", fill="y", padx=(2, 0))
         self.tree.pack(side="left", fill="both", expand=True)
 
+        # --- BINDINGI ---
         self.tree.bind("<Button-1>", self.on_tree_click)
         self.tree.bind("<<TreeviewSelect>>", self.on_selection_change)
+
+        # Drag & Drop
+        self.tree.bind("<ButtonPress-1>", self.on_drag_start, add="+")
+        self.tree.bind("<B1-Motion>", self.on_drag_motion)
+        self.tree.bind("<ButtonRelease-1>", self.on_drag_drop)
 
         # pierwsze odswiezenia tabeli
         self.refresh_table()
 
+    # --- DRAG & DROP: Start ---
+    def on_drag_start(self, event):
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            self.dragged_item = None
+            return
+
+        # Sprawdzamy czy to temat
+        is_topic = False
+        target_topic_data = None
+        for topic in self.data["topics"]:
+            if str(topic["id"]) == str(item_id):
+                is_topic = True
+                target_topic_data = topic
+                break
+
+        if is_topic:
+            self.dragged_item = item_id
+            item_values = self.tree.item(item_id, "values")
+            display_text = f"{item_values[1]}: {item_values[2]}"
+            self.create_drag_tooltip(display_text, event)
+        else:
+            self.dragged_item = None
+
+    # --- DRAG & DROP: Ruch ---
+    def on_drag_motion(self, event):
+        if self.dragged_item and self.drag_tooltip:
+            x = event.x_root + 15
+            y = event.y_root + 10
+            self.drag_tooltip.geometry(f"+{x}+{y}")
+
+    # --- DRAG & DROP: Upuszczenie ---
+    def on_drag_drop(self, event):
+        if self.drag_tooltip:
+            self.drag_tooltip.destroy()
+            self.drag_tooltip = None
+
+        if not self.dragged_item:
+            return
+
+        target_id = self.tree.identify_row(event.y)
+        if not target_id:
+            self.dragged_item = None
+            return
+
+        if target_id == self.dragged_item:
+            self.dragged_item = None
+            return
+
+        target_date_str = None
+        current_check = target_id
+
+        while current_check:
+            if str(current_check).startswith("date_"):
+                target_date_str = str(current_check).replace("date_", "")
+                break
+            current_check = self.tree.prev(current_check)
+
+        if not target_date_str:
+            self.dragged_item = None
+            return
+
+        # Zapis zmian
+        topic_found = False
+        for topic in self.data["topics"]:
+            if str(topic["id"]) == str(self.dragged_item):
+                if topic.get("locked", False):
+                    messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
+                    self.dragged_item = None
+                    return
+
+                topic["scheduled_date"] = target_date_str
+                topic_found = True
+                break
+
+        if topic_found:
+            save(self.data)
+            self.refresh_table()
+            if self.dashboard_callback:
+                self.dashboard_callback()
+
+        self.dragged_item = None
+
+    # --- Helper: Dymek ---
+    def create_drag_tooltip(self, text, event):
+        if self.drag_tooltip:
+            self.drag_tooltip.destroy()
+
+        self.drag_tooltip = tk.Toplevel(self.parent)
+        self.drag_tooltip.overrideredirect(True)
+        self.drag_tooltip.attributes("-topmost", True)
+
+        x = event.x_root + 15
+        y = event.y_root + 10
+        self.drag_tooltip.geometry(f"+{x}+{y}")
+
+        label = tk.Label(self.drag_tooltip, text=text, bg="#e0e0e0", fg="#000000",
+                         relief="solid", borderwidth=1, padx=5, pady=2, font=("Arial", 10))
+        label.pack()
+
+    # --- Reszta metod ---
     def on_selection_change(self, event):
         selected = self.tree.selection()
-
-        # 1. Nic nie zaznaczone
         if not selected:
             self.selection_callback("default", "default")
             return
@@ -72,13 +181,10 @@ class PlanWindow():
         item_id = selected[0]
         tags = self.tree.item(item_id, "tags")
 
-        # --- ZMIANA: Domyślnie ustawiamy tryb na 'disabled' (szary/brak reakcji) ---
         status_mode = "disabled"
         edit_mode = "disabled"
 
-        # 2. Rozpoznawanie elementu
-        if item_id.startswith("topic_"):
-            # Temat: Edycja aktywna, Status zależny od todo/done
+        if str(item_id).startswith("topic_") or any(str(t["id"]) == str(item_id) for t in self.data["topics"]):
             edit_mode = "editable"
             if "todo" in tags:
                 status_mode = "todo"
@@ -87,16 +193,13 @@ class PlanWindow():
             else:
                 status_mode = "default"
 
-        elif item_id.startswith("exam_"):
-            # Egzamin: Edycja aktywna, Status zablokowany (czerwony - bo egzaminu nie odhaczamy)
+        elif str(item_id).startswith("exam_"):
             edit_mode = "editable"
-            status_mode = "locked"
+            status_mode = "disabled"
 
-        elif item_id.startswith("date_"):
-            # Data: Edycja WYŁĄCZONA (szara), Status aktywny (Blokuj/Odblokuj)
+        elif str(item_id).startswith("date_"):
             edit_mode = "disabled"
-
-            date_str = item_id.replace("date_", "")
+            date_str = str(item_id).replace("date_", "")
             blocked_list = self.data.get("blocked_dates", [])
 
             if date_str in blocked_list:
@@ -104,23 +207,38 @@ class PlanWindow():
             else:
                 status_mode = "date_free"
 
-        # W przypadku separatorów/pustych linii wchodzimy w domyślny stan "disabled",
-        # więc przyciski nie będą się podświetlać na czerwono.
-
         self.selection_callback(status_mode, edit_mode)
 
     def on_tree_click(self, event):
+        """
+        Zabezpiecza przed zaznaczaniem pustych wierszy i separatorów.
+        Kliknięcie w 'puste' odznacza wszystko.
+        """
         item_id = self.tree.identify_row(event.y)
 
+        # 1. Kliknięcie w pustą przestrzeń (poza wierszami)
         if not item_id:
             self.deselect_all()
-            return
-
-        is_interactive = item_id.startswith("exam_") or item_id.startswith("topic_") or item_id.startswith("date_")
-
-        if not is_interactive:
-            self.deselect_all()
             return "break"
+
+        # 2. Sprawdzamy czy to: Egzamin lub Data
+        is_interactive = str(item_id).startswith("exam_") or str(item_id).startswith("date_")
+
+        # 3. Sprawdzamy czy to Temat
+        if not is_interactive:
+            for t in self.data["topics"]:
+                if str(t["id"]) == str(item_id):
+                    is_interactive = True
+                    break
+
+        # 4. Jeśli to NIE jest żadne z powyższych (czyli separator lub pusta linia formatująca)
+        if not is_interactive:
+            # --- ZMIANA: Dodajemy odznaczanie (deselect) przed blokadą ---
+            self.deselect_all()
+            return "break"  # Blokuje zaznaczenie pustego wiersza
+
+        # Jeśli interaktywne -> normalne zachowanie
+        return
 
     def deselect_all(self):
         selection = self.tree.selection()
@@ -151,7 +269,7 @@ class PlanWindow():
                         subj_name = exam["subject"]
                         break
                 self.tree.insert("", "end", iid=topic["id"],
-                                 values=("", f"{topic["scheduled_date"]}\t{subj_name}", topic["name"]),
+                                 values=("", f"{topic['scheduled_date']}\t{subj_name}", topic["name"]),
                                  tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
@@ -231,17 +349,13 @@ class PlanWindow():
 
     def run_and_refresh(self, only_unscheduled=False):
         try:
-            # Przekazujemy flagę do algorytmu
             plan(self.data, only_unscheduled=only_unscheduled)
             save(self.data)
             self.refresh_table()
 
             if self.dashboard_callback: self.dashboard_callback()
 
-            # Wyświetlamy odpowiedni komunikat
             msg_key = "msg_plan_done"
-            # Opcjonalnie: można dodać osobny komunikat dla doplanowania, ale ten też pasuje
-
             messagebox.showinfo(self.txt["msg_success"], self.txt[msg_key])
         except Exception as e:
             messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
@@ -253,21 +367,20 @@ class PlanWindow():
             return
 
         item_id = selected[0]
+        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
 
-        if item_id.startswith("topic_"):
-            target_topic = next((t for t in self.data["topics"] if t["id"] == item_id), None)
-            if target_topic:
-                target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
-                save(self.data)
+        if target_topic:
+            target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
+            save(self.data)
 
-                new_tag = target_topic["status"]
-                self.tree.item(item_id, tags=(new_tag,))
+            new_tag = target_topic["status"]
+            self.tree.item(item_id, tags=(new_tag,))
 
-                if self.dashboard_callback: self.dashboard_callback()
-                self.on_selection_change(None)
+            if self.dashboard_callback: self.dashboard_callback()
+            self.on_selection_change(None)
 
-        elif item_id.startswith("date_"):
-            date_str = item_id.replace("date_", "")
+        elif str(item_id).startswith("date_"):
+            date_str = str(item_id).replace("date_", "")
             if "blocked_dates" not in self.data:
                 self.data["blocked_dates"] = []
 

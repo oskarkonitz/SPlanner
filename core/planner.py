@@ -58,13 +58,11 @@ def topics_list_create(data, e_id, only_unscheduled=False):
                     not topic.get("locked", False))
 
         if is_valid:
-            # --- NOWOŚĆ: Filtracja dla trybu "Doplanuj" ---
+            # Filtracja dla trybu "Doplanuj"
             if only_unscheduled:
-                # Jeśli tryb "tylko nowe", bierzemy tylko te, które NIE mają daty
                 if not topic.get("scheduled_date"):
                     topics_list.append(topic["id"])
             else:
-                # Tryb pełny - bierzemy wszystko
                 topics_list.append(topic["id"])
 
     return topics_list
@@ -75,9 +73,7 @@ def plan(data, only_unscheduled=False):
     today = date.today()
     blocked_set = set(data.get("blocked_dates", []))
 
-    # Tworzymy strukturę kalendarza (pustą - zawiera tylko znaczniki E)
-    # W trybie "Doplanuj" kalendarz technicznie nie widzi starych zadań w tej zmiennej 'callendar',
-    # ale to dobrze - nowe zadania po prostu "dokleją się" do dni.
+    # Tworzymy strukturę kalendarza
     callendar = callendar_create(data, today)
 
     # Iterujemy po egzaminach
@@ -91,15 +87,17 @@ def plan(data, only_unscheduled=False):
             continue
 
         # 1. Określamy START okna nauki
+        # Skanujemy wstecz, aż trafimy na "E" (inny egzamin) lub "dziś"
         scan_date = end_study_date
         while scan_date > today and "E" not in callendar.get(scan_date, []):
             scan_date -= timedelta(days=1)
 
+        # --- ZMIANA 1: Zezwalamy na start W DNIU poprzedniego egzaminu ---
         start_study_date = scan_date
-        if "E" in callendar.get(start_study_date, []):
-            start_study_date += timedelta(days=1)
 
-        # --- ZMIANA: Pobieramy listę z uwzględnieniem trybu ---
+        # Wcześniej było tu przesuwanie o +1 dzień, jeśli znaleziono "E".
+        # Usunąłem to, aby włączyć dzień egzaminu do puli dostępnych dni.
+
         t_list = topics_list_create(data, exam["id"], only_unscheduled)
 
         if not t_list:
@@ -112,14 +110,28 @@ def plan(data, only_unscheduled=False):
 
         while curr <= end_study_date:
             date_str = str(curr)
-            if date_str not in blocked_set and "E" not in callendar.get(curr, []):
-                valid_days.append(curr)
+
+            # Sprawdzamy czy dzień ma egzamin ("E")
+            has_exam = "E" in callendar.get(curr, [])
+
+            # --- ZMIANA 2: Logika wpuszczania dnia do listy ---
+            # Dzień jest valid, jeśli:
+            # a) Nie jest zablokowany ręcznie (kłódka w menu blokad)
+            # b) ORAZ (nie ma egzaminu LUB ma egzamin, ale jest to dzień startowy)
+            # Dzięki temu 'start_study_date' (dzień poprzedniego egzaminu) wchodzi do gry.
+
+            if date_str not in blocked_set:
+                if not has_exam or (has_exam and curr == start_study_date):
+                    valid_days.append(curr)
+
             curr += timedelta(days=1)
 
         if not valid_days:
             continue
 
         # 3. ODWRACAMY listę dni (Logika Back-loadingu)
+        # Dzięki temu dzień z egzaminem (najwcześniejszy) ląduje na KOŃCU listy.
+        # Tematy będą tam dodane tylko wtedy, gdy zabraknie miejsca w późniejszych dniach.
         valid_days.sort(reverse=True)
 
         # 4. Algorytm Rozkładania
@@ -139,15 +151,11 @@ def plan(data, only_unscheduled=False):
                         callendar[day].append(task_id)
 
     # 5. Zapisanie wyników do bazy danych
-
-    # --- ZMIANA: Czyścimy stare daty TYLKO w trybie pełnym ---
     if not only_unscheduled:
         for topic in data["topics"]:
             if topic["status"] == "todo" and not topic.get("locked", False):
                 topic["scheduled_date"] = None
 
-    # Przypisujemy nowe daty z kalendarza
-    # W trybie 'only_unscheduled' kalendarz zawiera tylko nowe zadania, więc tylko one dostaną daty.
     for date_key, items in callendar.items():
         for item_id in items:
             if item_id == "E": continue

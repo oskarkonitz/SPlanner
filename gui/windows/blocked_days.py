@@ -184,6 +184,6 @@ class BlockedDaysWindow:
     def action_save_and_gen(self):
         self.data["blocked_dates"] = self.local_blocked_dates
         save(self.data)
+        self.win.destroy()
         if self.callback:
             self.callback()
-        self.win.destroy()

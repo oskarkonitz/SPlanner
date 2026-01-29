@@ -314,11 +314,41 @@ class GUI:
             # Domyślny tekst ("Zmień Status")
             self.btn_status.configure(text=self.txt["btn_toggle_status"])
 
+    def animate_bar(self, bar, target_value):
+        """Płynnie animuje pasek postępu od obecnej wartości do docelowej"""
+        current_value = bar.get()
+        diff = target_value - current_value
+
+        # Jeśli różnica jest bardzo mała (np. odświeżenie bez zmian), ustawiamy od razu
+        if abs(diff) < 0.005:
+            bar.set(target_value)
+            return
+
+        steps = 25  # Ilość klatek animacji (im więcej, tym płynniej)
+        duration = 10  # Czas między klatkami w ms (im mniej, tym szybciej)
+        step_size = diff / steps
+
+        def _step(iteration):
+            # Obliczamy nową wartość dla tej klatki
+            new_val = current_value + (step_size * (iteration + 1))
+            bar.set(new_val)
+
+            # Jeśli to nie koniec, planujemy kolejny krok
+            if iteration < steps - 1:
+                self.root.after(duration, _step, iteration + 1)
+            else:
+                # Na samym końcu ustawiamy idealnie wartość docelową (żeby uniknąć błędów zaokrągleń)
+                bar.set(target_value)
+
+        # Uruchamiamy pierwszy krok
+        _step(0)
+
     def refresh_dashboard(self):
         today = date.today()
         current_colors = THEMES.get(self.current_theme, THEMES["light"])
         default_text = current_colors["fg_text"]
 
+        # A. Postęp Całkowity
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         active_topics = [t for t in self.data["topics"] if t["exam_id"] in active_exams_ids]
         total = len(active_topics)
@@ -333,8 +363,11 @@ class GUI:
         self.lbl_progress.configure(
             text=self.txt["stats_total_progress"].format(done=done, total=total, progress=prog_percent))
 
-        self.bar_total.set(prog_val)
+        # --- ZMIANA: Zamiast self.bar_total.set(prog_val) ---
+        self.animate_bar(self.bar_total, prog_val)
+        # ----------------------------------------------------
 
+        # B. Postęp Dziś
         today_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
         t_tot = len(today_all)
         t_don = len([t for t in today_all if t["status"] == "done"])
@@ -350,20 +383,13 @@ class GUI:
                 self.lbl_today.configure(text_color="#00b800")
                 self.bar_today.configure(progress_color="#2ecc71")
 
-                # --- LOSOWA CELEBRACJA ---
+                # --- LOSOWA CELEBRACJA (Konfetti / Fajerwerki) ---
                 if not self.celebration_shown:
-                    # 1. Losowanie tekstu
-                    # Pobieramy z JSON. Jeśli to lista -> losujemy. Jeśli napis -> bierzemy napis.
+                    import random
                     raw_msg = self.txt.get("msg_all_done", ["Good Job!"])
+                    msg = random.choice(raw_msg) if isinstance(raw_msg, list) else raw_msg
 
-                    if isinstance(raw_msg, list):
-                        msg = random.choice(raw_msg)
-                    else:
-                        msg = raw_msg
-
-                    # 2. Losowanie efektu (50/50)
                     effect_type = random.choice(["confetti", "fireworks"])
-
                     if effect_type == "confetti":
                         self.effect_confetti.start(text=msg)
                     else:
@@ -373,15 +399,17 @@ class GUI:
             else:
                 self.lbl_today.configure(text_color=default_text)
                 self.bar_today.configure(progress_color="#3498db")
-                # Resetujemy flagę, żeby po spadku postępu i ponownym wbiciu 100% znowu strzeliło
                 self.celebration_shown = False
 
-            self.bar_today.set(p_day_val)
+            # --- ZMIANA: Zamiast self.bar_today.set(p_day_val) ---
+            self.animate_bar(self.bar_today, p_day_val)
+            # -----------------------------------------------------
 
         else:
             self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
-            self.bar_today.set(0)
+            self.bar_today.set(0)  # Tu możemy zostawić zwykły set, bo i tak jest 0
 
+        # C. Najbliższy egzamin
         future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
         future_exams.sort(key=lambda x: x["date"])
 
@@ -404,8 +432,6 @@ class GUI:
             else:
                 text = self.txt["stats_exam_days"].format(days=days, subject=subjects_str)
                 if days <= 5:
-                    # Dopasowanie koloru do motywu: Złoty dla jasnego, Żółty dla ciemnego
-                    # To ten sam kolor (#e6b800), który jest używany w tabeli (theme_manager.py)
                     if self.current_theme == "light":
                         color = "#e6b800"
                     else:

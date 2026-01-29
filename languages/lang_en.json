@@ -122,6 +122,7 @@
         "Great work today!\nSee you tomorrow.",
         "Nailed it!\n100% Complete."
     ],
+    "msg_task_locked": "This task is locked!",
 
     "menu_days_off": "Days Off",
     "win_blocked_title": "Manage Days Off",
