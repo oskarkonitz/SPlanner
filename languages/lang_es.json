@@ -32,6 +32,8 @@
     "btn_clear_archive": "Borrar archivo",
     "btn_edit_exam": "Editar examen",
     "btn_confirm": "Confirmar",
+    "btn_block_day": "Bloquear & Generar",
+    "btn_unblock_day": "Desbloq. & Generar",
 
     "stats_no_today": "No hay tareas programadas para hoy",
     "stats_progress_today": "Progreso hoy:\n{done}/{total} ({prog}%)",
@@ -72,6 +74,7 @@
     "tag_todo": "Por hacer",
     "tag_archived": "Archivado",
     "val_other": "Otro",
+    "tag_day_off": "(Libre)",
 
     "manual_title": "Manual de Usuario",
     "manual_header": "¡BIENVENIDO A SPLANNER!\n\n",
@@ -110,5 +113,16 @@
     "msg_double_click_edit": "Haz doble clic en el tema para editarlo",
     "msg_select_topic": "Selecciona un tema.",
     "msg_lang_changed": "Idioma cambiado. Reinicia el programa para ver los cambios. ¿Reiniciar ahora?\n\nLanguage changed. Please restart the application to see changes. Restart now?",
-    "msg_date_format_err": "¡La fecha debe tener el formato YYYY-MM-DD (ej. 2026-05-20)!"
+    "msg_date_format_err": "¡La fecha debe tener el formato YYYY-MM-DD (ej. 2026-05-20)!",
+
+    "menu_days_off": "Días Libres",
+    "win_blocked_title": "Gestionar días libres",
+    "lbl_blocked_header": "Elige días sin estudio:",
+    "lbl_blocked_legend": "(Rojo = Libre)",
+    "btn_save_gen": "Guardar y Generar",
+    "days_short": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    "months": [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
 }

@@ -90,6 +90,10 @@ def apply_theme(app, theme_name):
                     foreground=colors["fg_tree_head"],
                     relief="flat")
 
+    style.map("Treeview.Heading",
+              background=[("active", colors["bg_tree_head"]), ("pressed", colors["bg_tree_head"])],
+              foreground=[("active", colors["fg_tree_head"]), ("pressed", colors["fg_tree_head"])])
+
     style.map("Treeview",
               background=[("selected", colors["select_bg"])],
               foreground=[("selected", colors["select_fg"])])

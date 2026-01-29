@@ -9,6 +9,7 @@ from core.planner import date_format
 from gui.windows.plan import PlanWindow
 from gui.windows.manual import ManualWindow
 from gui.theme_manager import apply_theme, THEMES
+from gui.windows.blocked_days import BlockedDaysWindow
 
 
 class GUI:
@@ -43,12 +44,13 @@ class GUI:
         file_menu.add_command(label=self.txt["btn_exit"], command=self.root.quit)
         self.menubar.add_cascade(label=self.txt["menu_file"], menu=file_menu)
 
-        #menu narzedzia
+        # menu narzedzia
         tools_menu = tk.Menu(self.menubar, tearoff=0)
         tools_menu.add_command(label=self.txt["btn_add_exam"], command=self.sidebar_add)
         tools_menu.add_separator()
         tools_menu.add_command(label=self.txt["btn_refresh"], command=self.menu_refresh)
         tools_menu.add_command(label=self.txt["btn_gen_plan"], command=self.menu_gen_plan)
+        tools_menu.add_command(label=self.txt.get("menu_days_off", "Days Off"), command=self.open_blocked_days)
         tools_menu.add_separator()
         tools_menu.add_command(label=self.txt["win_archive_title"], command=self.sidebar_archive)
         self.menubar.add_cascade(label=self.txt["menu_tools"], menu=tools_menu)
@@ -71,23 +73,19 @@ class GUI:
                 command=lambda c=code: self.change_language(c)
             )
 
-        # Dodajemy podmenu Języki do menu Settings
         settings_menu.add_cascade(label=self.txt.get("lang_label", "Language"), menu=lang_menu)
 
         # --- Podmenu 2: Kolory (Colors) ---
         colors_menu = tk.Menu(settings_menu, tearoff=0)
-
-        # Zmienna trzymająca aktualny motyw (domyślnie system)
         self.selected_theme_var = tk.StringVar(value=self.current_theme)
 
-        # Opcje kolorystyczne
-        colors_menu.add_radiobutton(label=self.txt.get("theme_light", "Light"), value="light", variable=self.selected_theme_var, command=lambda: self.change_theme("light"))
-        colors_menu.add_radiobutton(label=self.txt.get("theme_dark", "Dark"), value="dark", variable=self.selected_theme_var, command=lambda: self.change_theme("dark"))
+        colors_menu.add_radiobutton(label=self.txt.get("theme_light", "Light"), value="light",
+                                    variable=self.selected_theme_var, command=lambda: self.change_theme("light"))
+        colors_menu.add_radiobutton(label=self.txt.get("theme_dark", "Dark"), value="dark",
+                                    variable=self.selected_theme_var, command=lambda: self.change_theme("dark"))
 
-        # Dodajemy podmenu Kolory do menu Settings
         settings_menu.add_cascade(label=self.txt.get("menu_colors", "Colors"), menu=colors_menu)
 
-        # --- Dodajemy główne menu Settings do paska ---
         self.menubar.add_cascade(label=self.txt.get("menu_settings", "Settings"), menu=settings_menu)
 
         # menu pomoc
@@ -100,7 +98,8 @@ class GUI:
         self.sidebar.pack_propagate(False)
 
         #  Tytuł aplikacji
-        self.label_title = tk.Label(self.sidebar, text=self.txt["menu_app_title"], font=("Arial", 20, "bold"), wraplength=230, justify="center")
+        self.label_title = tk.Label(self.sidebar, text=self.txt["menu_app_title"], font=("Arial", 20, "bold"),
+                                    wraplength=230, justify="center")
         self.label_title.pack(pady=(20, 10))
 
         #  Ramka statystyk (Dashboard)
@@ -111,25 +110,24 @@ class GUI:
         self.lbl_next_exam = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 14, "bold"), wraplength=230)
         self.lbl_next_exam.pack(pady=(10, 20))
 
-        # Etykiety wewnątrz ramki
         # 2. Postęp DZIŚ
-        self.lbl_today = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 12, "bold"), wraplength=230, justify="center")
+        self.lbl_today = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 12, "bold"), wraplength=230,
+                                      justify="center")
         self.lbl_today.pack(pady=(5, 2))
 
-        # Pasek postępu DZIŚ
         self.bar_today = ctk.CTkProgressBar(self.stats_frame, width=180, height=6, corner_radius=5)
-        self.bar_today.set(0)  # Startujemy od 0
-        self.bar_today.configure(progress_color="#3498db")  # Zielony kolor paska
+        self.bar_today.set(0)
+        self.bar_today.configure(progress_color="#3498db")
         self.bar_today.pack(pady=(8, 15))
 
         # 3. Postęp CAŁKOWITY
-        self.lbl_progress = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 12, "bold"), wraplength=230, justify="center")
+        self.lbl_progress = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 12, "bold"), wraplength=230,
+                                         justify="center")
         self.lbl_progress.pack(pady=(5, 2))
 
-        # Pasek postępu CAŁKOWITY
         self.bar_total = ctk.CTkProgressBar(self.stats_frame, width=180, height=6, corner_radius=5)
         self.bar_total.set(0)
-        self.bar_total.configure(progress_color="#3498db")  # Niebieski kolor paska (dla odróżnienia)
+        self.bar_total.configure(progress_color="#3498db")
         self.bar_total.pack(pady=(8, 10))
 
         #  Styl przycisków
@@ -141,69 +139,56 @@ class GUI:
             "text_color": "white"
         }
 
-        #  Menu Główne
-        # tk.Label(self.root, text=self.txt["menu_title"], font=("Arial", 14, "bold")).pack(pady=20, padx=60)
-
         self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.root.quit, **self.btn_style)
         self.btn_exit.pack(side="bottom", pady=30)
 
-        # Funkcje obsługujące najechanie myszką
         def on_enter_exit(event):
-            # Po najechaniu: Czerwona ramka i czerwony tekst
             self.btn_exit.configure(
                 border_color="#e74c3c",
                 text_color="#e74c3c",
-                fg_color="transparent"  # Lub usuń tę linię, jeśli wolisz, by przycisk nie robił się przezroczysty
+                fg_color="transparent"
             )
 
         def on_leave_exit(event):
-            # Po zjechaniu: Przywracamy kolory z globalnego stylu (self.btn_style)
-            # Dzięki temu przycisk wróci do wyglądu zgodnego z aktualnym motywem (Light/Dark)
             self.btn_exit.configure(
                 border_color=self.btn_style["border_color"],
                 text_color=self.btn_style["text_color"],
                 fg_color=self.btn_style["fg_color"]
             )
 
-        # Przypisanie funkcji do zdarzeń (Enter = najechanie, Leave = zjechanie)
         self.btn_exit.bind("<Enter>", on_enter_exit)
         self.btn_exit.bind("<Leave>", on_leave_exit)
 
-        # btn_start = tk.Button(self.root, text=self.txt["btn_run"], command=self.open_plan_window, **self.btn_style)
-        # btn_start.pack(pady=10)
         self.middle_frame = tk.Frame(self.sidebar)
         self.middle_frame.pack(expand=True)
 
-        # btn_add = tk.Button(self.middle_frame, text=self.txt["btn_add_exam"], command=self.sidebar_add, **self.btn_style)
-        # btn_add.pack(pady=5)
-
-        self.btn_status = ctk.CTkButton(self.middle_frame, text=self.txt["btn_toggle_status"], command=self.sidebar_toggle, **self.btn_style)
+        self.btn_status = ctk.CTkButton(self.middle_frame, text=self.txt["btn_toggle_status"],
+                                        command=self.sidebar_toggle, **self.btn_style)
         self.btn_status.pack(pady=5)
 
+        # --- ZMIANA: Logika kolorów Statusu (tylko konkretne przypadki mają kolor) ---
         def on_enter_status(event):
             color = None
-
-            # 1. Logika dla statusu TODO (Zielony)
             if self.status_btn_mode == "todo":
                 color = "#2ecc71"
-
-                # 2. Logika dla statusu DONE (Tu robimy poprawkę)
             elif self.status_btn_mode == "done":
                 if self.current_theme == "light":
-                    color = "#555555"  # Ciemnoszary (dla jasnego tła)
+                    color = "#555555"
                 else:
-                    color = "#ffffff"  # Biały (dla ciemnego tła)
-
-            # 3. Logika dla zablokowanych (Czerwony)
+                    color = "#ffffff"
             elif self.status_btn_mode == "locked":
                 color = "#e74c3c"
+            elif self.status_btn_mode == "date_free":
+                color = "#c0392b"
+            elif self.status_btn_mode == "date_blocked":
+                color = "#27ae60"
 
-                # Zastosowanie koloru
+            # Jeśli mode == "disabled" lub "default", color zostaje None -> brak reakcji
+
             if color:
                 self.btn_status.configure(border_color=color, text_color=color)
 
         def on_leave_status(event):
-            # Przywracamy domyślny styl z motywu
             self.btn_status.configure(
                 border_color=self.btn_style["border_color"],
                 text_color=self.btn_style["text_color"]
@@ -212,23 +197,24 @@ class GUI:
         self.btn_status.bind("<Enter>", on_enter_status)
         self.btn_status.bind("<Leave>", on_leave_status)
 
-        self.btn_edit = ctk.CTkButton(self.middle_frame, text=self.txt["btn_edit"], command=self.sidebar_edit, **self.btn_style)
+        self.btn_edit = ctk.CTkButton(self.middle_frame, text=self.txt["btn_edit"], command=self.sidebar_edit,
+                                      **self.btn_style)
         self.btn_edit.pack(pady=5)
 
+        # --- ZMIANA: Logika kolorów Edycji ---
         def on_enter_edit(event):
             color = None
-            # Jeśli tryb to "editable" -> Niebieski
             if self.edit_btn_mode == "editable":
                 color = "#3498db"
-                # Jeśli tryb to "locked" -> Czerwony
             elif self.edit_btn_mode == "locked":
                 color = "#e74c3c"
+
+            # Jeśli mode == "disabled" (np. data), color zostaje None -> brak reakcji
 
             if color:
                 self.btn_edit.configure(border_color=color, text_color=color)
 
         def on_leave_edit(event):
-            # Powrót do stylu z motywu
             self.btn_edit.configure(
                 border_color=self.btn_style["border_color"],
                 text_color=self.btn_style["text_color"]
@@ -236,15 +222,13 @@ class GUI:
 
         self.btn_edit.bind("<Enter>", on_enter_edit)
         self.btn_edit.bind("<Leave>", on_leave_edit)
-        # btn_arch = tk.Button(self.sidebar, text=self.txt["btn_all_exams"], command=self.sidebar_archive, **self.btn_style)
-        # btn_arch.pack(pady=5)
-        # btn_man = tk.Button(self.sidebar, text=self.txt["btn_manual"], command=self.open_manual, **self.btn_style)
-        # btn_man.pack(pady=10)
 
         self.plan_container = ctk.CTkFrame(self.root, fg_color="transparent", corner_radius=0)
         self.plan_container.grid(row=0, column=1, sticky="nsew")
 
-        self.plan_view = PlanWindow(parent=self.plan_container, txt=self.txt, data=self.data, btn_style=self.btn_style, dashboard_callback=self.refresh_dashboard, selection_callback=self.update_status_button_state)
+        self.plan_view = PlanWindow(parent=self.plan_container, txt=self.txt, data=self.data, btn_style=self.btn_style,
+                                    dashboard_callback=self.refresh_dashboard,
+                                    selection_callback=self.update_status_button_state)
 
         self.sidebar.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
         self.middle_frame.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
@@ -252,8 +236,6 @@ class GUI:
         self.stats_frame.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
 
         apply_theme(self, self.current_theme)
-
-        #  Pierwsze obliczenie statystyk
         self.refresh_dashboard()
 
     def sidebar_add(self):
@@ -278,20 +260,12 @@ class GUI:
         self.plan_view.clear_database()
 
     def change_language(self, new_code):
-        # Jeśli język jest ten sam co był, nic nie rób
         if new_code == self.data["settings"].get("lang", "en"):
             return
-
-        # Zapisz nowy język w bazie
         self.data["settings"]["lang"] = new_code
         save(self.data)
-
-        # Zapytaj użytkownika czy zrestartować
-        # Używamy askyesno: TAK = Restart, NIE = Później
         restart = messagebox.askyesno(self.txt["msg_info"], self.txt["msg_lang_changed"])
-
         if restart:
-            # Magiczna komenda restartująca aplikację
             self.root.destroy()
             os.execl(sys.executable, sys.executable, *sys.argv)
 
@@ -301,30 +275,42 @@ class GUI:
         self.current_theme = theme_name
         apply_theme(self, theme_name)
 
-    # Znajdź tę funkcję i podmień ją na nową wersję:
-    def update_status_button_state(self, status_mode, edit_mode="default"):
-        # 1. Zapisujemy stan obu przycisków
-        self.status_btn_mode = status_mode
-        self.edit_btn_mode = edit_mode  # <--- Nowa zmienna stanu
+    def open_blocked_days(self):
+        BlockedDaysWindow(self.root, self.txt, self.data, self.btn_style, callback=self.menu_gen_plan)
 
-        # 2. Resetujemy wygląd obu przycisków do domyślnego
+    def update_status_button_state(self, status_mode, edit_mode="default"):
+        self.status_btn_mode = status_mode
+        self.edit_btn_mode = edit_mode
+
+        # 1. ZAWSZE resetujemy oba przyciski do domyślnego, szarego stylu
         self.btn_status.configure(border_color=self.btn_style["border_color"], text_color=self.btn_style["text_color"])
         self.btn_edit.configure(border_color=self.btn_style["border_color"], text_color=self.btn_style["text_color"])
 
-    # Funkcja odświeżająca statystyki na ekranie początkowym
+        # 2. Ustawiamy TYLKO TEKST na przycisku Status w zależności od trybu
+        if status_mode == "date_free":
+            # Data wolna -> Tekst "Zablokuj & Generuj"
+            txt_block = self.txt.get("btn_block_day", "Block & Generate")
+            self.btn_status.configure(text=txt_block)
+
+        elif status_mode == "date_blocked":
+            # Data zablokowana -> Tekst "Odblokuj & Generuj"
+            txt_unblock = self.txt.get("btn_unblock_day", "Unblock & Generate")
+            self.btn_status.configure(text=txt_unblock)
+
+        else:
+            # Domyślny tekst ("Zmień Status")
+            self.btn_status.configure(text=self.txt["btn_toggle_status"])
+
     def refresh_dashboard(self):
         today = date.today()
-        # ... (początek funkcji bez zmian) ...
         current_colors = THEMES.get(self.current_theme, THEMES["light"])
         default_text = current_colors["fg_text"]
 
-        # A. Postęp Całkowity
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         active_topics = [t for t in self.data["topics"] if t["exam_id"] in active_exams_ids]
         total = len(active_topics)
         done = len([t for t in active_topics if t["status"] == "done"])
 
-        # Obliczamy procenty i wartość float (0.0 - 1.0)
         prog_val = 0.0
         prog_percent = 0
         if total > 0:
@@ -334,10 +320,8 @@ class GUI:
         self.lbl_progress.configure(
             text=self.txt["stats_total_progress"].format(done=done, total=total, progress=prog_percent))
 
-        # AKTUALIZACJA PASKA TOTAL
         self.bar_total.set(prog_val)
 
-        # B. Postęp Dziś
         today_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
         t_tot = len(today_all)
         t_don = len([t for t in today_all if t["status"] == "done"])
@@ -349,7 +333,6 @@ class GUI:
             self.lbl_today.configure(
                 text=self.txt["stats_progress_today"].format(done=t_don, total=t_tot, prog=p_day_perc))
 
-            # Kolor tekstu (zielony jak 100%)
             if p_day_perc == 100:
                 self.lbl_today.configure(text_color="#00b800")
                 self.bar_today.configure(progress_color="#2ecc71")
@@ -357,14 +340,12 @@ class GUI:
                 self.lbl_today.configure(text_color=default_text)
                 self.bar_today.configure(progress_color="#3498db")
 
-            # AKTUALIZACJA PASKA DZIŚ
             self.bar_today.set(p_day_val)
 
         else:
             self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
-            self.bar_today.set(0)  # Pusty pasek jak nie ma zadań
+            self.bar_today.set(0)
 
-        # C. Najbliższy egzamin
         future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
         future_exams.sort(key=lambda x: x["date"])
 
@@ -386,22 +367,25 @@ class GUI:
                 color = "orange"
             else:
                 text = self.txt["stats_exam_days"].format(days=days, subject=subjects_str)
-                if days <= 5: color = "yellow"
+                if days <= 5:
+                    # Dopasowanie koloru do motywu: Złoty dla jasnego, Żółty dla ciemnego
+                    # To ten sam kolor (#e6b800), który jest używany w tabeli (theme_manager.py)
+                    if self.current_theme == "light":
+                        color = "#e6b800"
+                    else:
+                        color = "yellow"
 
             self.lbl_next_exam.configure(text=text, text_color=color)
         else:
             self.lbl_next_exam.configure(text=self.txt["stats_no_upcoming"], text_color="green")
 
-    # uruchomienie okna z instrukcja
     def open_manual(self):
         ManualWindow(self.root, self.txt, self.btn_style)
 
-    # uruchomienie glownego okna aplikacji
     def open_plan_window(self):
-        # dashboard_callback aby po zmianach w planie (np wykonano jakies zadanie) okno powitalne odswiezalo statystyki
         PlanWindow(self.root, self.txt, self.data, self.btn_style, dashboard_callback=self.refresh_dashboard)
 
-# uruchomienie aplikacji
+
 if __name__ == "__main__":
     root = ctk.CTk()
     app = GUI(root)

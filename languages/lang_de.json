@@ -32,6 +32,8 @@
     "btn_clear_archive": "Archiv löschen",
     "btn_edit_exam": "Prüfung bearbeiten",
     "btn_confirm": "Bestätigen",
+    "btn_block_day": "Sperren & Generieren",
+    "btn_unblock_day": "Freigeben & Generieren",
 
     "stats_no_today": "Keine Aufgaben für heute geplant",
     "stats_progress_today": "Fortschritt heute:\n{done}/{total} ({prog}%)",
@@ -72,6 +74,7 @@
     "tag_todo": "Zu erledigen",
     "tag_archived": "Archiviert",
     "val_other": "Sonstige",
+    "tag_day_off": "(Frei)",
 
     "manual_title": "Bedienungsanleitung",
     "manual_header": "WILLKOMMEN IM SPLANNER!\n\n",
@@ -110,5 +113,16 @@
     "msg_double_click_edit": "Doppelklick auf das Thema zum Bearbeiten",
     "msg_select_topic": "Wählen Sie ein Thema aus.",
     "msg_lang_changed": "Sprache geändert. Starten Sie das Programm neu, um die Änderungen zu sehen. Jetzt neu starten?\n\nLanguage changed. Please restart the application to see changes. Restart now?",
-    "msg_date_format_err": "Das Datum muss im Format YYYY-MM-DD sein (z. B. 2026-05-20)!"
+    "msg_date_format_err": "Das Datum muss im Format YYYY-MM-DD sein (z. B. 2026-05-20)!",
+
+    "menu_days_off": "Freie Tage",
+    "win_blocked_title": "Freie Tage verwalten",
+    "lbl_blocked_header": "Wählen Sie lernfreie Tage:",
+    "lbl_blocked_legend": "(Rot = Frei)",
+    "btn_save_gen": "Speichern & Generieren",
+    "days_short": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    "months": [
+        "Januar", "Februar", "März", "April", "Mai", "Juni",
+        "Juli", "August", "September", "Oktober", "November", "Dezember"
+    ]
 }

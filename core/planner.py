@@ -1,21 +1,32 @@
 from datetime import datetime, date, timedelta
 import math
 
-#   FUNKCJA ZMIENIAJACA NA FORMAT DATY
+
+# FUNKCJA POMOCNICZA: Formatowanie daty
 def date_format(text):
     if isinstance(text, date):
         return text
     return datetime.strptime(text, "%Y-%m-%d").date()
 
 
-#   FUNKCJA TWORZACA PUSTA TABLICE KALENDARZA
+# NOWA FUNKCJA POMOCNICZA: Liczy ile dni roboczych zostało w przedziale
+def count_valid_days(start_date, end_date, blocked_set):
+    count = 0
+    curr = start_date
+    while curr <= end_date:
+        # Liczymy dzień tylko jeśli NIE jest zablokowany
+        if str(curr) not in blocked_set:
+            count += 1
+        curr += timedelta(days=1)
+    return count
+
+
+# FUNKCJA TWORZACA PUSTA TABLICE KALENDARZA
 def callendar_create(data, tday):
     callendar = {}
     max_date = tday
 
     for exam in data["exams"]:
-        # if date_format(exam["date"]) > max_date:
-        #     max_date = date_format(exam["date"])
         exam_date = date_format(exam["date"])
         if exam_date < tday:
             continue
@@ -23,19 +34,19 @@ def callendar_create(data, tday):
             max_date = exam_date
 
     while max_date >= tday:
-        callendar.update({max_date : []})
+        callendar.update({max_date: []})
         max_date -= timedelta(days=1)
 
     for exam in data["exams"]:
-        # callendar.update({date_format(exam["date"]): ["E"]})
         exam_date = date_format(exam["date"])
         if exam_date < tday:
             continue
-        callendar.update({exam_date : ["E"]})
+        callendar.update({exam_date: ["E"]})
 
     return callendar
 
-#   FUNKCJA TWORZACA LISTE TEMATOW DO WSTAWIENIA W KALENDARZ
+
+# FUNKCJA TWORZACA LISTE TEMATOW DO WSTAWIENIA W KALENDARZ
 def topics_list_create(data, e_id):
     topics_list = []
     today = date.today()
@@ -50,63 +61,17 @@ def topics_list_create(data, e_id):
         return topics_list
 
     for topic in data["topics"]:
+        # Dodano warunek na "locked", reszta bez zmian
         if topic["exam_id"] == e_id and topic["status"] == "todo" and not topic.get("locked", False):
             topics_list.append(topic["id"])
 
     return topics_list
 
-#   STARA NIEUZYWANA FUNKCJA PLANOWANIA TEMATOW
-def plan_old(data):
-    pref_max_per_day = data["settings"].get("max_per_day", 2)
-    pref_max_same_subject = data["settings"].get("max_same_subject_per_day", 1)
-    today = date.today()
 
-    callendar = callendar_create(data, today)
-
-    for exam in data["exams"]:
-        exam_date = date_format(exam["date"])
-        if exam_date <= today:
-            continue
-
-        e_date = exam_date - timedelta(days=1)
-        if e_date not in callendar:
-            continue
-
-        border_day = e_date
-        while border_day > today and "E" not in callendar.get(border_day, []):
-            border_day -= timedelta(days=1)
-
-        t_list = topics_list_create(data, exam["id"])
-        # t_list.reverse()
-
-        days_available = (e_date - border_day).days + 1
-        needed_daily = math.ceil(len(t_list) / days_available)
-        tasks_remaining = len(t_list)
-
-        if needed_daily == 1:
-            border_day = e_date - timedelta(days=(tasks_remaining))
-        else:
-            border_day -= timedelta(days=1)
-
-        if border_day == today:
-            border_day -= timedelta(days=1)
-
-        while border_day <= e_date:
-            for i in range(needed_daily):
-                if len(t_list) > 0:
-                    callendar[border_day + timedelta(days=1)].append(t_list[0])
-                    del t_list[0]
-                    tasks_remaining -= 1
-            border_day += timedelta(days=1)
-
-    for topic in data["topics"]:
-        for key, value in callendar.items():
-            if topic["id"] in value:
-                topic["scheduled_date"] = key
-
-#   FUNKCJA PLANOWANIA DAT DLA TEMATOW
+# GLOWNA FUNKCJA PLANUJACA (Oryginalna z obsługą blocked_dates)
 def plan(data):
     today = date.today()
+    blocked_set = set(data.get("blocked_dates", []))
 
     # stworzenie pustego kalendarza
     callendar = callendar_create(data, today)
@@ -124,7 +89,9 @@ def plan(data):
 
         scan_date = end_study_date  # definicja startu dla egzaminu
 
-        # Szukamy najwcześniejszego możliwego dnia startu
+        # Szukamy najwcześniejszego możliwego dnia startu (ORYGINALNA LOGIKA)
+        # Skanujemy wstecz aż trafimy na inny egzamin "E" lub dzisiaj.
+        # Nie pomijamy tu blocked_dates, bo okno czasowe jest stałe.
         while scan_date > today and "E" not in callendar.get(scan_date, []):
             scan_date -= timedelta(days=1)
 
@@ -138,34 +105,48 @@ def plan(data):
         if not t_list:
             continue
 
-        # Całkowita liczba dni dostępnych w okienku nauki
-        days_window = (end_study_date - start_study_date).days + 1
+        # --- ORYGINALNA LOGIKA Z MODYFIKACJĄ DLA ZABLOKOWANYCH DNI ---
 
-        # --- LOGIKA PRZESUNIĘCIA (BACK-LOADING) ---
-        # Jeśli mamy więcej dni niż tematów (np. 4 dni, 2 tematy),
-        # to chcemy zacząć później, żeby tematy były tuż przed egzaminem.
+        # 1. Zamiast (end - start).days + 1, używamy count_valid_days
+        # Dzięki temu "dni_window" to tylko te dni, w które faktycznie można się uczyć
+        days_window_valid = count_valid_days(start_study_date, end_study_date, blocked_set)
 
         tasks_count = len(t_list)
 
-        # Obliczamy ile dni "luzu" mamy
+        # 2. Obliczamy dni "nadmiarowe" (surplus)
+        # Jeśli mamy 5 dni ważnych, a 2 tematy, to 3 dni możemy pominąć na początku
         surplus_days = 0
-        if days_window > tasks_count:
-            surplus_days = days_window - tasks_count
+        if days_window_valid > tasks_count:
+            surplus_days = days_window_valid - tasks_count
 
-        # Przesuwamy start o te dni luzu
-        current_day = start_study_date + timedelta(days=surplus_days)
+        # 3. Pętla planująca (Oryginalna - do przodu)
+        current_day = start_study_date
 
-        # Pętla planująca (Dynamiczna)
         while current_day <= end_study_date:
+
+            # A. ZABEZPIECZENIE: Jeśli dzień jest zablokowany, pomijamy go całkowicie
+            if str(current_day) in blocked_set:
+                current_day += timedelta(days=1)
+                continue
+
+            # B. LOGIKA SURPLUS (Oryginalna)
+            # Jeśli mamy nadmiar dni, pomijamy ten dzień (żeby skumulować naukę przed egzaminem)
+            if surplus_days > 0:
+                surplus_days -= 1
+                current_day += timedelta(days=1)
+                continue
+
+            # C. WPISYWANIE ZADAŃ
             if current_day in callendar:
 
-                # Dynamicznie liczymy ile dni zostało od TERAZ do końca
-                days_left = (end_study_date - current_day).days + 1
+                # Dynamicznie liczymy ile dni roboczych zostało od TERAZ do końca
+                # Tu też zmiana: używamy count_valid_days zamiast zwykłego odejmowania
+                valid_days_left = count_valid_days(current_day, end_study_date, blocked_set)
                 topics_left = len(t_list)
 
-                if days_left > 0 and topics_left > 0:
+                if valid_days_left > 0 and topics_left > 0:
                     # Dzielimy pozostałą pracę przez pozostały czas
-                    daily_count = math.ceil(topics_left / days_left)
+                    daily_count = math.ceil(topics_left / valid_days_left)
                 else:
                     daily_count = 0
 

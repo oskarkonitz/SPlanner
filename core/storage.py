@@ -33,8 +33,10 @@ DEFAULT_DATA = {
     "settings": {
         "max_per_day": 2,
         "max_same_subject_per_day": 1,
-        "lang": "en"
+        "lang": "en",
+        "theme": "dark",
     },
+    "blocked_dates": [],
     "exams": [],
     "topics": []
 }

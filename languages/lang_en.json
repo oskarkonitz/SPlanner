@@ -32,6 +32,8 @@
     "btn_clear_archive": "Clear Archive",
     "btn_edit_exam": "Edit Exam",
     "btn_confirm": "Confirm",
+    "btn_block_day": "Block & Generate",
+    "btn_unblock_day": "Unblock & Generate",
 
     "stats_no_today": "No tasks scheduled for today",
     "stats_progress_today": "Today's progress:\n{done}/{total} ({prog}%)",
@@ -72,6 +74,7 @@
     "tag_todo": "To Do",
     "tag_archived": "Archived",
     "val_other": "Other",
+    "tag_day_off": "(Day Off)",
 
     "manual_title": "User Manual",
     "manual_header": "WELCOME TO SPLANNER!\n\n",
@@ -110,5 +113,16 @@
     "msg_double_click_edit": "Double-click a topic to edit it",
     "msg_select_topic": "Select a topic.",
     "msg_lang_changed": "Language changed. Please restart the application to see changes. Restart now?",
-    "msg_date_format_err": "Date must be in YYYY-MM-DD format (e.g., 2026-05-20)!"
+    "msg_date_format_err": "Date must be in YYYY-MM-DD format (e.g., 2026-05-20)!",
+
+    "menu_days_off": "Days Off",
+    "win_blocked_title": "Manage Days Off",
+    "lbl_blocked_header": "Select days off from study:",
+    "lbl_blocked_legend": "(Red = Day Off)",
+    "btn_save_gen": "Save & Generate",
+    "days_short": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "months": [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
 }

@@ -1,12 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
-from datetime import date
+from datetime import date, timedelta
 from core.storage import save
 from core.planner import plan, date_format
 from gui.windows.add_exam import AddExamWindow
 from gui.windows.archive import ArchiveWindow
 from gui.windows.edit import select_edit_item, EditExamWindow, EditTopicWindow
+
 
 class PlanWindow():
     def __init__(self, parent, txt, data, btn_style, dashboard_callback, selection_callback):
@@ -17,14 +18,9 @@ class PlanWindow():
         self.dashboard_callback = dashboard_callback
         self.selection_callback = selection_callback
 
-        #ustawienie okna
-        # self.win = tk.Toplevel(parent)
-        # self.win.geometry("800x450")
-        # self.win.title(self.txt["win_plan_title"])
-
         self.win = parent
 
-        #ramka
+        # ramka
         frame = ctk.CTkFrame(self.win, fg_color="transparent")
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -32,7 +28,7 @@ class PlanWindow():
         columns = ("data", "przedmiot", "temat")
         self.tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
 
-        self.tree.heading("data", text="") #self.txt["col_date"]
+        self.tree.heading("data", text="")
         self.tree.column("data", width=45, anchor="e", stretch=False)
         self.tree.heading("przedmiot", text=self.txt["col_subject"])
         self.tree.column("przedmiot", width=150, anchor="w")
@@ -50,46 +46,17 @@ class PlanWindow():
         self.tree.tag_configure("orange", font=("Arial", 12, "bold"), foreground="orange")
         self.tree.tag_configure("yellow", foreground="yellow", font=("Arial", 12, "bold"))
         self.tree.tag_configure("overdue", foreground="gray", font=("Arial", 12, "italic", "bold"))
+        self.tree.tag_configure("blocked", foreground="gray", font=("Arial", 12))
 
         # scrollbar
-        scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=self.tree.yview, fg_color="transparent", bg_color="transparent")
+        scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=self.tree.yview, fg_color="transparent",
+                                     bg_color="transparent")
         self.tree.configure(yscrollcommand=scrollbar.set)
-
-        # 1. Najpierw pakujemy scrollbar
         scrollbar.pack(side="right", fill="y", padx=(2, 0))
-
-        # 2. A TERAZ PAKUJEMY TABELĘ (Tego prawdopodobnie brakowało)
         self.tree.pack(side="left", fill="both", expand=True)
 
         self.tree.bind("<Button-1>", self.on_tree_click)
-        # Wykrywanie zmiany zaznaczenia (nie tylko kliknięcia myszką, ale też strzałkami)
         self.tree.bind("<<TreeviewSelect>>", self.on_selection_change)
-
-
-        #   PRZYCISKI W 2 RZEDACH
-        # btn_frame1 = tk.Frame(self.win)
-        # btn_frame1.pack(pady=0)
-        #
-        # btn_frame2 = tk.Frame(self.win)
-        # btn_frame2.pack(pady=5)
-        #
-        # btn_refresh = tk.Button(btn_frame1, text=self.txt["btn_refresh"], command=self.refresh_table, **self.btn_style)
-        # btn_refresh.pack(side="left", padx=5)
-        # btn_gen = tk.Button(btn_frame1, text=self.txt["btn_gen_plan"], command=self.run_and_refresh, **self.btn_style)
-        # btn_gen.pack(side="left", padx=5)
-        # btn_toggle = tk.Button(btn_frame1, text=self.txt["btn_toggle_status"], command=self.toggle_status, **self.btn_style)
-        # btn_toggle.pack(side="left", padx=5)
-        # btn_add = tk.Button(btn_frame1, text=self.txt["btn_add_exam"], command=self.open_add_window, **self.btn_style)
-        # btn_add.pack(side="left", padx=5)
-        #
-        # btn_edit = tk.Button(btn_frame2, text=self.txt["btn_edit"], command=self.open_edit, **self.btn_style)
-        # btn_edit.pack(side="left", padx=5)
-        # btn_archive = tk.Button(btn_frame2, text=self.txt["btn_all_exams"], command=self.open_archive, **self.btn_style)
-        # btn_archive.pack(side="left", padx=5)
-        # btn_clear = tk.Button(btn_frame2, text=self.txt["btn_clear_data"], command=self.clear_database, **self.btn_style, foreground="red")
-        # btn_clear.pack(side="left", padx=5)
-        # btn_close = tk.Button(btn_frame2, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style, activeforeground="red")
-        # btn_close.pack(side="left", padx=5)
 
         # pierwsze odswiezenia tabeli
         self.refresh_table()
@@ -97,7 +64,7 @@ class PlanWindow():
     def on_selection_change(self, event):
         selected = self.tree.selection()
 
-        # 1. Nic nie zaznaczone -> Oba przyciski domyślne
+        # 1. Nic nie zaznaczone
         if not selected:
             self.selection_callback("default", "default")
             return
@@ -105,15 +72,14 @@ class PlanWindow():
         item_id = selected[0]
         tags = self.tree.item(item_id, "tags")
 
-        status_mode = "default"
-        edit_mode = "locked"  # Domyślnie zakładamy, że nie da się edytować (np. daty)
+        # --- ZMIANA: Domyślnie ustawiamy tryb na 'disabled' (szary/brak reakcji) ---
+        status_mode = "disabled"
+        edit_mode = "disabled"
 
-        # 2. Sprawdzamy co to jest
+        # 2. Rozpoznawanie elementu
         if item_id.startswith("topic_"):
-            # Temat jest edytowalny
+            # Temat: Edycja aktywna, Status zależny od todo/done
             edit_mode = "editable"
-
-            # Status tematu
             if "todo" in tags:
                 status_mode = "todo"
             elif "done" in tags:
@@ -122,57 +88,53 @@ class PlanWindow():
                 status_mode = "default"
 
         elif item_id.startswith("exam_"):
-            # Egzamin jest edytowalny, ale nie ma statusu todo/done
+            # Egzamin: Edycja aktywna, Status zablokowany (czerwony - bo egzaminu nie odhaczamy)
             edit_mode = "editable"
-            status_mode = "locked"  # Czerwony dla Change Status (bo egzaminu nie 'odfajkowujemy')
-
-        else:
-            # Daty, nagłówki itp. -> Wszystko zablokowane
             status_mode = "locked"
-            edit_mode = "locked"
 
-        # 3. Wysyłamy oba tryby do main.py
+        elif item_id.startswith("date_"):
+            # Data: Edycja WYŁĄCZONA (szara), Status aktywny (Blokuj/Odblokuj)
+            edit_mode = "disabled"
+
+            date_str = item_id.replace("date_", "")
+            blocked_list = self.data.get("blocked_dates", [])
+
+            if date_str in blocked_list:
+                status_mode = "date_blocked"
+            else:
+                status_mode = "date_free"
+
+        # W przypadku separatorów/pustych linii wchodzimy w domyślny stan "disabled",
+        # więc przyciski nie będą się podświetlać na czerwono.
+
         self.selection_callback(status_mode, edit_mode)
 
     def on_tree_click(self, event):
-        # Sprawdzamy, w który wiersz kliknięto
         item_id = self.tree.identify_row(event.y)
 
-        # 1. Kliknięcie w puste tło (poza wierszami)
         if not item_id:
             self.deselect_all()
             return
 
-        # 2. Sprawdzamy ID wiersza
-        # Egzaminy mają ID "exam_...", tematy "topic_..."
-        # Wszystko inne (daty, liczniki dni, separatory) to elementy ozdobne
-        is_interactive = item_id.startswith("exam_") or item_id.startswith("topic_")
+        is_interactive = item_id.startswith("exam_") or item_id.startswith("topic_") or item_id.startswith("date_")
 
         if not is_interactive:
-            # Jeśli kliknięto w element ozdobny (np. "2 days", data, pusta linia)
-            self.deselect_all() # Usuń zaznaczenie z innych elementów
-            return "break"      # Zablokuj zaznaczenie tego elementu
+            self.deselect_all()
+            return "break"
 
     def deselect_all(self):
         selection = self.tree.selection()
         if selection:
             self.tree.selection_remove(selection)
-
-        # Reset przycisku w main.py
         if self.selection_callback:
             self.selection_callback("default", "default")
 
-    # funkcja odswiezajaca tabele
     def refresh_table(self):
-        # 1. Wyczyszczenie tabeli
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         self.tree.insert("", "end", values=("", "", ""))
 
-        # ---------------------------------------------------------
-        # 2. ZALEGŁE TEMATY (Overdue) - bez zmian
-        # ---------------------------------------------------------
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= date.today()}
         overdue_topics = [
             t for t in self.data["topics"]
@@ -188,12 +150,11 @@ class PlanWindow():
                     if exam["id"] == topic["exam_id"]:
                         subj_name = exam["subject"]
                         break
-                self.tree.insert("", "end", iid=topic["id"], values=("", f"{topic["scheduled_date"]}\t{subj_name}", topic["name"]), tags=("overdue",))
+                self.tree.insert("", "end", iid=topic["id"],
+                                 values=("", f"{topic["scheduled_date"]}\t{subj_name}", topic["name"]),
+                                 tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
-        # ---------------------------------------------------------
-        # 3. DATY I PLAN NA PRZYSZŁOŚĆ
-        # ---------------------------------------------------------
         all_dates = set()
         for exam in self.data["exams"]:
             if date_format(exam["date"]) >= date.today():
@@ -202,19 +163,29 @@ class PlanWindow():
             if topic["scheduled_date"] and date_format(topic["scheduled_date"]) >= date.today():
                 all_dates.add(str(topic["scheduled_date"]))
 
+        blocked_list = self.data.get("blocked_dates", [])
+        if all_dates:
+            min_d = min(all_dates)
+            max_d = max(all_dates)
+            for bd in blocked_list:
+                if bd >= str(date.today()) and (not all_dates or bd <= max_d):
+                    all_dates.add(bd)
+
         sorted_dates = sorted(list(all_dates))
 
         for day_str in sorted_dates:
-            # A. Pobieramy listy na ten konkretny dzień
             todays_exams = [e for e in self.data["exams"] if e["date"] == day_str]
             todays_topics = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == day_str]
 
-            # B. Obliczamy nagłówek (tekst i kolor)
+            is_blocked = day_str in blocked_list
             days_left = (date_format(day_str) - date.today()).days
             display_text = ""
             tag = "normal"
 
-            if days_left == 0:
+            if is_blocked:
+                display_text = self.txt.get("tag_day_off", "(Day Off)")
+                tag = "blocked"
+            elif days_left == 0:
                 display_text = self.txt["tag_today"]
                 tag = "today"
             elif days_left == 1:
@@ -228,40 +199,36 @@ class PlanWindow():
                     tag = "yellow"
 
             full_label = f"{display_text} ({day_str})"
+            icon = "●"
+            if is_blocked: icon = "○"
 
-            # --- RYSOWANIE DRABINKI ---
+            self.tree.insert("", "end", iid=f"date_{day_str}", values=(icon, full_label, ""), tags=(tag,))
 
-            # 1. KROPKA I NAGŁÓWEK
-            self.tree.insert("", "end", values=("●", full_label, ""), tags=(tag,))
-
-            # 2. ODSTĘP GÓRNY (Pusta linia z kreską)
-            self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
-
-            # 3. EGZAMINY (Wypisujemy jeden pod drugim, bez przerw)
-            for exam in todays_exams:
-                self.tree.insert("", "end", iid=exam["id"], values=("│", exam["subject"], exam["title"]), tags=("exam",))
-
-            # 4. SEPARATOR ŚRODKOWY (Tylko jeśli są I egzaminy I tematy)
-            if len(todays_exams) > 0 and len(todays_topics) > 0:
+            if not is_blocked:
                 self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
-            # 5. TEMATY (Wypisujemy jeden pod drugim)
-            for topic in todays_topics:
-                subj_name = self.txt["val_other"]
-                for exam in self.data["exams"]:
-                    if exam["id"] == topic["exam_id"]:
-                        subj_name = exam["subject"]
-                        break
-                self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]), tags=(topic["status"],))
+                for exam in todays_exams:
+                    self.tree.insert("", "end", iid=exam["id"], values=("│", exam["subject"], exam["title"]),
+                                     tags=("exam",))
 
-            # 6. ODSTĘP DOLNY (Pusta linia z kreską - zamknięcie dnia)
-            self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+                if len(todays_exams) > 0 and len(todays_topics) > 0:
+                    self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
-            # 7. PRZERWA MIĘDZY DNIAMI (Pusty wiersz bez kreski)
+                for topic in todays_topics:
+                    subj_name = self.txt["val_other"]
+                    for exam in self.data["exams"]:
+                        if exam["id"] == topic["exam_id"]:
+                            subj_name = exam["subject"]
+                            break
+                    self.tree.insert("", "end", iid=topic["id"], values=("│", subj_name, topic["name"]),
+                                     tags=(topic["status"],))
+
+                self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+            else:
+                pass
+
             self.tree.insert("", "end", values=("", "", ""))
 
-
-    # funkcja dla przycisku generuj plan | generuje a nastepnie odswieza plan | jesli wystapi blad to go pokaze
     def run_and_refresh(self):
         try:
             plan(self.data)
@@ -272,86 +239,77 @@ class PlanWindow():
         except Exception as e:
             messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
 
-    # funkcja zmieniajaca status zadania
     def toggle_status(self):
-        # znalezienie zaznaczonego id
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_status"])
             return
 
-        topic_id = selected[0]
-        # Szukamy tematu w danych
-        target_topic = next((t for t in self.data["topics"] if t["id"] == topic_id), None)
+        item_id = selected[0]
 
-        # zmiana statusu i zapisanie
-        if target_topic:
-            # Zamiana todo <-> done
-            target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
-            save(self.data)
+        if item_id.startswith("topic_"):
+            target_topic = next((t for t in self.data["topics"] if t["id"] == item_id), None)
+            if target_topic:
+                target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
+                save(self.data)
 
-            # Odswiezenie widoku (zmiana tagu w tabeli)
-            new_tag = target_topic["status"]
-            self.tree.item(topic_id, tags=(new_tag,))
+                new_tag = target_topic["status"]
+                self.tree.item(item_id, tags=(new_tag,))
 
-            if self.dashboard_callback:
-                self.dashboard_callback()
+                if self.dashboard_callback: self.dashboard_callback()
+                self.on_selection_change(None)
 
-            # --- DODAJ TĘ LINIJKĘ: ---
-            # To wymusi natychmiastowe sprawdzenie nowego statusu i zmianę koloru przycisku
-            self.on_selection_change(None)
+        elif item_id.startswith("date_"):
+            date_str = item_id.replace("date_", "")
+            if "blocked_dates" not in self.data:
+                self.data["blocked_dates"] = []
+
+            if date_str in self.data["blocked_dates"]:
+                self.data["blocked_dates"].remove(date_str)
+            else:
+                self.data["blocked_dates"].append(date_str)
+
+            self.run_and_refresh()
 
         else:
             messagebox.showwarning(self.txt["msg_error"], self.txt["msg_cant_status"])
 
-    # funkcja czyszczaca baze danych
     def clear_database(self):
-        # potwierdzenie od uzytkownika
         if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_db"]):
-            #ustawienie bazy na dane poczatkowe
             current_lang = self.data["settings"].get("lang", "en")
             self.data["exams"] = []
             self.data["topics"] = []
+            self.data["blocked_dates"] = []
             self.data["settings"] = {
                 "max_per_day": 2,
                 "max_same_subject_per_day": 1,
                 "lang": current_lang
             }
-            save(self.data) # zapisanie
-            self.refresh_table() # odswiezenie
-            if self.dashboard_callback: self.dashboard_callback() # callback dla odswiezenia
+            save(self.data)
+            self.refresh_table()
+            if self.dashboard_callback: self.dashboard_callback()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_db_cleared"])
 
-    #   DO OTWIERANIA INNYCH OKIEN
-
-    # funkcja otwierajaca okno dodawania egzaminu
     def open_add_window(self):
-        # callback po dodaniu odswiezajacy tabele i dashboard
         def on_add():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
         AddExamWindow(self.win, self.txt, self.data, self.btn_style, callback=on_add)
 
-    # funkcja otwierajaca okno edycji
     def open_edit(self):
-        # callback po edycji odswiezy tabele
         def on_edit():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
         select_edit_item(self.win, self.data, self.txt, self.tree, self.btn_style, callback=on_edit)
 
-    # funkcja otwierajaca okno archiwum
     def open_archive(self):
-        # w oknie archiwum sa przyciski do edycji, wiec przekazuje im te funkcje
         def edit_exam_wrapper(exam_data, callback):
             EditExamWindow(self.win, self.txt, self.data, self.btn_style, exam_data, callback)
 
         def edit_topic_wrapper(topic_data, callback):
             EditTopicWindow(self.win, self.txt, self.data, self.btn_style, topic_data, callback)
 
-        # archiwum po usunięciu też powinno odświeżyć dashboard
-        archive_dashboard_cb = self.dashboard_callback
-
-        ArchiveWindow(self.win, self.txt, self.data, self.btn_style, edit_exam_func=edit_exam_wrapper, edit_topic_func=edit_topic_wrapper)
+        ArchiveWindow(self.win, self.txt, self.data, self.btn_style, edit_exam_func=edit_exam_wrapper,
+                      edit_topic_func=edit_topic_wrapper)
