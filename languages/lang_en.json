@@ -22,7 +22,8 @@
     "btn_close": "Close",
     "btn_delete": "Delete",
     "btn_refresh": "Refresh",
-    "btn_gen_plan": "Generate Plan",
+    "btn_gen_full": "Generate Plan (Full)",
+    "btn_gen_new": "Plan (Missing Tasks)",
     "btn_toggle_status": "Change Status",
     "btn_add_exam": "Add Exam",
     "btn_edit": "Edit",
@@ -114,6 +115,13 @@
     "msg_select_topic": "Select a topic.",
     "msg_lang_changed": "Language changed. Please restart the application to see changes. Restart now?",
     "msg_date_format_err": "Date must be in YYYY-MM-DD format (e.g., 2026-05-20)!",
+    "msg_all_done": [
+        "All tasks done!\nGood job!",
+        "Mission Complete!\nTake a rest.",
+        "You are on fire!\nKeep it up!",
+        "Great work today!\nSee you tomorrow.",
+        "Nailed it!\n100% Complete."
+    ],
 
     "menu_days_off": "Days Off",
     "win_blocked_title": "Manage Days Off",

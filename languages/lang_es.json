@@ -22,7 +22,8 @@
     "btn_close": "Cerrar",
     "btn_delete": "Eliminar",
     "btn_refresh": "Actualizar",
-    "btn_gen_plan": "Generar Plan",
+    "btn_gen_full": "Generar Plan (Completo)",
+    "btn_gen_new": "Planificar (Faltantes)",
     "btn_toggle_status": "Cambiar estado",
     "btn_add_exam": "Añadir examen",
     "btn_edit": "Editar",
@@ -114,6 +115,13 @@
     "msg_select_topic": "Selecciona un tema.",
     "msg_lang_changed": "Idioma cambiado. Reinicia el programa para ver los cambios. ¿Reiniciar ahora?\n\nLanguage changed. Please restart the application to see changes. Restart now?",
     "msg_date_format_err": "¡La fecha debe tener el formato YYYY-MM-DD (ej. 2026-05-20)!",
+    "msg_all_done": [
+        "¡Todo hecho!\n¡Buen trabajo!",
+        "¡Misión cumplida!\nDescansa un poco.",
+        "¡Estás en racha!\n¡Sigue así!",
+        "¡Gran trabajo hoy!\nHasta mañana.",
+        "¡Lo lograste!\n100% completado."
+    ],
 
     "menu_days_off": "Días Libres",
     "win_blocked_title": "Gestionar días libres",

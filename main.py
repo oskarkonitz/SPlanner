@@ -3,6 +3,7 @@ import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
+import random
 from datetime import date
 from core.storage import load, save, load_language
 from core.planner import date_format
@@ -10,7 +11,7 @@ from gui.windows.plan import PlanWindow
 from gui.windows.manual import ManualWindow
 from gui.theme_manager import apply_theme, THEMES
 from gui.windows.blocked_days import BlockedDaysWindow
-
+from gui.effects import ConfettiEffect, FireworksEffect
 
 class GUI:
     def __init__(self, root):
@@ -46,12 +47,14 @@ class GUI:
 
         # menu narzedzia
         tools_menu = tk.Menu(self.menubar, tearoff=0)
+        tools_menu.add_command(label=self.txt["btn_refresh"], command=self.menu_refresh)
+        tools_menu.add_separator()
         tools_menu.add_command(label=self.txt["btn_add_exam"], command=self.sidebar_add)
         tools_menu.add_separator()
-        tools_menu.add_command(label=self.txt["btn_refresh"], command=self.menu_refresh)
-        tools_menu.add_command(label=self.txt["btn_gen_plan"], command=self.menu_gen_plan)
-        tools_menu.add_command(label=self.txt.get("menu_days_off", "Days Off"), command=self.open_blocked_days)
+        tools_menu.add_command(label=self.txt.get("btn_gen_full", "Generate (Full)"), command=self.menu_gen_plan)
+        tools_menu.add_command(label=self.txt.get("btn_gen_new", "Plan (Missing)"), command=self.menu_gen_plan_new)
         tools_menu.add_separator()
+        tools_menu.add_command(label=self.txt.get("menu_days_off", "Days Off"), command=self.open_blocked_days)
         tools_menu.add_command(label=self.txt["win_archive_title"], command=self.sidebar_archive)
         self.menubar.add_cascade(label=self.txt["menu_tools"], menu=tools_menu)
 
@@ -235,6 +238,11 @@ class GUI:
         self.label_title.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
         self.stats_frame.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
 
+        self.effect_confetti = ConfettiEffect(self.sidebar)
+        self.effect_fireworks = FireworksEffect(self.sidebar)
+
+        self.celebration_shown = False
+
         apply_theme(self, self.current_theme)
         self.refresh_dashboard()
 
@@ -251,7 +259,12 @@ class GUI:
         self.plan_view.open_archive()
 
     def menu_gen_plan(self):
-        self.plan_view.run_and_refresh()
+        # Pełne generowanie (stare)
+        self.plan_view.run_and_refresh(only_unscheduled=False)
+
+    def menu_gen_plan_new(self):
+        # Doplanowywanie (nowe)
+        self.plan_view.run_and_refresh(only_unscheduled=True)
 
     def menu_refresh(self):
         self.plan_view.refresh_table()
@@ -336,9 +349,32 @@ class GUI:
             if p_day_perc == 100:
                 self.lbl_today.configure(text_color="#00b800")
                 self.bar_today.configure(progress_color="#2ecc71")
+
+                # --- LOSOWA CELEBRACJA ---
+                if not self.celebration_shown:
+                    # 1. Losowanie tekstu
+                    # Pobieramy z JSON. Jeśli to lista -> losujemy. Jeśli napis -> bierzemy napis.
+                    raw_msg = self.txt.get("msg_all_done", ["Good Job!"])
+
+                    if isinstance(raw_msg, list):
+                        msg = random.choice(raw_msg)
+                    else:
+                        msg = raw_msg
+
+                    # 2. Losowanie efektu (50/50)
+                    effect_type = random.choice(["confetti", "fireworks"])
+
+                    if effect_type == "confetti":
+                        self.effect_confetti.start(text=msg)
+                    else:
+                        self.effect_fireworks.start(text=msg)
+
+                    self.celebration_shown = True
             else:
                 self.lbl_today.configure(text_color=default_text)
                 self.bar_today.configure(progress_color="#3498db")
+                # Resetujemy flagę, żeby po spadku postępu i ponownym wbiciu 100% znowu strzeliło
+                self.celebration_shown = False
 
             self.bar_today.set(p_day_val)
 

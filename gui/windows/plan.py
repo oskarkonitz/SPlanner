@@ -229,13 +229,20 @@ class PlanWindow():
 
             self.tree.insert("", "end", values=("", "", ""))
 
-    def run_and_refresh(self):
+    def run_and_refresh(self, only_unscheduled=False):
         try:
-            plan(self.data)
+            # Przekazujemy flagę do algorytmu
+            plan(self.data, only_unscheduled=only_unscheduled)
             save(self.data)
             self.refresh_table()
+
             if self.dashboard_callback: self.dashboard_callback()
-            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_plan_done"])
+
+            # Wyświetlamy odpowiedni komunikat
+            msg_key = "msg_plan_done"
+            # Opcjonalnie: można dodać osobny komunikat dla doplanowania, ale ten też pasuje
+
+            messagebox.showinfo(self.txt["msg_success"], self.txt[msg_key])
         except Exception as e:
             messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
 
