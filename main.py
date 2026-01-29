@@ -107,15 +107,30 @@ class GUI:
         self.stats_frame = tk.Frame(self.sidebar)
         self.stats_frame.pack(fill="x", padx=10, pady=10, ipady=10)
 
+        # 1. Najbliższy egzamin
+        self.lbl_next_exam = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 14, "bold"), wraplength=230)
+        self.lbl_next_exam.pack(pady=(10, 20))
+
         # Etykiety wewnątrz ramki
-        self.lbl_next_exam = tk.Label(self.stats_frame, font=("Arial", 13, "bold"), wraplength=230, justify="center")
-        self.lbl_next_exam.pack(pady=(2, 20))
+        # 2. Postęp DZIŚ
+        self.lbl_today = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 12, "bold"), wraplength=230, justify="center")
+        self.lbl_today.pack(pady=(5, 2))
 
-        self.lbl_today = tk.Label(self.stats_frame, font=("Arial", 12, "bold"), wraplength=230, justify="center")
-        self.lbl_today.pack(pady=2)
+        # Pasek postępu DZIŚ
+        self.bar_today = ctk.CTkProgressBar(self.stats_frame, width=180, height=6, corner_radius=5)
+        self.bar_today.set(0)  # Startujemy od 0
+        self.bar_today.configure(progress_color="#3498db")  # Zielony kolor paska
+        self.bar_today.pack(pady=(8, 15))
 
-        self.lbl_progress = tk.Label(self.stats_frame, font=("Arial", 12, "bold"), wraplength=230, justify="center")
-        self.lbl_progress.pack(pady=5)
+        # 3. Postęp CAŁKOWITY
+        self.lbl_progress = ctk.CTkLabel(self.stats_frame, text="", font=("Arial", 12, "bold"), wraplength=230, justify="center")
+        self.lbl_progress.pack(pady=(5, 2))
+
+        # Pasek postępu CAŁKOWITY
+        self.bar_total = ctk.CTkProgressBar(self.stats_frame, width=180, height=6, corner_radius=5)
+        self.bar_total.set(0)
+        self.bar_total.configure(progress_color="#3498db")  # Niebieski kolor paska (dla odróżnienia)
+        self.bar_total.pack(pady=(8, 10))
 
         #  Styl przycisków
         self.btn_style = {
@@ -299,33 +314,55 @@ class GUI:
     # Funkcja odświeżająca statystyki na ekranie początkowym
     def refresh_dashboard(self):
         today = date.today()
+        # ... (początek funkcji bez zmian) ...
         current_colors = THEMES.get(self.current_theme, THEMES["light"])
-        default_text_color = current_colors.get("fg_text", "black")
+        default_text = current_colors["fg_text"]
 
-        # A. Postęp ogólny
+        # A. Postęp Całkowity
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         active_topics = [t for t in self.data["topics"] if t["exam_id"] in active_exams_ids]
+        total = len(active_topics)
+        done = len([t for t in active_topics if t["status"] == "done"])
 
-        total_topics = len(active_topics)
-        done_topics = len([t for t in active_topics if t["status"] == "done"])
-        progress = int((done_topics / total_topics) * 100) if total_topics > 0 else 0
+        # Obliczamy procenty i wartość float (0.0 - 1.0)
+        prog_val = 0.0
+        prog_percent = 0
+        if total > 0:
+            prog_val = done / total
+            prog_percent = int(prog_val * 100)
 
-        self.lbl_progress.config(text=self.txt["stats_total_progress"].format(done=done_topics, total=total_topics, progress=progress), foreground=default_text_color)
+        self.lbl_progress.configure(
+            text=self.txt["stats_total_progress"].format(done=done, total=total, progress=prog_percent))
 
-        # B. Postęp dzienny
+        # AKTUALIZACJA PASKA TOTAL
+        self.bar_total.set(prog_val)
+
+        # B. Postęp Dziś
         today_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
-        t_total = len(today_all)
-        t_done = len([t for t in today_all if t["status"] == "done"])
+        t_tot = len(today_all)
+        t_don = len([t for t in today_all if t["status"] == "done"])
 
-        if t_total > 0:
-            t_prog = int((t_done / t_total) * 100)
-            self.lbl_today.config(text=self.txt["stats_progress_today"].format(done=t_done, total=t_total, prog=t_prog))
-            if t_prog == 100:
-                self.lbl_today.config(foreground="green")
+        if t_tot > 0:
+            p_day_val = t_don / t_tot
+            p_day_perc = int(p_day_val * 100)
+
+            self.lbl_today.configure(
+                text=self.txt["stats_progress_today"].format(done=t_don, total=t_tot, prog=p_day_perc))
+
+            # Kolor tekstu (zielony jak 100%)
+            if p_day_perc == 100:
+                self.lbl_today.configure(text_color="#00b800")
+                self.bar_today.configure(progress_color="#2ecc71")
             else:
-                self.lbl_today.config(foreground=default_text_color)
+                self.lbl_today.configure(text_color=default_text)
+                self.bar_today.configure(progress_color="#3498db")
+
+            # AKTUALIZACJA PASKA DZIŚ
+            self.bar_today.set(p_day_val)
+
         else:
-            self.lbl_today.config(text=self.txt["stats_no_today"], foreground="lightblue")
+            self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
+            self.bar_today.set(0)  # Pusty pasek jak nie ma zadań
 
         # C. Najbliższy egzamin
         future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
@@ -351,9 +388,9 @@ class GUI:
                 text = self.txt["stats_exam_days"].format(days=days, subject=subjects_str)
                 if days <= 5: color = "yellow"
 
-            self.lbl_next_exam.config(text=text, foreground=color)
+            self.lbl_next_exam.configure(text=text, text_color=color)
         else:
-            self.lbl_next_exam.config(text=self.txt["stats_no_upcoming"], foreground="green")
+            self.lbl_next_exam.configure(text=self.txt["stats_no_upcoming"], text_color="green")
 
     # uruchomienie okna z instrukcja
     def open_manual(self):

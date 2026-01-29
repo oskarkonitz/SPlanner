@@ -168,6 +168,8 @@ class PlanWindow():
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        self.tree.insert("", "end", values=("", "", ""))
+
         # ---------------------------------------------------------
         # 2. ZALEGŁE TEMATY (Overdue) - bez zmian
         # ---------------------------------------------------------
