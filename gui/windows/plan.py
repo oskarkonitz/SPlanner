@@ -152,6 +152,7 @@ class PlanWindow():
             EditExamWindow(self.win, self.txt, self.data, self.btn_style, target_exam, on_save)
 
     # --- Notatki dla Tematu ---
+        # --- Notatki dla Tematu ---
     def open_notes(self):
         selected = self.tree.selection()
         if not selected: return
@@ -161,10 +162,15 @@ class PlanWindow():
 
         if target_topic:
             win = NoteWindow(self.win, self.txt, self.data, self.btn_style, target_topic)
-            self.win.wait_window(win.win)
-            self.refresh_table()
+            self.win.wait_window(win.win)  # Czekamy aż okno notatki się zamknie
+            self.refresh_table()  # Odświeżamy tabelę (żeby pojawił się ołówek ✎)
 
-    # --- NOWA FUNKCJA: Notatki dla Egzaminu ---
+            # --- POPRAWKA: Odświeżamy Dashboard i sprawdzamy Osiągnięcia ---
+            if self.dashboard_callback:
+                self.dashboard_callback()
+            # ---------------------------------------------------------------
+
+    # --- Notatki dla Egzaminu ---
     def open_notes_exam(self):
         selected = self.tree.selection()
         if not selected: return
@@ -174,8 +180,13 @@ class PlanWindow():
 
         if target_exam:
             win = NoteWindow(self.win, self.txt, self.data, self.btn_style, target_exam)
-            self.win.wait_window(win.win)
-            self.refresh_table()
+            self.win.wait_window(win.win)  # Czekamy aż okno notatki się zamknie
+            self.refresh_table()  # Odświeżamy tabelę (żeby pojawił się ołówek ✎)
+
+            # --- POPRAWKA: Odświeżamy Dashboard i sprawdzamy Osiągnięcia ---
+            if self.dashboard_callback:
+                self.dashboard_callback()
+            # ---------------------------------------------------------------
 
     # --- Menu Kontekstowe (Rozdzielacz) ---
     def show_context_menu(self, event):
@@ -621,5 +632,8 @@ class PlanWindow():
         def edit_topic_wrapper(topic_data, callback):
             EditTopicWindow(self.win, self.txt, self.data, self.btn_style, topic_data, callback)
 
-        ArchiveWindow(self.win, self.txt, self.data, self.btn_style, edit_exam_func=edit_exam_wrapper,
-                      edit_topic_func=edit_topic_wrapper)
+        # Przekazujemy self.dashboard_callback do Archiwum
+        ArchiveWindow(self.win, self.txt, self.data, self.btn_style,
+                      edit_exam_func=edit_exam_wrapper,
+                      edit_topic_func=edit_topic_wrapper,
+                      dashboard_callback=self.dashboard_callback)

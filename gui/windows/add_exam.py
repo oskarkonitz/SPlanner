@@ -38,13 +38,10 @@ class AddExamWindow:
 
         # --- NOWOŚĆ: Checkbox Ignoruj w planowaniu (Bariera) ---
         self.var_ignore_barrier = tk.BooleanVar(value=False)
-        # Używamy .get() z domyślnym tekstem, żeby nie wywaliło błędu przy braku klucza w JSON
         cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
-
         self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
                                          onvalue=True, offvalue=False)
         self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=5)
-        # -------------------------------------------------------
 
         # WPROWADZENIE LISTY TEMATOW
         tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=4, column=0, columnspan=2, pady=5)
@@ -70,30 +67,25 @@ class AddExamWindow:
         title = self.entry_title.get()
         topics = self.text_topics.get("1.0", tk.END)
 
-        # zabezpieczenie: jesli pole z data lub tytulem puste to nie pozwol zapisac
         if not subject or not date_str or not title:
             messagebox.showwarning(self.txt["msg_error"], self.txt["msg_fill_fields"])
             return
 
-        # zamiana tekstu z entry tematow na tablice
         topics_list = [t.strip() for t in topics.split("\n") if t.strip()]
-        # nadanie id egzaminu
         exam_id = f"exam_{uuid.uuid4().hex[:8]}"
 
-        # dodanie wpisu z egzaminem do bazy
         new_exam = {
             "id": exam_id,
             "subject": subject,
             "title": title,
             "date": date_str,
-            "ignore_barrier": self.var_ignore_barrier.get()  # <-- ZAPIS FLAGI
+            "ignore_barrier": self.var_ignore_barrier.get()
         }
         self.data["exams"].append(new_exam)
 
-        # dodanie wpisow z tematami do bazy danych
         for topic in topics_list:
             self.data["topics"].append({
-                "id": f"topic_{uuid.uuid4().hex[:8]}",  # nadanie kazdemu tematowi wlasnego id
+                "id": f"topic_{uuid.uuid4().hex[:8]}",
                 "exam_id": exam_id,
                 "name": topic,
                 "status": "todo",
@@ -103,9 +95,13 @@ class AddExamWindow:
 
         save(self.data)
 
-        # callback aby po zapisaniu nowego egzaminu odswiezyc widok planu
+        # --- POPRAWKA KOLEJNOŚCI ---
+        # 1. Najpierw niszczymy okno dodawania, żeby nie zasłaniało
+        self.win.destroy()
+
+        # 2. Pokazujemy komunikat (to zatrzymuje kod, aż user kliknie OK)
+        messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))
+
+        # 3. Dopiero teraz odpalamy odświeżenie i sprawdzanie osiągnięć (animacja ruszy płynnie)
         if self.callback:
             self.callback()
-
-        self.win.destroy()
-        messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))

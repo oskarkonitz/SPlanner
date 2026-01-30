@@ -13,6 +13,7 @@ from gui.theme_manager import apply_theme, THEMES
 from gui.windows.blocked_days import BlockedDaysWindow
 from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
+from gui.windows.achievements import AchievementManager
 
 class GUI:
     def __init__(self, root):
@@ -25,6 +26,10 @@ class GUI:
         self.current_theme = self.data["settings"].get("theme", "light")
         self.current_lang = self.data["settings"].get("lang", "en")
         self.txt = load_language(self.current_lang)
+
+        self.ach_manager = AchievementManager(self.root, self.txt, self.data)
+        # Sprawdzamy cicho na starcie (żeby zaktualizować listę, ale nie wyświetlać popupów)
+        self.ach_manager.check_all(silent=True)
 
         #  Konfiguracja okna
         self.root.title(self.txt["app_title"])
@@ -62,6 +67,9 @@ class GUI:
         # menu dodatki
         addons_menu = tk.Menu(self.menubar, tearoff=0)
         addons_menu.add_command(label=self.txt["menu_timer"], command=self.open_timer)
+        addons_menu.add_separator()
+        addons_menu.add_command(label=self.txt.get("win_achievements", "Osiągnięcia"),
+                                    command=self.open_achievements)
         self.menubar.add_cascade(label=self.txt["menu_addons"], menu=addons_menu)
 
         # menu ustawienia
@@ -320,9 +328,14 @@ class GUI:
             # Domyślny tekst ("Zmień Status")
             self.btn_status.configure(text=self.txt["btn_toggle_status"])
 
+    def open_achievements(self):
+        from gui.windows.achievements import AchievementsWindow
+        AchievementsWindow(self.root, self.txt, self.data, self.btn_style)
+
     def open_timer(self):
-        # ZMIANA: używamy self.btn_style zamiast self.btn_style_action
-        TimerWindow(self.root, self.txt, self.btn_style)
+        # Przekazujemy self.refresh_dashboard jako callback.
+        # Dzięki temu po zakończeniu timera odświeżą się statystyki i sprawdzą osiągnięcia.
+        TimerWindow(self.root, self.txt, self.btn_style, self.data, callback=self.refresh_dashboard)
 
     def animate_bar(self, bar, target_value):
         """Płynnie animuje pasek postępu od obecnej wartości do docelowej"""
@@ -450,6 +463,9 @@ class GUI:
             self.lbl_next_exam.configure(text=text, text_color=color)
         else:
             self.lbl_next_exam.configure(text=self.txt["stats_no_upcoming"], text_color="green")
+
+        if hasattr(self, 'ach_manager'):
+            self.ach_manager.check_all(silent=False)
 
     def open_manual(self):
         ManualWindow(self.root, self.txt, self.btn_style)

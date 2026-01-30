@@ -1,13 +1,16 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
+from core.storage import save
 
 
 class TimerWindow:
-    def __init__(self, parent, txt, btn_style):
+    def __init__(self, parent, txt, btn_style, data, callback=None):  # <--- Dodano callback=None
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
+        self.data = data
+        self.callback = callback  # <--- Zapamiętujemy
 
         # Konfiguracja
         self.WORK_TIME = 25 * 60
@@ -22,9 +25,7 @@ class TimerWindow:
         # Okno
         self.win = ctk.CTkToplevel(parent)
         self.win.title(self.txt.get("win_timer_title", "Timer"))
-
-        # --- ZMIANA: Zmniejszona wysokość startowa (300 -> 270) ---
-        # self.win.geometry("300x270")
+        self.win.geometry("300x270")
         self.win.resizable(False, False)
         self.win.attributes("-topmost", True)
 
@@ -246,6 +247,19 @@ class TimerWindow:
         self.progress.set(0)
         self.win.lift()
         self.win.attributes("-topmost", True)
+
+        # Zapis statystyk Pomodoro
+        if self.total_time_for_progress == self.WORK_TIME:
+            if "stats" not in self.data:
+                self.data["stats"] = {}
+
+            current_count = self.data["stats"].get("pomodoro_count", 0)
+            self.data["stats"]["pomodoro_count"] = current_count + 1
+            save(self.data)
+
+            # --- POPRAWKA: Powiadom główną aplikację o sukcesie (sprawdź osiągnięcia) ---
+            if self.callback:
+                self.callback()
 
     def on_close(self):
         self.stop_timer()

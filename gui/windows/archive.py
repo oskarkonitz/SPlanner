@@ -7,10 +7,11 @@ from core.storage import save
 from gui.windows.notebook import NotebookWindow # <--- IMPORT NOWEGO OKNA
 
 class ArchiveWindow:
-    def __init__(self, parent, txt, data, btn_style, edit_exam_func, edit_topic_func):
+    def __init__(self, parent, txt, data, btn_style, edit_exam_func, edit_topic_func, dashboard_callback=None):
         self.txt = txt
         self.data = data
         self.btn_style = btn_style
+        self.dashboard_callback = dashboard_callback
 
         self.edit_exam_func = edit_exam_func
         self.edit_topic_func = edit_topic_func
@@ -289,6 +290,10 @@ class ArchiveWindow:
                 save(self.data)
                 refresh_details()
                 self.refresh_list()
+
+                # --- POPRAWKA: Sprawdź osiągnięcia po zmianie statusu w archiwum ---
+                if self.dashboard_callback:
+                    self.dashboard_callback()
 
         def edit_topic_local():
             selected = tree.selection()
