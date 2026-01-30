@@ -136,5 +136,18 @@
     ],
 
     "menu_notes": "Notas",
-    "win_note_title": "Notas"
+    "win_note_title": "Notas",
+
+    "menu_addons": "Extras",
+    "menu_timer": "Temporizador Pomodoro",
+    "timer_focus": "Estudio (25m)",
+    "timer_break": "Descanso (5m)",
+    "timer_custom": "Personalizado",
+    "timer_custom_title": "Configurar tiempo",
+    "timer_enter_minutes": "Introducir minutos:",
+    "timer_start": "INICIO",
+    "timer_pause": "PAUSA",
+    "timer_reset": "REINICIAR",
+    "msg_pos_number_err": "Ingrese un número positivo.",
+    "msg_number_err": "Número inválido."
 }

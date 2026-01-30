@@ -136,5 +136,18 @@
     ],
 
     "menu_notes": "Notatki",
-    "win_note_title": "Notatki"
+    "win_note_title": "Notatki",
+
+    "menu_addons": "Dodatki",
+    "menu_timer": "Timer Pomodoro",
+    "timer_focus": "Nauka (25m)",
+    "timer_break": "Przerwa (5m)",
+    "timer_custom": "Własny",
+    "timer_custom_title": "Ustaw czas",
+    "timer_enter_minutes": "Podaj minuty:",
+    "timer_start": "START",
+    "timer_pause": "PAUZA",
+    "timer_reset": "RESET",
+    "msg_pos_number_err": "Wpisz liczbę dodatnią.",
+    "msg_number_err": "To nie jest poprawna liczba."
 }

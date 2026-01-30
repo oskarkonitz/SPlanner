@@ -136,5 +136,18 @@
     ],
 
     "menu_notes": "Notes",
-    "win_note_title": "Notes"
+    "win_note_title": "Notes",
+
+    "menu_addons": "Add-ons",
+    "menu_timer": "Pomodoro Timer",
+    "timer_focus": "Study (25m)",
+    "timer_break": "Break (5m)",
+    "timer_custom": "Custom",
+    "timer_custom_title": "Set Timer",
+    "timer_enter_minutes": "Enter minutes:",
+    "timer_start": "START",
+    "timer_pause": "PAUSE",
+    "timer_reset": "RESET",
+    "msg_pos_number_err": "Please enter a positive number.",
+    "msg_number_err": "Invalid number."
 }

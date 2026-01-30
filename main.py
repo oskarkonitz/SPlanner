@@ -12,6 +12,7 @@ from gui.windows.manual import ManualWindow
 from gui.theme_manager import apply_theme, THEMES
 from gui.windows.blocked_days import BlockedDaysWindow
 from gui.effects import ConfettiEffect, FireworksEffect
+from gui.windows.timer import TimerWindow
 
 class GUI:
     def __init__(self, root):
@@ -57,6 +58,11 @@ class GUI:
         tools_menu.add_command(label=self.txt.get("menu_days_off", "Days Off"), command=self.open_blocked_days)
         tools_menu.add_command(label=self.txt["win_archive_title"], command=self.sidebar_archive)
         self.menubar.add_cascade(label=self.txt["menu_tools"], menu=tools_menu)
+
+        # menu dodatki
+        addons_menu = tk.Menu(self.menubar, tearoff=0)
+        addons_menu.add_command(label=self.txt["menu_timer"], command=self.open_timer)
+        self.menubar.add_cascade(label=self.txt["menu_addons"], menu=addons_menu)
 
         # menu ustawienia
         settings_menu = tk.Menu(self.menubar, tearoff=0)
@@ -313,6 +319,10 @@ class GUI:
         else:
             # Domyślny tekst ("Zmień Status")
             self.btn_status.configure(text=self.txt["btn_toggle_status"])
+
+    def open_timer(self):
+        # ZMIANA: używamy self.btn_style zamiast self.btn_style_action
+        TimerWindow(self.root, self.txt, self.btn_style)
 
     def animate_bar(self, bar, target_value):
         """Płynnie animuje pasek postępu od obecnej wartości do docelowej"""
