@@ -248,18 +248,35 @@ class TimerWindow:
         self.win.lift()
         self.win.attributes("-topmost", True)
 
-        # Zapis statystyk Pomodoro
-        if self.total_time_for_progress == self.WORK_TIME:
+        # --- INTELIGENTNE ZLICZANIE SESJI ---
+        # Obliczamy ile minut trwała sesja
+        minutes_done = self.total_time_for_progress / 60
+
+        # Logika:
+        # 1. Ignorujemy wszystko poniżej 20 minut (to pewnie przerwy 5/15 min)
+        # 2. Przeliczamy czas na ilość standardowych sesji (25 min)
+
+        if minutes_done >= 20:
+            # Dzielenie całkowite: 60 / 25 = 2 sesje. 25 / 25 = 1 sesja.
+            earned_sessions = int(minutes_done / 25)
+
+            # Zabezpieczenie: Jeśli ktoś ustawił np. 22 minuty, to z dzielenia wyjdzie 0,
+            # ale skoro jest > 20 min, to chcemy dać chociaż 1 punkt.
+            if earned_sessions < 1:
+                earned_sessions = 1
+
+            # Zapis do statystyk
             if "stats" not in self.data:
                 self.data["stats"] = {}
 
             current_count = self.data["stats"].get("pomodoro_count", 0)
-            self.data["stats"]["pomodoro_count"] = current_count + 1
+            self.data["stats"]["pomodoro_count"] = current_count + earned_sessions
             save(self.data)
 
-            # --- POPRAWKA: Powiadom główną aplikację o sukcesie (sprawdź osiągnięcia) ---
+            # Powiadomienie o sukcesie (sprawdzenie osiągnięć)
             if self.callback:
                 self.callback()
+        # ------------------------------------
 
     def on_close(self):
         self.stop_timer()

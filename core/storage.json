@@ -2,170 +2,22 @@
   "settings": {
     "max_per_day": 2,
     "max_same_subject_per_day": 1,
-    "lang": "pl"
+    "lang": "en",
+    "theme": "dark"
   },
-  "exams": [
-    {
-      "id": "exam_d3eb1f25",
-      "subject": "Marketing",
-      "title": "Projekt",
-      "date": "2026-02-04"
-    },
-    {
-      "id": "exam_e1ad9674",
-      "subject": "Systemy operacyjne",
-      "title": "Kolokwium",
-      "date": "2026-01-29"
-    },
-    {
-      "id": "exam_bd2c4b98",
-      "subject": "Matematyka",
-      "title": "Kolokwium",
-      "date": "2026-02-10"
-    },
-    {
-      "id": "exam_0de097a9",
-      "subject": "Fizyka",
-      "title": "Wejściówka",
-      "date": "2026-01-22"
-    }
+  "blocked_dates": [
+    "2026-01-31",
+    "2026-02-01",
+    "2026-02-02",
+    "2026-02-03",
+    "2026-02-04",
+    "2026-02-05"
   ],
-  "topics": [
-    {
-      "id": "topic_c9b3378a",
-      "exam_id": "exam_d3eb1f25",
-      "name": "Analiza SWOT",
-      "status": "todo",
-      "scheduled_date": "2026-02-01",
-      "locked": false
-    },
-    {
-      "id": "topic_d0d96dc9",
-      "exam_id": "exam_d3eb1f25",
-      "name": "Strategia 4P",
-      "status": "todo",
-      "scheduled_date": "2026-02-02",
-      "locked": false
-    },
-    {
-      "id": "topic_77953afb",
-      "exam_id": "exam_d3eb1f25",
-      "name": "Grupa docelowa",
-      "status": "todo",
-      "scheduled_date": "2026-02-03",
-      "locked": false
-    },
-    {
-      "id": "topic_31e80903",
-      "exam_id": "exam_e1ad9674",
-      "name": "Zarzadzanie procesami",
-      "status": "todo",
-      "scheduled_date": "2026-01-24",
-      "locked": true
-    },
-    {
-      "id": "topic_442244e9",
-      "exam_id": "exam_e1ad9674",
-      "name": "Problem zakleszczen (deadlock)",
-      "status": "done",
-      "scheduled_date": "2026-01-25",
-      "locked": true
-    },
-    {
-      "id": "topic_8329e507",
-      "exam_id": "exam_e1ad9674",
-      "name": "pamiec wirtualna",
-      "status": "todo",
-      "scheduled_date": "2026-01-28",
-      "locked": false
-    },
-    {
-      "id": "topic_3858b781",
-      "exam_id": "exam_bd2c4b98",
-      "name": "calki",
-      "status": "todo",
-      "scheduled_date": "2026-02-04",
-      "locked": false
-    },
-    {
-      "id": "topic_983f846e",
-      "exam_id": "exam_bd2c4b98",
-      "name": "kombinatoryka",
-      "status": "todo",
-      "scheduled_date": "2026-02-04",
-      "locked": false
-    },
-    {
-      "id": "topic_634d7dfb",
-      "exam_id": "exam_bd2c4b98",
-      "name": "pochodne",
-      "status": "todo",
-      "scheduled_date": "2026-02-05",
-      "locked": false
-    },
-    {
-      "id": "topic_fd2bbab9",
-      "exam_id": "exam_bd2c4b98",
-      "name": "funkcje",
-      "status": "todo",
-      "scheduled_date": "2026-02-05",
-      "locked": false
-    },
-    {
-      "id": "topic_6823d452",
-      "exam_id": "exam_bd2c4b98",
-      "name": "relacje",
-      "status": "todo",
-      "scheduled_date": "2026-02-06",
-      "locked": false
-    },
-    {
-      "id": "topic_0c0b0f78",
-      "exam_id": "exam_bd2c4b98",
-      "name": "logika",
-      "status": "todo",
-      "scheduled_date": "2026-02-06",
-      "locked": false
-    },
-    {
-      "id": "topic_81f80eb0",
-      "exam_id": "exam_bd2c4b98",
-      "name": "grafy",
-      "status": "todo",
-      "scheduled_date": "2026-02-07",
-      "locked": false
-    },
-    {
-      "id": "topic_dc6f059e",
-      "exam_id": "exam_bd2c4b98",
-      "name": "rekurencja",
-      "status": "todo",
-      "scheduled_date": "2026-02-07",
-      "locked": false
-    },
-    {
-      "id": "topic_ac8697c6",
-      "exam_id": "exam_bd2c4b98",
-      "name": "indukcja",
-      "status": "todo",
-      "scheduled_date": "2026-02-08",
-      "locked": false
-    },
-    {
-      "id": "topic_d8fd56c9",
-      "exam_id": "exam_0de097a9",
-      "name": "fale",
-      "status": "done",
-      "scheduled_date": "2026-01-20",
-      "locked": true
-    },
-    {
-      "id": "topic_07783c63",
-      "exam_id": "exam_0de097a9",
-      "name": "promieniowanie",
-      "status": "done",
-      "scheduled_date": "2026-01-21",
-      "locked": true
-    }
+  "exams": [],
+  "topics": [],
+  "achievements": [
+    "clean_sheet",
+    "first_step",
+    "balance"
   ]
 }
