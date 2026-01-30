@@ -66,6 +66,7 @@
     "col_form": "Art",
     "col_status": "Status",
     "col_plan_date": "Geplantes Datum",
+    "col_progress": "Fortschritt",
 
     "tag_today": "Heute",
     "tag_1_day": "1 Tag",
@@ -135,8 +136,14 @@
         "Juli", "August", "September", "Oktober", "November", "Dezember"
     ],
 
+    "form_ignore_barrier": "In Planung ignorieren (Barriere)",
+
     "menu_notes": "Notizen",
     "win_note_title": "Notizen",
+    "menu_lock": "Sperren / Entsperren",
+
+    "menu_ignore_barrier": "In Planung ignorieren (Barriere)",
+    "msg_barrier_changed": "Planungseinstellungen geändert. Es wird empfohlen, den Plan neu zu erstellen.",
 
     "menu_addons": "Extras",
     "menu_timer": "Pomodoro-Timer",
@@ -149,5 +156,10 @@
     "timer_pause": "PAUSE",
     "timer_reset": "RESET",
     "msg_pos_number_err": "Bitte geben Sie eine positive Zahl ein.",
-    "msg_number_err": "Ungültige Zahl."
+    "msg_number_err": "Ungültige Zahl.",
+
+    "btn_notebook": "Notizbuch",
+    "win_notebook_title": "Notizenzentrum",
+    "notebook_list_header": "Elementliste",
+    "notebook_exam_general": "Allgemein (Prüfung)"
 }

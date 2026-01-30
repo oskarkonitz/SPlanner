@@ -66,6 +66,7 @@
     "col_form": "Type",
     "col_status": "Status",
     "col_plan_date": "Planned Date",
+    "col_progress": "Progress",
 
     "tag_today": "Today",
     "tag_1_day": "1 day",
@@ -135,8 +136,14 @@
         "July", "August", "September", "October", "November", "December"
     ],
 
+    "form_ignore_barrier": "Ignore in Planning (Barrier)",
+
     "menu_notes": "Notes",
     "win_note_title": "Notes",
+    "menu_lock": "Lock / Unlock",
+
+    "menu_ignore_barrier": "Ignore in Planning (Barrier)",
+    "msg_barrier_changed": "Planning settings changed. It is recommended to regenerate the plan.",
 
     "menu_addons": "Add-ons",
     "menu_timer": "Pomodoro Timer",
@@ -149,5 +156,10 @@
     "timer_pause": "PAUSE",
     "timer_reset": "RESET",
     "msg_pos_number_err": "Please enter a positive number.",
-    "msg_number_err": "Invalid number."
+    "msg_number_err": "Invalid number.",
+
+    "btn_notebook": "Notebook",
+    "win_notebook_title": "Notes Center",
+    "notebook_list_header": "Items List",
+    "notebook_exam_general": "General (Exam)"
 }

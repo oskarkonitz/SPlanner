@@ -66,6 +66,7 @@
     "col_form": "Forma",
     "col_status": "Status",
     "col_plan_date": "Planowana Data",
+    "col_progress": "Postęp",
     
     "tag_today": "Dzisiaj",
     "tag_1_day": "1 dzień",
@@ -135,8 +136,14 @@
         "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
     ],
 
+    "form_ignore_barrier": "Ignoruj w planowaniu (Bariera)",
+
     "menu_notes": "Notatki",
     "win_note_title": "Notatki",
+    "menu_lock": "Zablokuj / Odblokuj",
+
+    "menu_ignore_barrier": "Ignoruj w planowaniu (Bariera)",
+    "msg_barrier_changed": "Zmieniono ustawienia planowania. Zalecane ponowne wygenerowanie planu.",
 
     "menu_addons": "Dodatki",
     "menu_timer": "Timer Pomodoro",
@@ -149,5 +156,10 @@
     "timer_pause": "PAUZA",
     "timer_reset": "RESET",
     "msg_pos_number_err": "Wpisz liczbę dodatnią.",
-    "msg_number_err": "To nie jest poprawna liczba."
+    "msg_number_err": "To nie jest poprawna liczba.",
+
+    "btn_notebook": "Notatnik",
+    "win_notebook_title": "Centrum Notatek",
+    "notebook_list_header": "Lista elementów",
+    "notebook_exam_general": "Ogólne (Egzamin)"
 }

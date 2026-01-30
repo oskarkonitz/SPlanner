@@ -5,6 +5,7 @@ from tkcalendar import DateEntry
 import uuid
 from core.storage import save
 
+
 # funkcja sprawdzajaca czy zaznaczony element jest egzaminem czy tematem
 def select_edit_item(parent, data, txt, tree, btn_style, callback=None):
     selected_item = tree.selection()
@@ -28,6 +29,7 @@ def select_edit_item(parent, data, txt, tree, btn_style, callback=None):
 
     # blad
     messagebox.showerror(txt["msg_error"], txt["msg_cant_edit"])
+
 
 # edycja egzaminow
 class EditExamWindow():
@@ -60,20 +62,30 @@ class EditExamWindow():
         if exam_data["date"]:
             self.ent_date.set_date(exam_data["date"])
 
-        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=3, column=0, pady=5, columnspan=2)
+        # --- NOWOŚĆ: Checkbox Ignoruj w planowaniu (Bariera) ---
+        self.var_ignore_barrier = tk.BooleanVar(value=exam_data.get("ignore_barrier", False))
+        cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
+
+        self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
+                                         onvalue=True, offvalue=False)
+        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=5)
+        # -------------------------------------------------------
+
+        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=4, column=0, pady=5, columnspan=2)
         self.txt_topics = tk.Text(self.win, width=40, height=10)
-        self.txt_topics.grid(row=4, column=0, columnspan=2, padx=10)
+        self.txt_topics.grid(row=5, column=0, columnspan=2, padx=10)
 
         # wczytanie tematow do pola tekstowego
         self.topics_list = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
         for t in self.topics_list:
             self.txt_topics.insert(tk.END, t["name"] + "\n")
 
-        #przyciski
+        # przyciski
         btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=6, column=0, columnspan=2, pady=20)
 
-        btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save_changes"], command=self.save_changes, **self.btn_style)
+        btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save_changes"], command=self.save_changes,
+                                 **self.btn_style)
         btn_save.pack(side="left", padx=5)
         btn_delete = ctk.CTkButton(btn_frame, text=self.txt["btn_delete"], command=self.delete_exam, **self.btn_style)
         btn_delete.pack(side="left", padx=5)
@@ -87,6 +99,7 @@ class EditExamWindow():
         self.exam_data["subject"] = self.ent_subject.get()
         self.exam_data["date"] = self.ent_date.get()
         self.exam_data["title"] = self.ent_title.get()
+        self.exam_data["ignore_barrier"] = self.var_ignore_barrier.get()  # <-- ZAPIS FLAGI
 
         # aktualizacja tematow
         new_names = [line.strip() for line in self.txt_topics.get("1.0", tk.END).split("\n") if line.strip()]
@@ -126,7 +139,8 @@ class EditExamWindow():
         messagebox.showinfo(self.txt["msg_success"], self.txt["msg_data_updated"])
 
     def delete_exam(self):
-        confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_exam"].format(subject=self.exam_data["subject"]))
+        confirm = messagebox.askyesno(self.txt["msg_warning"],
+                                      self.txt["msg_confirm_del_exam"].format(subject=self.exam_data["subject"]))
         if confirm:
             self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != self.exam_data["id"]]
             self.data["exams"] = [e for e in self.data["exams"] if e["id"] != self.exam_data["id"]]
@@ -139,6 +153,7 @@ class EditExamWindow():
 
             self.win.destroy()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_deleted"])
+
 
 class EditTopicWindow:
     def __init__(self, parent, txt, data, btn_style, topic_data, callback=None):
@@ -170,7 +185,7 @@ class EditTopicWindow:
                                       offvalue=False)
         check_locked.grid(row=2, column=0, columnspan=2, pady=5)
 
-        #przyciski
+        # przyciski
         btn_frame = tk.Frame(self.win)
         btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
 
@@ -209,7 +224,7 @@ class EditTopicWindow:
 
         save(self.data)
 
-        #callback dla odswiezenia
+        # callback dla odswiezenia
         if self.callback:
             self.callback()
 

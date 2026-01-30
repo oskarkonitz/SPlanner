@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import uuid
 from core.storage import save
 
+
 class AddExamWindow:
     def __init__(self, parent, txt, data, btn_style, callback=None):
         self.txt = txt
@@ -35,14 +36,24 @@ class AddExamWindow:
         tomorrow = datetime.now() + timedelta(days=1)
         self.entry_date.set_date(tomorrow)
 
+        # --- NOWOŚĆ: Checkbox Ignoruj w planowaniu (Bariera) ---
+        self.var_ignore_barrier = tk.BooleanVar(value=False)
+        # Używamy .get() z domyślnym tekstem, żeby nie wywaliło błędu przy braku klucza w JSON
+        cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
+
+        self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
+                                         onvalue=True, offvalue=False)
+        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=5)
+        # -------------------------------------------------------
+
         # WPROWADZENIE LISTY TEMATOW
-        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=3, column=0, columnspan=2, pady=5)
+        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=4, column=0, columnspan=2, pady=5)
         self.text_topics = tk.Text(self.win, width=40, height=10)
-        self.text_topics.grid(row=4, column=0, columnspan=2, padx=10)
+        self.text_topics.grid(row=5, column=0, columnspan=2, padx=10)
 
         # PRZYCISKI
         btn_frame = tk.Frame(self.win)
-        btn_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20)
+        btn_frame.grid(row=6, column=0, columnspan=2, padx=20, pady=20)
 
         btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save"], command=self.save_new_exam, **self.btn_style)
         btn_save.pack(side="left", padx=5)
@@ -75,13 +86,14 @@ class AddExamWindow:
             "subject": subject,
             "title": title,
             "date": date_str,
+            "ignore_barrier": self.var_ignore_barrier.get()  # <-- ZAPIS FLAGI
         }
         self.data["exams"].append(new_exam)
 
         # dodanie wpisow z tematami do bazy danych
         for topic in topics_list:
             self.data["topics"].append({
-                "id": f"topic_{uuid.uuid4().hex[:8]}", #nadanie kazdemu tematowi wlasnego id
+                "id": f"topic_{uuid.uuid4().hex[:8]}",  # nadanie kazdemu tematowi wlasnego id
                 "exam_id": exam_id,
                 "name": topic,
                 "status": "todo",

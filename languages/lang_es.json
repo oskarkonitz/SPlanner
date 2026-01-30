@@ -66,6 +66,7 @@
     "col_form": "Tipo",
     "col_status": "Estado",
     "col_plan_date": "Fecha Planificada",
+    "col_progress": "Progreso",
 
     "tag_today": "Hoy",
     "tag_1_day": "1 día",
@@ -135,8 +136,14 @@
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ],
 
+    "form_ignore_barrier": "Ignorar en la planificación (Barrera)",
+
     "menu_notes": "Notas",
     "win_note_title": "Notas",
+    "menu_lock": "Bloquear / Desbloquear",
+
+    "menu_ignore_barrier": "Ignorar en la planificación (Barrera)",
+    "msg_barrier_changed": "Configuración de planificación cambiada. Se recomienda regenerar el plan.",
 
     "menu_addons": "Extras",
     "menu_timer": "Temporizador Pomodoro",
@@ -149,5 +156,10 @@
     "timer_pause": "PAUSA",
     "timer_reset": "REINICIAR",
     "msg_pos_number_err": "Ingrese un número positivo.",
-    "msg_number_err": "Número inválido."
+    "msg_number_err": "Número inválido.",
+
+    "btn_notebook": "Cuaderno",
+    "win_notebook_title": "Centro de Notas",
+    "notebook_list_header": "Lista de elementos",
+    "notebook_exam_general": "General (Examen)"
 }

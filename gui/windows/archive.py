@@ -4,7 +4,7 @@ import customtkinter as ctk
 from datetime import date
 from core.planner import date_format
 from core.storage import save
-
+from gui.windows.notebook import NotebookWindow # <--- IMPORT NOWEGO OKNA
 
 class ArchiveWindow:
     def __init__(self, parent, txt, data, btn_style, edit_exam_func, edit_topic_func):
@@ -48,15 +48,11 @@ class ArchiveWindow:
         self.tree.heading("postep", text=col_prog_txt)
         self.tree.column("postep", width=80, anchor="center")
 
-        # --- ZMIANA: Dobór koloru w zależności od motywu ---
         current_mode = ctk.get_appearance_mode()
-
-        # Jeśli Light -> ciemniejszy niebieski (#0066cc), Jeśli Dark -> jasny (lightblue)
         active_color = "#0066cc" if current_mode == "Light" else "lightblue"
 
         self.tree.tag_configure("active", foreground=active_color, font=("Arial", 12, "bold"))
         self.tree.tag_configure("past", foreground="gray", font=("Arial", 12, "bold"))
-        # ---------------------------------------------------
 
         # scroll
         scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=self.tree.yview, fg_color="transparent",
@@ -85,10 +81,8 @@ class ArchiveWindow:
         btn_close.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_close.pack(side="left", padx=5)
 
-        # pierwsze odswiezenie listy
         self.refresh_list()
 
-    # FUNKCJA ODSWIEZAJACA DANE W TABELCE
     def refresh_list(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -135,7 +129,6 @@ class ArchiveWindow:
                              values=(exam["date"], exam["subject"], exam["title"], status_txt, progress_str),
                              tags=(tag,))
 
-    # FUNKCJA USUWAJACA ZAZNACZONY EGZAMIN
     def delete_selected(self):
         selection = self.tree.selection()
         if not selection:
@@ -166,7 +159,6 @@ class ArchiveWindow:
             self.refresh_list()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archived_del"])
 
-    # FUNKCJA USUWAJACA WSZYSTKIE PRZESZLE EGZAMINY
     def delete_all_archive(self):
         today = date.today()
 
@@ -197,10 +189,11 @@ class ArchiveWindow:
         if selected_exam:
             self.open_details_window(selected_exam)
 
-    # FUNKCJA OTWIERAJACA OKNO SZCZEGOLOW DLA WYBRANEGO EGZAMINU
+    # --- OKNO SZCZEGÓŁÓW ---
+        # --- OKNO SZCZEGÓŁÓW ---
     def open_details_window(self, exam_data):
         hist_window = tk.Toplevel(self.win)
-        hist_window.minsize(500, 400)
+        hist_window.minsize(600, 450)
 
         info_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
         info_frame.pack(pady=10)
@@ -217,8 +210,25 @@ class ArchiveWindow:
 
         refresh_info()
 
-        lbl_progress = ctk.CTkLabel(hist_window, text="", font=("Arial", 13, "bold"))
-        lbl_progress.pack(fill="x", padx=25, pady=(0, 5))
+        # --- PASEK AKCJI (Notatnik + Postęp) ---
+        action_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
+        action_frame.pack(fill="x", padx=20, pady=(0, 5))
+
+        # 1. Przycisk Notatnik (Lewa strona) - ZMIANA STYLU
+        # Usunięto emotkę i zmieniono styl na transparentny z ramką
+        btn_notebook = ctk.CTkButton(action_frame,
+                                     text=self.txt.get('btn_notebook', 'Notatnik'),
+                                     height=28, width=100,
+                                     fg_color="transparent", border_width=1, border_color="gray",
+                                     text_color=("gray10", "gray90"), hover_color=("gray80", "gray30"),
+                                     command=lambda: NotebookWindow(hist_window, self.txt, self.data,
+                                                                    self.btn_style, exam_data))
+        btn_notebook.pack(side="left")
+
+        # 2. Label Postępu (Prawa strona)
+        lbl_progress = ctk.CTkLabel(action_frame, text="", font=("Arial", 13, "bold"))
+        lbl_progress.pack(side="right")
+        # ---------------------------------------
 
         frame = tk.Frame(hist_window)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -255,7 +265,7 @@ class ArchiveWindow:
 
             prog_txt = self.txt.get("col_progress", "Postęp")
 
-            lbl_progress.configure(text=f"{prog_txt}: {done}/{total} ({pct}%)", anchor="e")
+            lbl_progress.configure(text=f"{prog_txt}: {done}/{total} ({pct}%)")
 
             for topic in exam_topics:
                 status_text = self.txt["tag_done"] if topic["status"] == "done" else self.txt["tag_todo"]
@@ -311,9 +321,11 @@ class ArchiveWindow:
                                    **self.btn_style)
         btn_status.pack(side="left", padx=5)
 
-        btn_edit = ctk.CTkButton(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local, **self.btn_style)
+        btn_edit = ctk.CTkButton(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local,
+                                 **self.btn_style)
         btn_edit.pack(side="left", padx=5)
 
-        btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy, **self.btn_style)
+        btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy,
+                                  **self.btn_style)
         btn_close.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_close.pack(side="left", padx=5)

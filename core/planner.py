@@ -28,6 +28,11 @@ def callendar_create(data, tday):
 
     # Wstawiamy znaczniki egzaminów "E"
     for exam in data["exams"]:
+        # --- ZMIANA: Sprawdzamy czy egzamin ma być ignorowany jako bariera ---
+        if exam.get("ignore_barrier", False):
+            continue  # Nie wstawiamy "E", algorytm nie zobaczy tu ściany
+        # --------------------------------------------------------------------
+
         exam_date = date_format(exam["date"])
         if exam_date >= tday:
             callendar[exam_date] = ["E"]
