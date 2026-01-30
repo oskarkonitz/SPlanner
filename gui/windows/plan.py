@@ -561,6 +561,7 @@ class PlanWindow():
         except Exception as e:
             messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
 
+        # ... (początek pliku bez zmian) ...
     def toggle_status(self):
         selected = self.tree.selection()
         if not selected:
@@ -571,7 +572,23 @@ class PlanWindow():
         target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
 
         if target_topic:
-            target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
+            old_status = target_topic["status"]
+            new_status = "done" if old_status == "todo" else "todo"
+            target_topic["status"] = new_status
+
+            # --- AKTUALIZACJA GLOBALNYCH STATYSTYK ---
+            if "global_stats" not in self.data:
+                self.data["global_stats"] = {}  # Fallback
+
+            if new_status == "done":
+                # Zwiększamy licznik (kumulatywnie)
+                current = self.data["global_stats"].get("topics_done", 0)
+                self.data["global_stats"]["topics_done"] = current + 1
+
+                # Ustawiamy flagę, że użytkownik zaczął pracę (dla Clean Sheet)
+                self.data["global_stats"]["activity_started"] = True
+            # -----------------------------------------
+
             save(self.data)
 
             new_tag = target_topic["status"]
@@ -581,6 +598,7 @@ class PlanWindow():
             self.on_selection_change(None)
 
         elif str(item_id).startswith("date_"):
+            # ... (obsługa blokowania dat bez zmian) ...
             date_str = str(item_id).replace("date_", "")
             if "blocked_dates" not in self.data:
                 self.data["blocked_dates"] = []
@@ -589,11 +607,17 @@ class PlanWindow():
                 self.data["blocked_dates"].remove(date_str)
             else:
                 self.data["blocked_dates"].append(date_str)
+                # Zwiększamy licznik Balance
+                current_blocked = self.data.get("global_stats", {}).get("days_off", 0)
+                if "global_stats" not in self.data: self.data["global_stats"] = {}
+                self.data["global_stats"]["days_off"] = current_blocked + 1
 
             self.run_and_refresh()
 
         else:
             messagebox.showwarning(self.txt["msg_error"], self.txt["msg_cant_status"])
+
+    # ... (reszta pliku bez zmian) ...
 
     def clear_database(self):
         if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_db"]):

@@ -168,10 +168,6 @@
 
     "ach_first_step": "Erster Schritt",
     "ach_desc_first_step": "Erledige deine erste Aufgabe.",
-    "ach_clean_sheet": "Weiße Weste",
-    "ach_desc_clean_sheet": "Keine überfälligen Aufgaben.",
-    "ach_balance": "Auszeit",
-    "ach_desc_balance": "Blockiere einen freien Tag.",
 
     "ach_scribe_1": "Schreiber I",
     "ach_desc_scribe_1": "Füge 5 Notizen hinzu.",
@@ -225,5 +221,72 @@
     "ach_strategist_2": "Stratege II",
     "ach_desc_strategist_2": "Plane eine Prüfung 14 Tage im Voraus.",
     "ach_strategist_3": "Stratege III",
-    "ach_desc_strategist_3": "Plane eine Prüfung 30 Tage im Voraus."
+    "ach_desc_strategist_3": "Plane eine Prüfung 30 Tage im Voraus.",
+
+    "ach_clean_sheet": "Saubere Weste",
+    "ach_desc_clean_sheet": "Keine überfälligen Aufgaben (Aktivität erforderlich).",
+
+    "ach_balance": "Balance I",
+    "ach_desc_balance": "Blockiere einen freien Tag.",
+    "ach_balance_2": "Balance II",
+    "ach_desc_balance_2": "Blockiere 3 freie Tage.",
+    "ach_balance_3": "Balance III",
+    "ach_desc_balance_3": "Blockiere 7 freie Tage.",
+    "ach_balance_4": "Balance IV",
+    "ach_desc_balance_4": "Blockiere 14 freie Tage.",
+
+    "ach_scribe_6": "Schreiber VI",
+    "ach_desc_scribe_6": "Füge 250 Notizen hinzu.",
+    "ach_scribe_7": "Schreiber VII",
+    "ach_desc_scribe_7": "Füge 500 Notizen hinzu.",
+    "ach_scribe_8": "Schreiber VIII",
+    "ach_desc_scribe_8": "Füge 1000 Notizen hinzu.",
+    "ach_scribe_9": "Schreiber IX",
+    "ach_desc_scribe_9": "Füge 2000 Notizen hinzu.",
+
+    "ach_encyclopedia_6": "Enzyklopädie VI",
+    "ach_desc_encyclopedia_6": "Schließe 250 Themen ab.",
+    "ach_encyclopedia_7": "Enzyklopädie VII",
+    "ach_desc_encyclopedia_7": "Schließe 500 Themen ab.",
+    "ach_encyclopedia_8": "Enzyklopädie VIII",
+    "ach_desc_encyclopedia_8": "Schließe 1000 Themen ab.",
+    "ach_encyclopedia_9": "Enzyklopädie IX",
+    "ach_desc_encyclopedia_9": "Schließe 2000 Themen ab.",
+
+    "ach_time_lord_6": "Zeitlord VI",
+    "ach_desc_time_lord_6": "Schließe 500 Pomodoro-Sitzungen ab.",
+    "ach_time_lord_7": "Zeitlord VII",
+    "ach_desc_time_lord_7": "Schließe 1000 Pomodoro-Sitzungen ab.",
+
+    "ach_session_master_4": "Sitzungsmeister IV",
+    "ach_desc_session_master_4": "Schließe 100% der Themen für 10 Fächer ab.",
+    "ach_session_master_5": "Sitzungsmeister V",
+    "ach_desc_session_master_5": "Schließe 100% der Themen für 20 Fächer ab.",
+
+    "ach_polyglot_4": "Polyglot IV",
+    "ach_desc_polyglot_4": "Fügen Sie Prüfungen für 10 verschiedene Fächer hinzu.",
+    "ach_polyglot_5": "Polyglot V",
+    "ach_desc_polyglot_5": "Fügen Sie Prüfungen für 20 verschiedene Fächer hinzu.",
+
+    "ach_strategist_4": "Stratege IV",
+    "ach_desc_strategist_4": "Planen Sie eine Prüfung 60 Tage im Voraus.",
+
+    "ach_balance_5": "Balance V",
+    "ach_desc_balance_5": "Blockiere 20 freie Tage.",
+    "ach_balance_6": "Balance VI",
+    "ach_desc_balance_6": "Blockiere 60 freie Tage.",
+    "ach_balance_7": "Balance VII",
+    "ach_desc_balance_7": "Blockiere 360 freie Tage.",
+
+    "ach_session_master_6": "Sitzungsmeister VI",
+    "ach_desc_session_master_6": "Schließe 100% der Themen für 100 Fächer ab.",
+    "ach_session_master_7": "Sitzungsmeister VII",
+    "ach_desc_session_master_7": "Schließe 100% der Themen für 250 Fächer ab.",
+
+    "ach_polyglot_6": "Polyglot VI",
+    "ach_desc_polyglot_6": "Fügen Sie Prüfungen für 50 verschiedene Fächer hinzu.",
+    "ach_polyglot_7": "Polyglot VII",
+    "ach_desc_polyglot_7": "Fügen Sie Prüfungen für 100 verschiedene Fächer hinzu.",
+    "ach_polyglot_8": "Polyglot VIII",
+    "ach_desc_polyglot_8": "Fügen Sie Prüfungen für 500 verschiedene Fächer hinzu."
 }

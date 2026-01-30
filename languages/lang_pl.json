@@ -168,10 +168,6 @@
 
     "ach_first_step": "Pierwsze Kroki",
     "ach_desc_first_step": "Ukończ pierwsze zadanie.",
-    "ach_clean_sheet": "Na Czysto",
-    "ach_desc_clean_sheet": "Brak zaległych zadań (Overdue).",
-    "ach_balance": "Work-Life Balance",
-    "ach_desc_balance": "Zablokuj dzień wolny.",
 
     "ach_scribe_1": "Skryba I",
     "ach_desc_scribe_1": "Dodaj 5 notatek.",
@@ -225,5 +221,72 @@
     "ach_strategist_2": "Strateg II",
     "ach_desc_strategist_2": "Zaplanuj egzamin na 14 dni przed.",
     "ach_strategist_3": "Strateg III",
-    "ach_desc_strategist_3": "Zaplanuj egzamin na 30 dni przed."
+    "ach_desc_strategist_3": "Zaplanuj egzamin na 30 dni przed.",
+
+    "ach_clean_sheet": "Czyste Konto",
+    "ach_desc_clean_sheet": "Brak zaległych zadań (wymagana aktywność).",
+
+    "ach_balance": "Równowaga I",
+    "ach_desc_balance": "Zablokuj dzień wolny.",
+    "ach_balance_2": "Równowaga II",
+    "ach_desc_balance_2": "Zablokuj 3 dni wolne.",
+    "ach_balance_3": "Równowaga III",
+    "ach_desc_balance_3": "Zablokuj 7 dni wolnych.",
+    "ach_balance_4": "Równowaga IV",
+    "ach_desc_balance_4": "Zablokuj 14 dni wolnych.",
+
+    "ach_scribe_6": "Skryba VI",
+    "ach_desc_scribe_6": "Dodaj 250 notatek.",
+    "ach_scribe_7": "Skryba VII",
+    "ach_desc_scribe_7": "Dodaj 500 notatek.",
+    "ach_scribe_8": "Skryba VIII",
+    "ach_desc_scribe_8": "Dodaj 1000 notatek.",
+    "ach_scribe_9": "Skryba IX",
+    "ach_desc_scribe_9": "Dodaj 2000 notatek.",
+
+    "ach_encyclopedia_6": "Encyklopedia VI",
+    "ach_desc_encyclopedia_6": "Ukończ 250 tematów.",
+    "ach_encyclopedia_7": "Encyklopedia VII",
+    "ach_desc_encyclopedia_7": "Ukończ 500 tematów.",
+    "ach_encyclopedia_8": "Encyklopedia VIII",
+    "ach_desc_encyclopedia_8": "Ukończ 1000 tematów.",
+    "ach_encyclopedia_9": "Encyklopedia IX",
+    "ach_desc_encyclopedia_9": "Ukończ 2000 tematów.",
+
+    "ach_time_lord_6": "Władca Czasu VI",
+    "ach_desc_time_lord_6": "Ukończ 500 sesji Pomodoro.",
+    "ach_time_lord_7": "Władca Czasu VII",
+    "ach_desc_time_lord_7": "Ukończ 1000 sesji Pomodoro.",
+
+    "ach_session_master_4": "Mistrz Sesji IV",
+    "ach_desc_session_master_4": "Zalicz 100% tematów z 10 przedmiotów.",
+    "ach_session_master_5": "Mistrz Sesji V",
+    "ach_desc_session_master_5": "Zalicz 100% tematów z 20 przedmiotów.",
+
+    "ach_polyglot_4": "Poliglota IV",
+    "ach_desc_polyglot_4": "Dodaj egzaminy z 10 różnych przedmiotów.",
+    "ach_polyglot_5": "Poliglota V",
+    "ach_desc_polyglot_5": "Dodaj egzaminy z 20 różnych przedmiotów.",
+
+    "ach_strategist_4": "Strateg IV",
+    "ach_desc_strategist_4": "Zaplanuj egzamin 60 dni naprzód.",
+
+    "ach_balance_5": "Równowaga V",
+    "ach_desc_balance_5": "Zablokuj 20 dni wolnych.",
+    "ach_balance_6": "Równowaga VI",
+    "ach_desc_balance_6": "Zablokuj 60 dni wolnych.",
+    "ach_balance_7": "Równowaga VII",
+    "ach_desc_balance_7": "Zablokuj 360 dni wolnych.",
+
+    "ach_session_master_6": "Mistrz Sesji VI",
+    "ach_desc_session_master_6": "Zalicz 100% tematów z 100 przedmiotów.",
+    "ach_session_master_7": "Mistrz Sesji VII",
+    "ach_desc_session_master_7": "Zalicz 100% tematów z 250 przedmiotów.",
+
+    "ach_polyglot_6": "Poliglota VI",
+    "ach_desc_polyglot_6": "Dodaj egzaminy z 50 różnych przedmiotów.",
+    "ach_polyglot_7": "Poliglota VII",
+    "ach_desc_polyglot_7": "Dodaj egzaminy z 100 różnych przedmiotów.",
+    "ach_polyglot_8": "Poliglota VIII",
+    "ach_desc_polyglot_8": "Dodaj egzaminy z 500 różnych przedmiotów."
 }

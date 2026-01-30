@@ -15,12 +15,43 @@ from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 
+
 class GUI:
     def __init__(self, root):
         self.root = root
 
         #  Ładowanie danych
         self.data = load()
+
+        # --- MIGRACJA DANYCH DO SYSTEMU GLOBALNEGO (PERSISTENT STATS) ---
+        if "global_stats" not in self.data:
+            # Jeśli to pierwsze uruchomienie po aktualizacji, zliczamy to co jest teraz
+            # żeby użytkownik nie zaczynał od zera, jeśli ma już bazę.
+            existing_notes = sum(1 for t in self.data.get("topics", []) if t.get("note", "").strip())
+            existing_notes += sum(1 for e in self.data.get("exams", []) if e.get("note", "").strip())
+
+            existing_done = sum(1 for t in self.data.get("topics", []) if t["status"] == "done")
+            existing_exams = len(self.data.get("exams", []))
+            existing_blocked = len(self.data.get("blocked_dates", []))
+
+            # Pobieramy pomodoro ze starego miejsca (stats -> pomodoro_count)
+            existing_pomodoro = self.data.get("stats", {}).get("pomodoro_count", 0)
+
+            self.data["global_stats"] = {
+                "topics_done": existing_done,
+                "notes_added": existing_notes,
+                "exams_added": existing_exams,
+                "days_off": existing_blocked,
+                "pomodoro_sessions": existing_pomodoro,
+                "activity_started": False  # Flaga do Clean Sheet (musi coś zrobić, żeby dostać)
+            }
+            # Jeśli użytkownik ma już jakieś zrobione zadania, uznajemy, że activity_started = True
+            if existing_done > 0:
+                self.data["global_stats"]["activity_started"] = True
+
+            save(self.data)
+        # ---------------------------------------------------------------
+
         self.status_btn_mode = "default"
         self.edit_btn_mode = "default"
         self.current_theme = self.data["settings"].get("theme", "light")
@@ -28,12 +59,11 @@ class GUI:
         self.txt = load_language(self.current_lang)
 
         self.ach_manager = AchievementManager(self.root, self.txt, self.data)
-        # Sprawdzamy cicho na starcie (żeby zaktualizować listę, ale nie wyświetlać popupów)
+        # Sprawdzamy cicho na starcie
         self.ach_manager.check_all(silent=True)
 
         #  Konfiguracja okna
         self.root.title(self.txt["app_title"])
-        # self.root.resizable(False, False)
         self.root.geometry("1200x650")
 
         # Uklad grid
@@ -69,16 +99,14 @@ class GUI:
         addons_menu.add_command(label=self.txt["menu_timer"], command=self.open_timer)
         addons_menu.add_separator()
         addons_menu.add_command(label=self.txt.get("win_achievements", "Osiągnięcia"),
-                                    command=self.open_achievements)
+                                command=self.open_achievements)
         self.menubar.add_cascade(label=self.txt["menu_addons"], menu=addons_menu)
 
         # menu ustawienia
         settings_menu = tk.Menu(self.menubar, tearoff=0)
 
-        # --- Podmenu 1: Języki (Languages) ---
+        # Języki
         lang_menu = tk.Menu(settings_menu, tearoff=0)
-
-        # Zmienna trzymająca aktualny język
         self.selected_lang_var = tk.StringVar(value=self.current_lang)
         self.lang_map = {"English": "en", "Polski": "pl", "Deutsch": "de", "Español": "es"}
 
@@ -89,10 +117,9 @@ class GUI:
                 variable=self.selected_lang_var,
                 command=lambda c=code: self.change_language(c)
             )
-
         settings_menu.add_cascade(label=self.txt.get("lang_label", "Language"), menu=lang_menu)
 
-        # --- Podmenu 2: Kolory (Colors) ---
+        # Kolory
         colors_menu = tk.Menu(settings_menu, tearoff=0)
         self.selected_theme_var = tk.StringVar(value=self.current_theme)
 
@@ -102,7 +129,6 @@ class GUI:
                                     variable=self.selected_theme_var, command=lambda: self.change_theme("dark"))
 
         settings_menu.add_cascade(label=self.txt.get("menu_colors", "Colors"), menu=colors_menu)
-
         self.menubar.add_cascade(label=self.txt.get("menu_settings", "Settings"), menu=settings_menu)
 
         # menu pomoc
@@ -183,7 +209,7 @@ class GUI:
                                         command=self.sidebar_toggle, **self.btn_style)
         self.btn_status.pack(pady=5)
 
-        # --- ZMIANA: Logika kolorów Statusu (tylko konkretne przypadki mają kolor) ---
+        # Logika kolorów Statusu
         def on_enter_status(event):
             color = None
             if self.status_btn_mode == "todo":
@@ -199,8 +225,6 @@ class GUI:
                 color = "#c0392b"
             elif self.status_btn_mode == "date_blocked":
                 color = "#27ae60"
-
-            # Jeśli mode == "disabled" lub "default", color zostaje None -> brak reakcji
 
             if color:
                 self.btn_status.configure(border_color=color, text_color=color)
@@ -218,15 +242,13 @@ class GUI:
                                       **self.btn_style)
         self.btn_edit.pack(pady=5)
 
-        # --- ZMIANA: Logika kolorów Edycji ---
+        # Logika kolorów Edycji
         def on_enter_edit(event):
             color = None
             if self.edit_btn_mode == "editable":
                 color = "#3498db"
             elif self.edit_btn_mode == "locked":
                 color = "#e74c3c"
-
-            # Jeśli mode == "disabled" (np. data), color zostaje None -> brak reakcji
 
             if color:
                 self.btn_edit.configure(border_color=color, text_color=color)
@@ -273,11 +295,9 @@ class GUI:
         self.plan_view.open_archive()
 
     def menu_gen_plan(self):
-        # Pełne generowanie (stare)
         self.plan_view.run_and_refresh(only_unscheduled=False)
 
     def menu_gen_plan_new(self):
-        # Doplanowywanie (nowe)
         self.plan_view.run_and_refresh(only_unscheduled=True)
 
     def menu_refresh(self):
@@ -303,29 +323,32 @@ class GUI:
         apply_theme(self, theme_name)
 
     def open_blocked_days(self):
-        BlockedDaysWindow(self.root, self.txt, self.data, self.btn_style, callback=self.menu_gen_plan)
+        # Przekazujemy self.refresh_dashboard jako refresh_callback
+        BlockedDaysWindow(
+            self.root,
+            self.txt,
+            self.data,
+            self.btn_style,
+            callback=self.menu_gen_plan,
+            refresh_callback=self.refresh_dashboard # <--- TO NAPRAWIA PROBLEM
+        )
 
     def update_status_button_state(self, status_mode, edit_mode="default"):
         self.status_btn_mode = status_mode
         self.edit_btn_mode = edit_mode
 
-        # 1. ZAWSZE resetujemy oba przyciski do domyślnego, szarego stylu
         self.btn_status.configure(border_color=self.btn_style["border_color"], text_color=self.btn_style["text_color"])
         self.btn_edit.configure(border_color=self.btn_style["border_color"], text_color=self.btn_style["text_color"])
 
-        # 2. Ustawiamy TYLKO TEKST na przycisku Status w zależności od trybu
         if status_mode == "date_free":
-            # Data wolna -> Tekst "Zablokuj & Generuj"
             txt_block = self.txt.get("btn_block_day", "Block & Generate")
             self.btn_status.configure(text=txt_block)
 
         elif status_mode == "date_blocked":
-            # Data zablokowana -> Tekst "Odblokuj & Generuj"
             txt_unblock = self.txt.get("btn_unblock_day", "Unblock & Generate")
             self.btn_status.configure(text=txt_unblock)
 
         else:
-            # Domyślny tekst ("Zmień Status")
             self.btn_status.configure(text=self.txt["btn_toggle_status"])
 
     def open_achievements(self):
@@ -333,37 +356,28 @@ class GUI:
         AchievementsWindow(self.root, self.txt, self.data, self.btn_style)
 
     def open_timer(self):
-        # Przekazujemy self.refresh_dashboard jako callback.
-        # Dzięki temu po zakończeniu timera odświeżą się statystyki i sprawdzą osiągnięcia.
         TimerWindow(self.root, self.txt, self.btn_style, self.data, callback=self.refresh_dashboard)
 
     def animate_bar(self, bar, target_value):
-        """Płynnie animuje pasek postępu od obecnej wartości do docelowej"""
         current_value = bar.get()
         diff = target_value - current_value
 
-        # Jeśli różnica jest bardzo mała (np. odświeżenie bez zmian), ustawiamy od razu
         if abs(diff) < 0.005:
             bar.set(target_value)
             return
 
-        steps = 25  # Ilość klatek animacji (im więcej, tym płynniej)
-        duration = 10  # Czas między klatkami w ms (im mniej, tym szybciej)
+        steps = 25
+        duration = 10
         step_size = diff / steps
 
         def _step(iteration):
-            # Obliczamy nową wartość dla tej klatki
             new_val = current_value + (step_size * (iteration + 1))
             bar.set(new_val)
-
-            # Jeśli to nie koniec, planujemy kolejny krok
             if iteration < steps - 1:
                 self.root.after(duration, _step, iteration + 1)
             else:
-                # Na samym końcu ustawiamy idealnie wartość docelową (żeby uniknąć błędów zaokrągleń)
                 bar.set(target_value)
 
-        # Uruchamiamy pierwszy krok
         _step(0)
 
     def refresh_dashboard(self):
@@ -385,10 +399,7 @@ class GUI:
 
         self.lbl_progress.configure(
             text=self.txt["stats_total_progress"].format(done=done, total=total, progress=prog_percent))
-
-        # --- ZMIANA: Zamiast self.bar_total.set(prog_val) ---
         self.animate_bar(self.bar_total, prog_val)
-        # ----------------------------------------------------
 
         # B. Postęp Dziś
         today_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
@@ -406,7 +417,6 @@ class GUI:
                 self.lbl_today.configure(text_color="#00b800")
                 self.bar_today.configure(progress_color="#2ecc71")
 
-                # --- LOSOWA CELEBRACJA (Konfetti / Fajerwerki) ---
                 if not self.celebration_shown:
                     import random
                     raw_msg = self.txt.get("msg_all_done", ["Good Job!"])
@@ -423,14 +433,10 @@ class GUI:
                 self.lbl_today.configure(text_color=default_text)
                 self.bar_today.configure(progress_color="#3498db")
                 self.celebration_shown = False
-
-            # --- ZMIANA: Zamiast self.bar_today.set(p_day_val) ---
             self.animate_bar(self.bar_today, p_day_val)
-            # -----------------------------------------------------
-
         else:
             self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
-            self.bar_today.set(0)  # Tu możemy zostawić zwykły set, bo i tak jest 0
+            self.bar_today.set(0)
 
         # C. Najbliższy egzamin
         future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]

@@ -168,10 +168,6 @@
 
     "ach_first_step": "Primeros Pasos",
     "ach_desc_first_step": "Completa tu primera tarea.",
-    "ach_clean_sheet": "Historial Limpio",
-    "ach_desc_clean_sheet": "Sin tareas atrasadas.",
-    "ach_balance": "Equilibrio",
-    "ach_desc_balance": "Bloquea un día libre.",
 
     "ach_scribe_1": "Escriba I",
     "ach_desc_scribe_1": "Añade 5 notas.",
@@ -225,5 +221,72 @@
     "ach_strategist_2": "Estratega II",
     "ach_desc_strategist_2": "Planifica un examen con 14 días de antelación.",
     "ach_strategist_3": "Estratega III",
-    "ach_desc_strategist_3": "Planifica un examen con 30 días de antelación."
+    "ach_desc_strategist_3": "Planifica un examen con 30 días de antelación.",
+
+    "ach_clean_sheet": "Hoja Limpia",
+    "ach_desc_clean_sheet": "Sin tareas atrasadas (requiere actividad).",
+
+    "ach_balance": "Equilibrio I",
+    "ach_desc_balance": "Bloquea un día libre.",
+    "ach_balance_2": "Equilibrio II",
+    "ach_desc_balance_2": "Bloquea 3 días libres.",
+    "ach_balance_3": "Equilibrio III",
+    "ach_desc_balance_3": "Bloquea 7 días libres.",
+    "ach_balance_4": "Equilibrio IV",
+    "ach_desc_balance_4": "Bloquea 14 días libres.",
+
+    "ach_scribe_6": "Escriba VI",
+    "ach_desc_scribe_6": "Añade 250 notas.",
+    "ach_scribe_7": "Escriba VII",
+    "ach_desc_scribe_7": "Añade 500 notas.",
+    "ach_scribe_8": "Escriba VIII",
+    "ach_desc_scribe_8": "Añade 1000 notas.",
+    "ach_scribe_9": "Escriba IX",
+    "ach_desc_scribe_9": "Añade 2000 notas.",
+
+    "ach_encyclopedia_6": "Enciclopedia VI",
+    "ach_desc_encyclopedia_6": "Completa 250 temas.",
+    "ach_encyclopedia_7": "Enciclopedia VII",
+    "ach_desc_encyclopedia_7": "Completa 500 temas.",
+    "ach_encyclopedia_8": "Enciclopedia VIII",
+    "ach_desc_encyclopedia_8": "Completa 1000 temas.",
+    "ach_encyclopedia_9": "Enciclopedia IX",
+    "ach_desc_encyclopedia_9": "Completa 2000 temas.",
+
+    "ach_time_lord_6": "Señor del Tiempo VI",
+    "ach_desc_time_lord_6": "Completa 500 sesiones Pomodoro.",
+    "ach_time_lord_7": "Señor del Tiempo VII",
+    "ach_desc_time_lord_7": "Completa 1000 sesiones Pomodoro.",
+
+    "ach_session_master_4": "Maestro de Sesión IV",
+    "ach_desc_session_master_4": "Completa el 100% de temas para 10 asignaturas.",
+    "ach_session_master_5": "Maestro de Sesión V",
+    "ach_desc_session_master_5": "Completa el 100% de temas para 20 asignaturas.",
+
+    "ach_polyglot_4": "Políglota IV",
+    "ach_desc_polyglot_4": "Añade exámenes para 10 asignaturas diferentes.",
+    "ach_polyglot_5": "Políglota V",
+    "ach_desc_polyglot_5": "Añade exámenes para 20 asignaturas diferentes.",
+
+    "ach_strategist_4": "Estratega IV",
+    "ach_desc_strategist_4": "Planifica un examen con 60 días de antelación.",
+
+    "ach_balance_5": "Equilibrio V",
+    "ach_desc_balance_5": "Bloquea 20 días libres.",
+    "ach_balance_6": "Equilibrio VI",
+    "ach_desc_balance_6": "Bloquea 60 días libres.",
+    "ach_balance_7": "Equilibrio VII",
+    "ach_desc_balance_7": "Bloquea 360 días libres.",
+
+    "ach_session_master_6": "Maestro de Sesión VI",
+    "ach_desc_session_master_6": "Completa el 100% de temas para 100 asignaturas.",
+    "ach_session_master_7": "Maestro de Sesión VII",
+    "ach_desc_session_master_7": "Completa el 100% de temas para 250 asignaturas.",
+
+    "ach_polyglot_6": "Políglota VI",
+    "ach_desc_polyglot_6": "Añade exámenes para 50 asignaturas diferentes.",
+    "ach_polyglot_7": "Políglota VII",
+    "ach_desc_polyglot_7": "Añade exámenes para 100 asignaturas diferentes.",
+    "ach_polyglot_8": "Políglota VIII",
+    "ach_desc_polyglot_8": "Añade exámenes para 500 asignaturas diferentes."
 }

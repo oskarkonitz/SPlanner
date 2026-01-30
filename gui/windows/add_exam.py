@@ -61,7 +61,7 @@ class AddExamWindow:
 
     # FUNKCJA ZAPISUJACA NOWY EGZAMIN W BAZIE DANYCH
     def save_new_exam(self):
-        # zebranie danych egzamin z pól entry
+        # ... (pobieranie danych z pól) ...
         subject = self.entry_subject.get()
         date_str = self.entry_date.get()
         title = self.entry_title.get()
@@ -83,6 +83,12 @@ class AddExamWindow:
         }
         self.data["exams"].append(new_exam)
 
+        # --- AKTUALIZACJA GLOBALNYCH STATYSTYK (Egzaminy) ---
+        if "global_stats" not in self.data: self.data["global_stats"] = {}
+        curr_exams = self.data["global_stats"].get("exams_added", 0)
+        self.data["global_stats"]["exams_added"] = curr_exams + 1
+        # ----------------------------------------------------
+
         for topic in topics_list:
             self.data["topics"].append({
                 "id": f"topic_{uuid.uuid4().hex[:8]}",
@@ -95,13 +101,8 @@ class AddExamWindow:
 
         save(self.data)
 
-        # --- POPRAWKA KOLEJNOŚCI ---
-        # 1. Najpierw niszczymy okno dodawania, żeby nie zasłaniało
         self.win.destroy()
-
-        # 2. Pokazujemy komunikat (to zatrzymuje kod, aż user kliknie OK)
         messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))
 
-        # 3. Dopiero teraz odpalamy odświeżenie i sprawdzanie osiągnięć (animacja ruszy płynnie)
         if self.callback:
             self.callback()

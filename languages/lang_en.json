@@ -168,10 +168,6 @@
 
     "ach_first_step": "First Steps",
     "ach_desc_first_step": "Complete your first task.",
-    "ach_clean_sheet": "Clean Sheet",
-    "ach_desc_clean_sheet": "No overdue tasks.",
-    "ach_balance": "Work-Life Balance",
-    "ach_desc_balance": "Block a day off.",
 
     "ach_scribe_1": "Scribe I",
     "ach_desc_scribe_1": "Add 5 notes.",
@@ -225,5 +221,72 @@
     "ach_strategist_2": "Strategist II",
     "ach_desc_strategist_2": "Plan an exam 14 days ahead.",
     "ach_strategist_3": "Strategist III",
-    "ach_desc_strategist_3": "Plan an exam 30 days ahead."
+    "ach_desc_strategist_3": "Plan an exam 30 days ahead.",
+
+    "ach_clean_sheet": "Clean Sheet",
+    "ach_desc_clean_sheet": "No overdue tasks (requires activity).",
+
+    "ach_balance": "Work-Life Balance I",
+    "ach_desc_balance": "Block a day off.",
+    "ach_balance_2": "Work-Life Balance II",
+    "ach_desc_balance_2": "Block 3 days off.",
+    "ach_balance_3": "Work-Life Balance III",
+    "ach_desc_balance_3": "Block 7 days off.",
+    "ach_balance_4": "Work-Life Balance IV",
+    "ach_desc_balance_4": "Block 14 days off.",
+
+    "ach_scribe_6": "Scribe VI",
+    "ach_desc_scribe_6": "Add 250 notes.",
+    "ach_scribe_7": "Scribe VII",
+    "ach_desc_scribe_7": "Add 500 notes.",
+    "ach_scribe_8": "Scribe VIII",
+    "ach_desc_scribe_8": "Add 1000 notes.",
+    "ach_scribe_9": "Scribe IX",
+    "ach_desc_scribe_9": "Add 2000 notes.",
+
+    "ach_encyclopedia_6": "Encyclopedia VI",
+    "ach_desc_encyclopedia_6": "Complete 250 topics.",
+    "ach_encyclopedia_7": "Encyclopedia VII",
+    "ach_desc_encyclopedia_7": "Complete 500 topics.",
+    "ach_encyclopedia_8": "Encyclopedia VIII",
+    "ach_desc_encyclopedia_8": "Complete 1000 topics.",
+    "ach_encyclopedia_9": "Encyclopedia IX",
+    "ach_desc_encyclopedia_9": "Complete 2000 topics.",
+
+    "ach_time_lord_6": "Time Lord VI",
+    "ach_desc_time_lord_6": "Complete 500 Pomodoro sessions.",
+    "ach_time_lord_7": "Time Lord VII",
+    "ach_desc_time_lord_7": "Complete 1000 Pomodoro sessions.",
+
+    "ach_session_master_4": "Session Master IV",
+    "ach_desc_session_master_4": "Complete 100% topics for 10 subjects.",
+    "ach_session_master_5": "Session Master V",
+    "ach_desc_session_master_5": "Complete 100% topics for 20 subjects.",
+
+    "ach_polyglot_4": "Polyglot IV",
+    "ach_desc_polyglot_4": "Add exams for 10 different subjects.",
+    "ach_polyglot_5": "Polyglot V",
+    "ach_desc_polyglot_5": "Add exams for 20 different subjects.",
+
+    "ach_strategist_4": "Strategist IV",
+    "ach_desc_strategist_4": "Plan an exam 60 days ahead.",
+
+    "ach_balance_5": "Work-Life Balance V",
+    "ach_desc_balance_5": "Block 20 days off.",
+    "ach_balance_6": "Work-Life Balance VI",
+    "ach_desc_balance_6": "Block 60 days off.",
+    "ach_balance_7": "Work-Life Balance VII",
+    "ach_desc_balance_7": "Block 360 days off.",
+
+    "ach_session_master_6": "Session Master VI",
+    "ach_desc_session_master_6": "Complete 100% topics for 100 subjects.",
+    "ach_session_master_7": "Session Master VII",
+    "ach_desc_session_master_7": "Complete 100% topics for 250 subjects.",
+
+    "ach_polyglot_6": "Polyglot VI",
+    "ach_desc_polyglot_6": "Add exams for 50 different subjects.",
+    "ach_polyglot_7": "Polyglot VII",
+    "ach_desc_polyglot_7": "Add exams for 100 different subjects.",
+    "ach_polyglot_8": "Polyglot VIII",
+    "ach_desc_polyglot_8": "Add exams for 500 different subjects."
 }

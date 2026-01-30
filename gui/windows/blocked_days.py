@@ -5,17 +5,19 @@ from core.storage import save
 
 
 class BlockedDaysWindow:
-    def __init__(self, parent, txt, data, btn_style, callback=None):
+    # Dodałem argument refresh_callback=None
+    def __init__(self, parent, txt, data, btn_style, callback=None, refresh_callback=None):
         self.txt = txt
         self.data = data
         self.btn_style = btn_style
-        self.callback = callback
+        self.callback = callback  # To jest do generowania planu (Save & Generate)
+        self.refresh_callback = refresh_callback  # To jest do samego odświeżania dashboardu/osiągnięć (Save)
 
         # Inicjalizacja listy w danych
         if "blocked_dates" not in self.data:
             self.data["blocked_dates"] = []
 
-        # Kopia lokalna do edycji (żeby Anuluj działało poprawnie)
+        # Kopia lokalna do edycji
         self.local_blocked_dates = self.data["blocked_dates"].copy()
 
         self.current_date = date.today()
@@ -71,7 +73,7 @@ class BlockedDaysWindow:
         )
         self.btn_save.pack(side="left", padx=5)
 
-        # 2. ZAPISZ I GENERUJ (Teraz używa stylu systemowego, bez wymuszonego koloru)
+        # 2. ZAPISZ I GENERUJ
         lbl_save_gen = self.txt.get("btn_save_gen", "Save & Generate")
         self.btn_save_gen = ctk.CTkButton(
             btn_frame,
@@ -82,15 +84,12 @@ class BlockedDaysWindow:
         self.btn_save_gen.pack(side="left", padx=5)
 
         # 3. ANULUJ
-        # Używamy tuple ("gray10", "gray90") dla koloru tekstu, co CustomTkinter
-        # interpretuje jako: Czarny w LightMode, Biały w DarkMode.
         self.btn_cancel = ctk.CTkButton(
             btn_frame,
             text=self.txt.get("btn_cancel", "Cancel"),
             command=self.win.destroy,
             **self.btn_style
         )
-        # Nadpisujemy styl, żeby był przezroczysty (outline)
         self.btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         self.btn_cancel.pack(side="left", padx=5)
 
@@ -176,14 +175,32 @@ class BlockedDaysWindow:
             self.year += 1
         self.draw_calendar()
 
-    def action_save_only(self):
+    def _update_stats_and_save(self):
+        # Obliczamy różnicę (ile nowych dni zostało zablokowanych)
+        old_set = set(self.data.get("blocked_dates", []))
+        new_set = set(self.local_blocked_dates)
+
+        added_days = new_set - old_set
+        count_added = len(added_days)
+
+        if count_added > 0:
+            if "global_stats" not in self.data:
+                self.data["global_stats"] = {}
+            current_count = self.data["global_stats"].get("days_off", 0)
+            self.data["global_stats"]["days_off"] = current_count + count_added
+
         self.data["blocked_dates"] = self.local_blocked_dates
         save(self.data)
+
+    def action_save_only(self):
+        self._update_stats_and_save()
         self.win.destroy()
+        # TUTAJ zmiana: wywołujemy odświeżanie dashboardu po zapisie
+        if self.refresh_callback:
+            self.refresh_callback()
 
     def action_save_and_gen(self):
-        self.data["blocked_dates"] = self.local_blocked_dates
-        save(self.data)
+        self._update_stats_and_save()
         self.win.destroy()
         if self.callback:
             self.callback()
