@@ -409,6 +409,7 @@ class PlanWindow():
                and t["status"] == "todo" and t["exam_id"] in active_exams_ids
         ]
 
+        # --- ZALEGŁE ---
         if overdue_topics:
             self.tree.insert("", "end", values=("", self.txt["tag_overdue"], ""), tags=("overdue",))
             for topic in overdue_topics:
@@ -421,15 +422,15 @@ class PlanWindow():
                 has_note = topic.get("note", "").strip()
                 is_locked = topic.get("locked", False)
                 marks = ""
-                # --- ZMIANA IKON ---
-                if has_note: marks += " ✎"  # Było 📝
-                if is_locked: marks += " ☒"  # Było 🔒
+                if has_note: marks += "✎"
+                if is_locked: marks += "☒"
 
                 self.tree.insert("", "end", iid=topic["id"],
                                  values=(marks, f"{topic['scheduled_date']}\t{subj_name}", topic["name"]),
                                  tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
+        # --- PRZYGOTOWANIE DAT ---
         all_dates = set()
         for exam in self.data["exams"]:
             if date_format(exam["date"]) >= date.today():
@@ -448,76 +449,92 @@ class PlanWindow():
 
         sorted_dates = sorted(list(all_dates))
 
+        # --- GŁÓWNA PĘTLA PO DNIACH ---
         for day_str in sorted_dates:
             todays_exams = [e for e in self.data["exams"] if e["date"] == day_str]
             todays_topics = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == day_str]
 
             is_blocked = day_str in blocked_list
+            has_exams = len(todays_exams) > 0
+
             days_left = (date_format(day_str) - date.today()).days
             display_text = ""
             tag = "normal"
+            icon = "●"
 
-            if is_blocked:
+            # --- LOGIKA ETYKIETY I KOLORU ---
+            # 1. Jeśli dzień jest zablokowany I NIE MA egzaminu -> Wygląd "Day Off" (szary)
+            if is_blocked and not has_exams:
                 display_text = self.txt.get("tag_day_off", "(Day Off)")
                 tag = "blocked"
-            elif days_left == 0:
-                display_text = self.txt["tag_today"]
-                tag = "today"
-            elif days_left == 1:
-                display_text = self.txt["tag_1_day"]
-                tag = "red"
+                icon = "○"
+
+            # 2. W przeciwnym razie (Normalny dzień LUB Zablokowany ale Z EGZAMINEM) -> Wygląd standardowy/egzaminacyjny
             else:
-                display_text = self.txt["tag_x_days"].format(days=days_left)
-                if days_left <= 3:
-                    tag = "orange"
-                elif days_left <= 6:
-                    tag = "yellow"
+                if days_left == 0:
+                    display_text = self.txt["tag_today"]
+                    tag = "today"
+                elif days_left == 1:
+                    display_text = self.txt["tag_1_day"]
+                    tag = "red"
+                else:
+                    display_text = self.txt["tag_x_days"].format(days=days_left)
+                    if days_left <= 3:
+                        tag = "orange"
+                    elif days_left <= 6:
+                        tag = "yellow"
+
+                # Jeśli jest zablokowany (ale ma egzamin), dodajemy dopisek i zmieniamy ikonę na pustą
+                if is_blocked:
+                    day_off_txt = self.txt.get("tag_day_off", "(Day Off)")
+                    display_text += f" {day_off_txt}"
+                    icon = "○"
 
             full_label = f"{display_text} ({day_str})"
-            icon = "●"
-            if is_blocked: icon = "○"
-
             self.tree.insert("", "end", iid=f"date_{day_str}", values=(icon, full_label, ""), tags=(tag,))
 
-            if not is_blocked:
+            # --- WYŚWIETLANIE ZAWARTOŚCI DNIA ---
+            # Pokazujemy zawartość jeśli dzień NIE jest zablokowany LUB jeśli MA egzaminy
+            if not is_blocked or has_exams:
                 self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
+                # Egzaminy pokazujemy ZAWSZE (jeśli istnieją w tym dniu)
                 for exam in todays_exams:
-                    # --- ZMIANA IKON ---
                     marks = ""
-                    if exam.get("note", "").strip(): marks += " ✎"  # Było 📝
-                    if exam.get("ignore_barrier", False): marks += " ø"  # Było 👻
+                    if exam.get("note", "").strip(): marks += "✎"
+                    if exam.get("ignore_barrier", False): marks += "ø"
 
                     self.tree.insert("", "end", iid=exam["id"],
                                      values=(f"{marks} │", exam["subject"], exam["title"]),
                                      tags=("exam",))
 
-                if len(todays_exams) > 0 and len(todays_topics) > 0:
-                    self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+                # Tematy pokazujemy TYLKO jeśli dzień NIE jest zablokowany
+                # (Bo jeśli jest Day Off, to się nie uczymy tematów, nawet jak jest egzamin)
+                if not is_blocked:
+                    if len(todays_exams) > 0 and len(todays_topics) > 0:
+                        self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
-                for topic in todays_topics:
-                    subj_name = self.txt["val_other"]
-                    for exam in self.data["exams"]:
-                        if exam["id"] == topic["exam_id"]:
-                            subj_name = exam["subject"]
-                            break
+                    for topic in todays_topics:
+                        subj_name = self.txt["val_other"]
+                        for exam in self.data["exams"]:
+                            if exam["id"] == topic["exam_id"]:
+                                subj_name = exam["subject"]
+                                break
 
-                    has_note = topic.get("note", "").strip()
-                    is_locked = topic.get("locked", False)
-                    marks = ""
-                    # --- ZMIANA IKON ---
-                    if has_note: marks += " ✎"  # Było 📝
-                    if is_locked: marks += " ☒"  # Było 🔒
+                        has_note = topic.get("note", "").strip()
+                        is_locked = topic.get("locked", False)
+                        marks = ""
+                        if has_note: marks += "✎"
+                        if is_locked: marks += "☒"
 
-                    col_0 = f"{marks} │"
+                        col_0 = f"{marks} │"
 
-                    self.tree.insert("", "end", iid=topic["id"], values=(col_0, subj_name, topic["name"]),
-                                     tags=(topic["status"],))
+                        self.tree.insert("", "end", iid=topic["id"], values=(col_0, subj_name, topic["name"]),
+                                         tags=(topic["status"],))
 
                 self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
-            else:
-                pass
 
+            # Odstęp po dniu
             self.tree.insert("", "end", values=("", "", ""))
 
     def run_and_refresh(self, only_unscheduled=False):

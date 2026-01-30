@@ -28,10 +28,9 @@ def callendar_create(data, tday):
 
     # Wstawiamy znaczniki egzaminów "E"
     for exam in data["exams"]:
-        # --- ZMIANA: Sprawdzamy czy egzamin ma być ignorowany jako bariera ---
+        # Sprawdzamy czy egzamin ma być ignorowany jako bariera
         if exam.get("ignore_barrier", False):
             continue  # Nie wstawiamy "E", algorytm nie zobaczy tu ściany
-        # --------------------------------------------------------------------
 
         exam_date = date_format(exam["date"])
         if exam_date >= tday:
@@ -91,18 +90,14 @@ def plan(data, only_unscheduled=False):
         if end_study_date < today:
             continue
 
-        # 1. Określamy START okna nauki
-        # Skanujemy wstecz, aż trafimy na "E" (inny egzamin) lub "dziś"
+        # 1. Określamy START okna nauki (skanujemy wstecz do bariery "E")
         scan_date = end_study_date
         while scan_date > today and "E" not in callendar.get(scan_date, []):
             scan_date -= timedelta(days=1)
 
-        # --- ZMIANA 1: Zezwalamy na start W DNIU poprzedniego egzaminu ---
         start_study_date = scan_date
 
-        # Wcześniej było tu przesuwanie o +1 dzień, jeśli znaleziono "E".
-        # Usunąłem to, aby włączyć dzień egzaminu do puli dostępnych dni.
-
+        # Pobieramy tematy
         t_list = topics_list_create(data, exam["id"], only_unscheduled)
 
         if not t_list:
@@ -115,45 +110,64 @@ def plan(data, only_unscheduled=False):
 
         while curr <= end_study_date:
             date_str = str(curr)
-
-            # Sprawdzamy czy dzień ma egzamin ("E")
             has_exam = "E" in callendar.get(curr, [])
 
-            # --- ZMIANA 2: Logika wpuszczania dnia do listy ---
             # Dzień jest valid, jeśli:
-            # a) Nie jest zablokowany ręcznie (kłódka w menu blokad)
-            # b) ORAZ (nie ma egzaminu LUB ma egzamin, ale jest to dzień startowy)
-            # Dzięki temu 'start_study_date' (dzień poprzedniego egzaminu) wchodzi do gry.
-
+            # a) Nie jest zablokowany
+            # b) ORAZ (nie ma egzaminu LUB ma egzamin, ale jest to dzień startowy - bariera)
             if date_str not in blocked_set:
                 if not has_exam or (has_exam and curr == start_study_date):
                     valid_days.append(curr)
 
             curr += timedelta(days=1)
 
+        # Sortujemy rosnąco (chronologicznie) - to ważne dla logiki dynamicznej
+        valid_days.sort()
+
         if not valid_days:
             continue
 
-        # 3. ODWRACAMY listę dni (Logika Back-loadingu)
-        # Dzięki temu dzień z egzaminem (najwcześniejszy) ląduje na KOŃCU listy.
-        # Tematy będą tam dodane tylko wtedy, gdy zabraknie miejsca w późniejszych dniach.
-        valid_days.sort(reverse=True)
+        # 3. ALGORYTM ROZKŁADANIA (DYNAMICZNY + OFFSET)
 
-        # 4. Algorytm Rozkładania
-        for i, day in enumerate(valid_days):
+        days_total = len(valid_days)
+        tasks_total = len(t_list)
+        start_index = 0
+
+        # LOGIKA OFFSETU (Back-loading):
+        # Jeśli mamy mniej zadań niż dni, przesuwamy start, aby zadania były
+        # "przyklejone" do egzaminu, a nie do dnia dzisiejszego.
+        if tasks_total <= days_total:
+            start_index = days_total - tasks_total
+
+        # 4. PĘTLA PLANUJĄCA (Dynamiczna)
+        for i in range(start_index, days_total):
             if not t_list:
                 break
 
-            slots_left = len(valid_days) - i
-            tasks_left = len(t_list)
+            current_day = valid_days[i]
 
-            per_day = math.ceil(tasks_left / slots_left)
+            # --- KLUCZOWA ZMIANA: Przeliczamy ile wstawić w TEJ chwili ---
+            # Ile dni nam zostało (wliczając ten)?
+            days_remaining_in_loop = days_total - i
+            # Ile zadań nam zostało?
+            tasks_remaining_now = len(t_list)
+
+            # Obliczamy zagęszczenie na bieżąco
+            # np. 4 zadania, 3 dni -> ceil(1.33) = 2
+            # potem: 2 zadania, 2 dni -> ceil(1.0) = 1
+            # potem: 1 zadanie, 1 dzień -> ceil(1.0) = 1
+            if days_remaining_in_loop > 0:
+                per_day = math.ceil(tasks_remaining_now / days_remaining_in_loop)
+            else:
+                per_day = tasks_remaining_now
 
             for _ in range(per_day):
                 if t_list:
-                    task_id = t_list.pop()
-                    if day in callendar:
-                        callendar[day].append(task_id)
+                    # Bierzemy PIERWSZY temat z listy (zachowanie kolejności w tematach)
+                    task_id = t_list.pop(0)
+
+                    if current_day in callendar:
+                        callendar[current_day].append(task_id)
 
     # 5. Zapisanie wyników do bazy danych
     if not only_unscheduled:
