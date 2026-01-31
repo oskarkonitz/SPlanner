@@ -41,8 +41,8 @@ class AchievementManager:
         self.parent = parent_window
         self.txt = txt
         self.data = data
-        self.notification_queue = []  # Kolejka do animacji
-        self.is_showing_popup = False  # Flaga czy coś się wyświetla
+        self.notification_queue = []
+        self.is_showing_popup = False
 
         if "achievements" not in self.data:
             self.data["achievements"] = []
@@ -50,102 +50,104 @@ class AchievementManager:
             self.data["global_stats"] = {
                 "topics_done": 0, "notes_added": 0, "exams_added": 0,
                 "days_off": 0, "pomodoro_sessions": 0, "activity_started": False,
-                "had_overdue": False  # Nowa flaga dla Clean Sheet
+                "had_overdue": False
             }
 
+        # Zmieniona struktura: (ID, Ikona, Tytuł, Opis, MetodaSprawdzająca, PrógLiczbowy)
+        # PrógLiczbowy = None dla osiągnięć binarnych (tak/nie)
         self.definitions = [
             # POJEDYNCZE (Static)
-            ("first_step", "👶", "ach_first_step", "ach_desc_first_step", self._check_first_step),
-            ("clean_sheet", "🧹", "ach_clean_sheet", "ach_desc_clean_sheet", self._check_clean_sheet),
+            ("first_step", "👶", "ach_first_step", "ach_desc_first_step", self._check_first_step, 1),
+            ("clean_sheet", "🧹", "ach_clean_sheet", "ach_desc_clean_sheet", self._check_clean_sheet, None),
 
-            # BALANCE: 1, 3, 7, 14, 20, 60, 360
-            ("balance", "🏖️", "ach_balance", "ach_desc_balance", lambda: self._check_balance(1)),
-            ("balance_2", "🏖️", "ach_balance_2", "ach_desc_balance_2", lambda: self._check_balance(3)),
-            ("balance_3", "🏖️", "ach_balance_3", "ach_desc_balance_3", lambda: self._check_balance(7)),
-            ("balance_4", "🏖️", "ach_balance_4", "ach_desc_balance_4", lambda: self._check_balance(14)),
-            ("balance_5", "🏖️", "ach_balance_5", "ach_desc_balance_5", lambda: self._check_balance(20)),
-            ("balance_6", "🏖️", "ach_balance_6", "ach_desc_balance_6", lambda: self._check_balance(60)),
-            ("balance_7", "🏖️", "ach_balance_7", "ach_desc_balance_7", lambda: self._check_balance(360)),
+            # BALANCE
+            ("balance", "🏖️", "ach_balance", "ach_desc_balance", self._check_balance, 1),
+            ("balance_2", "🏖️", "ach_balance_2", "ach_desc_balance_2", self._check_balance, 3),
+            ("balance_3", "🏖️", "ach_balance_3", "ach_desc_balance_3", self._check_balance, 7),
+            ("balance_4", "🏖️", "ach_balance_4", "ach_desc_balance_4", self._check_balance, 14),
+            ("balance_5", "🏖️", "ach_balance_5", "ach_desc_balance_5", self._check_balance, 20),
+            ("balance_6", "🏖️", "ach_balance_6", "ach_desc_balance_6", self._check_balance, 60),
+            ("balance_7", "🏖️", "ach_balance_7", "ach_desc_balance_7", self._check_balance, 360),
 
             # SCRIBE
-            ("scribe_1", "✍", "ach_scribe_1", "ach_desc_scribe_1", lambda: self._check_scribe(5)),
-            ("scribe_2", "✍", "ach_scribe_2", "ach_desc_scribe_2", lambda: self._check_scribe(10)),
-            ("scribe_3", "✍", "ach_scribe_3", "ach_desc_scribe_3", lambda: self._check_scribe(25)),
-            ("scribe_4", "✍", "ach_scribe_4", "ach_desc_scribe_4", lambda: self._check_scribe(50)),
-            ("scribe_5", "✍", "ach_scribe_5", "ach_desc_scribe_5", lambda: self._check_scribe(100)),
-            ("scribe_6", "✍", "ach_scribe_6", "ach_desc_scribe_6", lambda: self._check_scribe(250)),
-            ("scribe_7", "✍", "ach_scribe_7", "ach_desc_scribe_7", lambda: self._check_scribe(500)),
-            ("scribe_8", "✍", "ach_scribe_8", "ach_desc_scribe_8", lambda: self._check_scribe(1000)),
-            ("scribe_9", "✍", "ach_scribe_9", "ach_desc_scribe_9", lambda: self._check_scribe(2000)),
+            ("scribe_1", "✍", "ach_scribe_1", "ach_desc_scribe_1", self._check_scribe, 5),
+            ("scribe_2", "✍", "ach_scribe_2", "ach_desc_scribe_2", self._check_scribe, 10),
+            ("scribe_3", "✍", "ach_scribe_3", "ach_desc_scribe_3", self._check_scribe, 25),
+            ("scribe_4", "✍", "ach_scribe_4", "ach_desc_scribe_4", self._check_scribe, 50),
+            ("scribe_5", "✍", "ach_scribe_5", "ach_desc_scribe_5", self._check_scribe, 100),
+            ("scribe_6", "✍", "ach_scribe_6", "ach_desc_scribe_6", self._check_scribe, 250),
+            ("scribe_7", "✍", "ach_scribe_7", "ach_desc_scribe_7", self._check_scribe, 500),
+            ("scribe_8", "✍", "ach_scribe_8", "ach_desc_scribe_8", self._check_scribe, 1000),
+            ("scribe_9", "✍", "ach_scribe_9", "ach_desc_scribe_9", self._check_scribe, 2000),
 
             # ENCYCLOPEDIA
-            ("encyclopedia_1", "📚", "ach_encyclopedia_1", "ach_desc_encyclopedia_1",
-             lambda: self._check_encyclopedia(10)),
-            ("encyclopedia_2", "📚", "ach_encyclopedia_2", "ach_desc_encyclopedia_2",
-             lambda: self._check_encyclopedia(25)),
-            ("encyclopedia_3", "📚", "ach_encyclopedia_3", "ach_desc_encyclopedia_3",
-             lambda: self._check_encyclopedia(50)),
-            ("encyclopedia_4", "📚", "ach_encyclopedia_4", "ach_desc_encyclopedia_4",
-             lambda: self._check_encyclopedia(100)),
-            ("encyclopedia_5", "📚", "ach_encyclopedia_5", "ach_desc_encyclopedia_5",
-             lambda: self._check_encyclopedia(200)),
-            ("encyclopedia_6", "📚", "ach_encyclopedia_6", "ach_desc_encyclopedia_6",
-             lambda: self._check_encyclopedia(250)),
-            ("encyclopedia_7", "📚", "ach_encyclopedia_7", "ach_desc_encyclopedia_7",
-             lambda: self._check_encyclopedia(500)),
-            ("encyclopedia_8", "📚", "ach_encyclopedia_8", "ach_desc_encyclopedia_8",
-             lambda: self._check_encyclopedia(1000)),
-            ("encyclopedia_9", "📚", "ach_encyclopedia_9", "ach_desc_encyclopedia_9",
-             lambda: self._check_encyclopedia(2000)),
+            ("encyclopedia_1", "📚", "ach_encyclopedia_1", "ach_desc_encyclopedia_1", self._check_encyclopedia, 10),
+            ("encyclopedia_2", "📚", "ach_encyclopedia_2", "ach_desc_encyclopedia_2", self._check_encyclopedia, 25),
+            ("encyclopedia_3", "📚", "ach_encyclopedia_3", "ach_desc_encyclopedia_3", self._check_encyclopedia, 50),
+            ("encyclopedia_4", "📚", "ach_encyclopedia_4", "ach_desc_encyclopedia_4", self._check_encyclopedia, 100),
+            ("encyclopedia_5", "📚", "ach_encyclopedia_5", "ach_desc_encyclopedia_5", self._check_encyclopedia, 200),
+            ("encyclopedia_6", "📚", "ach_encyclopedia_6", "ach_desc_encyclopedia_6", self._check_encyclopedia, 250),
+            ("encyclopedia_7", "📚", "ach_encyclopedia_7", "ach_desc_encyclopedia_7", self._check_encyclopedia, 500),
+            ("encyclopedia_8", "📚", "ach_encyclopedia_8", "ach_desc_encyclopedia_8", self._check_encyclopedia, 1000),
+            ("encyclopedia_9", "📚", "ach_encyclopedia_9", "ach_desc_encyclopedia_9", self._check_encyclopedia, 2000),
 
             # TIME LORD
-            ("time_lord_1", "🍅", "ach_time_lord_1", "ach_desc_time_lord_1", lambda: self._check_time_lord(5)),
-            ("time_lord_2", "🍅", "ach_time_lord_2", "ach_desc_time_lord_2", lambda: self._check_time_lord(10)),
-            ("time_lord_3", "🍅", "ach_time_lord_3", "ach_desc_time_lord_3", lambda: self._check_time_lord(25)),
-            ("time_lord_4", "🍅", "ach_time_lord_4", "ach_desc_time_lord_4", lambda: self._check_time_lord(50)),
-            ("time_lord_5", "🍅", "ach_time_lord_5", "ach_desc_time_lord_5", lambda: self._check_time_lord(100)),
-            ("time_lord_6", "🍅", "ach_time_lord_6", "ach_desc_time_lord_6", lambda: self._check_time_lord(500)),
-            ("time_lord_7", "🍅", "ach_time_lord_7", "ach_desc_time_lord_7", lambda: self._check_time_lord(1000)),
+            ("time_lord_1", "🍅", "ach_time_lord_1", "ach_desc_time_lord_1", self._check_time_lord, 5),
+            ("time_lord_2", "🍅", "ach_time_lord_2", "ach_desc_time_lord_2", self._check_time_lord, 10),
+            ("time_lord_3", "🍅", "ach_time_lord_3", "ach_desc_time_lord_3", self._check_time_lord, 25),
+            ("time_lord_4", "🍅", "ach_time_lord_4", "ach_desc_time_lord_4", self._check_time_lord, 50),
+            ("time_lord_5", "🍅", "ach_time_lord_5", "ach_desc_time_lord_5", self._check_time_lord, 100),
+            ("time_lord_6", "🍅", "ach_time_lord_6", "ach_desc_time_lord_6", self._check_time_lord, 500),
+            ("time_lord_7", "🍅", "ach_time_lord_7", "ach_desc_time_lord_7", self._check_time_lord, 1000),
 
-            # SESSION MASTER: 1, 3, 5, 10, 20, 100, 250
-            ("session_master_1", "🎓", "ach_session_master_1", "ach_desc_session_master_1",
-             lambda: self._check_session_master(1)),
-            ("session_master_2", "🎓", "ach_session_master_2", "ach_desc_session_master_2",
-             lambda: self._check_session_master(3)),
-            ("session_master_3", "🎓", "ach_session_master_3", "ach_desc_session_master_3",
-             lambda: self._check_session_master(5)),
-            ("session_master_4", "🎓", "ach_session_master_4", "ach_desc_session_master_4",
-             lambda: self._check_session_master(10)),
-            ("session_master_5", "🎓", "ach_session_master_5", "ach_desc_session_master_5",
-             lambda: self._check_session_master(20)),
-            ("session_master_6", "🎓", "ach_session_master_6", "ach_desc_session_master_6",
-             lambda: self._check_session_master(100)),
-            ("session_master_7", "🎓", "ach_session_master_7", "ach_desc_session_master_7",
-             lambda: self._check_session_master(250)),
+            # SESSION MASTER
+            ("session_master_1", "🎓", "ach_session_master_1", "ach_desc_session_master_1", self._check_session_master,
+             1),
+            ("session_master_2", "🎓", "ach_session_master_2", "ach_desc_session_master_2", self._check_session_master,
+             3),
+            ("session_master_3", "🎓", "ach_session_master_3", "ach_desc_session_master_3", self._check_session_master,
+             5),
+            ("session_master_4", "🎓", "ach_session_master_4", "ach_desc_session_master_4", self._check_session_master,
+             10),
+            ("session_master_5", "🎓", "ach_session_master_5", "ach_desc_session_master_5", self._check_session_master,
+             20),
+            ("session_master_6", "🎓", "ach_session_master_6", "ach_desc_session_master_6", self._check_session_master,
+             100),
+            ("session_master_7", "🎓", "ach_session_master_7", "ach_desc_session_master_7", self._check_session_master,
+             250),
 
-            # POLYGLOT: 2, 3, 5, 10, 20, 50, 100, 500
-            ("polyglot_1", "🌍", "ach_polyglot_1", "ach_desc_polyglot_1", lambda: self._check_polyglot(2)),
-            ("polyglot_2", "🌍", "ach_polyglot_2", "ach_desc_polyglot_2", lambda: self._check_polyglot(3)),
-            ("polyglot_3", "🌍", "ach_polyglot_3", "ach_desc_polyglot_3", lambda: self._check_polyglot(5)),
-            ("polyglot_4", "🌍", "ach_polyglot_4", "ach_desc_polyglot_4", lambda: self._check_polyglot(10)),
-            ("polyglot_5", "🌍", "ach_polyglot_5", "ach_desc_polyglot_5", lambda: self._check_polyglot(20)),
-            ("polyglot_6", "🌍", "ach_polyglot_6", "ach_desc_polyglot_6", lambda: self._check_polyglot(50)),
-            ("polyglot_7", "🌍", "ach_polyglot_7", "ach_desc_polyglot_7", lambda: self._check_polyglot(100)),
-            ("polyglot_8", "🌍", "ach_polyglot_8", "ach_desc_polyglot_8", lambda: self._check_polyglot(500)),
+            # POLYGLOT
+            ("polyglot_1", "🌍", "ach_polyglot_1", "ach_desc_polyglot_1", self._check_polyglot, 2),
+            ("polyglot_2", "🌍", "ach_polyglot_2", "ach_desc_polyglot_2", self._check_polyglot, 3),
+            ("polyglot_3", "🌍", "ach_polyglot_3", "ach_desc_polyglot_3", self._check_polyglot, 5),
+            ("polyglot_4", "🌍", "ach_polyglot_4", "ach_desc_polyglot_4", self._check_polyglot, 10),
+            ("polyglot_5", "🌍", "ach_polyglot_5", "ach_desc_polyglot_5", self._check_polyglot, 20),
+            ("polyglot_6", "🌍", "ach_polyglot_6", "ach_desc_polyglot_6", self._check_polyglot, 50),
+            ("polyglot_7", "🌍", "ach_polyglot_7", "ach_desc_polyglot_7", self._check_polyglot, 100),
+            ("polyglot_8", "🌍", "ach_polyglot_8", "ach_desc_polyglot_8", self._check_polyglot, 500),
 
             # STRATEGIST
-            ("strategist_1", "📅", "ach_strategist_1", "ach_desc_strategist_1", lambda: self._check_strategist(7)),
-            ("strategist_2", "📅", "ach_strategist_2", "ach_desc_strategist_2", lambda: self._check_strategist(14)),
-            ("strategist_3", "📅", "ach_strategist_3", "ach_desc_strategist_3", lambda: self._check_strategist(30)),
-            ("strategist_4", "📅", "ach_strategist_4", "ach_desc_strategist_4", lambda: self._check_strategist(60)),
+            ("strategist_1", "📅", "ach_strategist_1", "ach_desc_strategist_1", self._check_strategist, 7),
+            ("strategist_2", "📅", "ach_strategist_2", "ach_desc_strategist_2", self._check_strategist, 14),
+            ("strategist_3", "📅", "ach_strategist_3", "ach_desc_strategist_3", self._check_strategist, 30),
+            ("strategist_4", "📅", "ach_strategist_4", "ach_desc_strategist_4", self._check_strategist, 60),
         ]
 
     def check_all(self, silent=False):
         new_unlocks = []
-        for ach_id, icon, title_key, desc_key, check_func in self.definitions:
+        # Rozpakowujemy teraz 6 elementów (doszedł threshold)
+        for ach_id, icon, title_key, desc_key, check_func, threshold in self.definitions:
             if ach_id in self.data["achievements"]:
                 continue
-            if check_func():
+
+            # Przekazujemy threshold tylko jeśli istnieje (dla clean_sheet jest None)
+            is_unlocked = False
+            if threshold is not None:
+                is_unlocked = check_func(threshold)
+            else:
+                is_unlocked = check_func()
+
+            if is_unlocked:
                 self.data["achievements"].append(ach_id)
                 new_unlocks.append((icon, title_key, desc_key))
 
@@ -156,33 +158,47 @@ class AchievementManager:
                 self.process_queue()
 
     def process_queue(self):
-        # Wyświetla następne powiadomienie, jeśli żadne nie jest aktywne
         if self.is_showing_popup or not self.notification_queue:
             return
 
         self.is_showing_popup = True
         icon, title_key, desc_key = self.notification_queue.pop(0)
-
-        # Przekazujemy callback on_close, który wyzwoli następne
         UnlockPopup(self.parent, self.txt, icon, title_key, desc_key, on_close=self.on_popup_closed)
 
     def on_popup_closed(self):
         self.is_showing_popup = False
-        # Małe opóźnienie dla estetyki
         self.parent.after(200, self.process_queue)
 
-    # --- CHECKS ---
-    def _check_first_step(self):
-        return self.data["global_stats"].get("topics_done", 0) > 0
+    # --- POMOCNICZE FUNKCJE DO POBIERANIA WARTOŚCI ---
+    def get_current_metric(self, check_func):
+        """Zwraca aktualną wartość licznika dla danej funkcji sprawdzającej."""
+        if check_func == self._check_first_step:
+            return self.data["global_stats"].get("topics_done", 0)
+        elif check_func == self._check_balance:
+            return self.data["global_stats"].get("days_off", 0)
+        elif check_func == self._check_scribe:
+            return self.data["global_stats"].get("notes_added", 0)
+        elif check_func == self._check_encyclopedia:
+            return self.data["global_stats"].get("topics_done", 0)
+        elif check_func == self._check_time_lord:
+            return self.data["global_stats"].get("pomodoro_sessions", 0)
+        elif check_func == self._check_polyglot:
+            return self.data["global_stats"].get("exams_added", 0)
+        elif check_func == self._check_session_master:
+            return self._get_session_master_count()
+        elif check_func == self._check_strategist:
+            return self._get_max_strategy_days()
+        else:
+            return 0
+
+    # --- CHECKS (Teraz przyjmują argument threshold) ---
+    def _check_first_step(self, threshold):
+        return self.data["global_stats"].get("topics_done", 0) >= threshold
 
     def _check_clean_sheet(self):
-        # 1. Policz aktualne zaległości
+        # Bez zmian logicznych, ale wywołanie jest bez argumentu
         today = date.today()
-        # Pobieramy format daty
-        # Bezpieczniej zaimportować wewnątrz, by uniknąć problemów cyklicznych,
-        # choć tutaj 'date' jest już zaimportowane
         from core.planner import date_format
-
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         overdue_count = 0
         for t in self.data["topics"]:
@@ -190,25 +206,14 @@ class AchievementManager:
                 if t["status"] == "todo" and t["exam_id"] in active_exams_ids:
                     overdue_count += 1
 
-        # 2. Sprawdź i zaktualizuj flagę 'had_overdue' w global_stats
-        # Ta flaga oznacza: "Użytkownik miał zaległości, które musi posprzątać"
         had_overdue = self.data["global_stats"].get("had_overdue", False)
-
         if overdue_count > 0:
-            # Jeśli są zaległości, ustawiamy flagę na przyszłość
             if not had_overdue:
                 self.data["global_stats"]["had_overdue"] = True
                 save(self.data)
-            return False  # Nadal brudno
-
+            return False
         else:
-            # Brak zaległości (overdue == 0)
-            # Osiągnięcie przyznajemy TYLKO, jeśli wcześniej były zaległości (had_overdue == True)
-            if had_overdue:
-                return True
-            else:
-                # Nigdy nie było zaległości - brak nagrody (zgodnie z życzeniem "nie jakikolwiek")
-                return False
+            return had_overdue
 
     def _check_balance(self, threshold):
         return self.data["global_stats"].get("days_off", 0) >= threshold
@@ -225,7 +230,8 @@ class AchievementManager:
     def _check_polyglot(self, threshold):
         return self.data["global_stats"].get("exams_added", 0) >= threshold
 
-    def _check_session_master(self, threshold):
+    # --- Helpery dla skomplikowanych ---
+    def _get_session_master_count(self):
         exam_counts = {}
         for t in self.data["topics"]:
             eid = t["exam_id"]
@@ -235,14 +241,22 @@ class AchievementManager:
         completed = 0
         for eid, counts in exam_counts.items():
             if counts[0] >= 3 and counts[0] == counts[1]: completed += 1
-        return completed >= threshold
+        return completed
 
-    def _check_strategist(self, threshold):
+    def _check_session_master(self, threshold):
+        return self._get_session_master_count() >= threshold
+
+    def _get_max_strategy_days(self):
         today = date.today()
         from core.planner import date_format
+        max_days = 0
         for e in self.data["exams"]:
-            if (date_format(e["date"]) - today).days >= threshold: return True
-        return False
+            diff = (date_format(e["date"]) - today).days
+            if diff > max_days: max_days = diff
+        return max_days
+
+    def _check_strategist(self, threshold):
+        return self._get_max_strategy_days() >= threshold
 
 
 class UnlockPopup:
@@ -331,8 +345,6 @@ class UnlockPopup:
 
 # --- ELEMENTY LISTY OSIĄGNIĘĆ ---
 class StaticAchievementItem(ctk.CTkFrame):
-    """ Dla osiągnięć bez poziomów (nierozwijalne) """
-
     def __init__(self, parent, icon, title, desc, is_unlocked, *args, **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
 
@@ -346,7 +358,6 @@ class StaticAchievementItem(ctk.CTkFrame):
         status_color = "#27ae60" if is_unlocked else "gray"
         desc_color = "gray30" if mode == "Light" else "gray70"
 
-        # Kontener treści
         content = ctk.CTkFrame(main_frame, fg_color="transparent")
         content.pack(padx=10, pady=10, fill="x")
 
@@ -362,8 +373,6 @@ class StaticAchievementItem(ctk.CTkFrame):
 
 
 class AccordionItem(ctk.CTkFrame):
-    """ Dla osiągnięć wielopoziomowych """
-
     def __init__(self, parent, icon, title, level_text, details_list, is_unlocked, *args, **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
         self.details_list = details_list
@@ -460,7 +469,8 @@ class AchievementsWindow:
                  "polyglot", "strategist"]
         family_meta = {}
 
-        for ach_id, icon, title_key, desc_key, _ in self.manager.definitions:
+        # Zaktualizowane rozpakowywanie o threshold
+        for ach_id, icon, title_key, desc_key, check_func, threshold in self.manager.definitions:
             parts = ach_id.rsplit('_', 1)
             if len(parts) == 2 and parts[1].isdigit():
                 base = parts[0]
@@ -474,9 +484,17 @@ class AchievementsWindow:
             t_text = self.txt.get(title_key, title_key)
             d_text = self.txt.get(desc_key, desc_key)
 
+            is_unlocked = ach_id in unlocked_ids
+
+            # --- DODAWANIE LICZNIKA (PROGRESU) JEŚLI ZABLOKOWANE ---
+            if not is_unlocked and threshold is not None:
+                current_val = self.manager.get_current_metric(check_func)
+                d_text += f" ({current_val}/{threshold})"
+            # -------------------------------------------------------
+
             families[base].append({
                 "id": ach_id, "lvl": lvl, "title": t_text, "desc": d_text,
-                "unlocked": ach_id in unlocked_ids
+                "unlocked": is_unlocked
             })
             if base not in family_meta:
                 clean_title = t_text.split(" I")[0].split(" IV")[0].strip()
@@ -487,7 +505,6 @@ class AchievementsWindow:
             items = sorted(families[base], key=lambda x: x["lvl"])
             meta = family_meta[base]
 
-            # --- LOGIKA ELEMENTU STATYCZNEGO VS ROZWIJANEGO ---
             # Jeśli rodzina ma tylko 1 element (level 0), robimy statyczny
             if len(items) == 1 and items[0]["lvl"] == 0:
                 item = items[0]
