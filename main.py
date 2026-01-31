@@ -14,8 +14,10 @@ from gui.windows.blocked_days import BlockedDaysWindow
 from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
+import threading
+from core.updater import check_for_updates  # <--- Dodaj to
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 class GUI:
     def __init__(self, root):
@@ -130,6 +132,10 @@ class GUI:
                                     variable=self.selected_theme_var, command=lambda: self.change_theme("dark"))
 
         settings_menu.add_cascade(label=self.txt.get("menu_colors", "Colors"), menu=colors_menu)
+
+        settings_menu.add_separator()
+        settings_menu.add_command(label="Sprawdź aktualizacje", command=lambda: check_for_updates(silent=False))
+
         self.menubar.add_cascade(label=self.txt.get("menu_settings", "Settings"), menu=settings_menu)
 
         # menu pomoc
@@ -282,6 +288,10 @@ class GUI:
 
         apply_theme(self, self.current_theme)
         self.refresh_dashboard()
+
+        # --- AUTO-UPDATE ---
+        # Uruchamiamy w tle, żeby aplikacja włączyła się natychmiast
+        threading.Thread(target=lambda: check_for_updates(silent=True), daemon=True).start()
 
     def sidebar_add(self):
         self.plan_view.open_add_window()

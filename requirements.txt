@@ -2,3 +2,5 @@ tkcalendar
 babel
 platformdirs
 customtkinter
+requests
+packaging
