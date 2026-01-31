@@ -15,7 +15,7 @@ from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 
 class GUI:
     def __init__(self, root):

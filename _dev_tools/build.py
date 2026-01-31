@@ -59,6 +59,7 @@ def build_app():
     # 3. Konfiguracja PyInstaller
     print(f" Konfiguracja budowania dla {system_os}...")
 
+    # Opcje wspólne dla obu systemów
     opts = [
         main_script_path,
         '--name=Splanner',
@@ -70,6 +71,14 @@ def build_app():
         f'--workpath={work_dir}',
         f'--specpath={base_output_dir}'
     ]
+
+    # --- LOGIKA SPECYFICZNA DLA SYSTEMU ---
+    if system_os == "Windows":
+        # Windows: Chcemy jeden plik .exe (łatwiejsze pobieranie, naprawia błąd GitHub Actions)
+        opts.append('--onefile')
+    else:
+        # macOS: Chcemy .app (onedir), bo --onefile psuje działanie GUI na Macu
+        opts.append('--onedir')
 
     if icon_path:
         opts.append(f'--icon={icon_path}')
