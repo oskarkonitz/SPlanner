@@ -288,5 +288,9 @@
     "ach_polyglot_7": "Poliglota VII",
     "ach_desc_polyglot_7": "Dodaj egzaminy z 100 różnych przedmiotów.",
     "ach_polyglot_8": "Poliglota VIII",
-    "ach_desc_polyglot_8": "Dodaj egzaminy z 500 różnych przedmiotów."
+    "ach_desc_polyglot_8": "Dodaj egzaminy z 500 różnych przedmiotów.",
+
+    "drawer_title": "Notatka",
+    "btn_saved": "Zapisano!",
+    "lbl_exam_prefix": "Egzamin"
 }

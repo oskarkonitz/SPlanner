@@ -288,5 +288,9 @@
     "ach_polyglot_7": "Polyglot VII",
     "ach_desc_polyglot_7": "Fügen Sie Prüfungen für 100 verschiedene Fächer hinzu.",
     "ach_polyglot_8": "Polyglot VIII",
-    "ach_desc_polyglot_8": "Fügen Sie Prüfungen für 500 verschiedene Fächer hinzu."
+    "ach_desc_polyglot_8": "Fügen Sie Prüfungen für 500 verschiedene Fächer hinzu.",
+
+    "drawer_title": "Notiz",
+    "btn_saved": "Gespeichert!",
+    "lbl_exam_prefix": "Prüfung"
 }

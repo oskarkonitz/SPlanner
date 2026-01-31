@@ -288,5 +288,9 @@
     "ach_polyglot_7": "Políglota VII",
     "ach_desc_polyglot_7": "Añade exámenes para 100 asignaturas diferentes.",
     "ach_polyglot_8": "Políglota VIII",
-    "ach_desc_polyglot_8": "Añade exámenes para 500 asignaturas diferentes."
+    "ach_desc_polyglot_8": "Añade exámenes para 500 asignaturas diferentes.",
+
+    "drawer_title": "Nota",
+    "btn_saved": "¡Guardado!",
+    "lbl_exam_prefix": "Examen"
 }

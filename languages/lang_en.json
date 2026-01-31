@@ -288,5 +288,9 @@
     "ach_polyglot_7": "Polyglot VII",
     "ach_desc_polyglot_7": "Add exams for 100 different subjects.",
     "ach_polyglot_8": "Polyglot VIII",
-    "ach_desc_polyglot_8": "Add exams for 500 different subjects."
+    "ach_desc_polyglot_8": "Add exams for 500 different subjects.",
+
+    "drawer_title": "Note",
+    "btn_saved": "Saved!",
+    "lbl_exam_prefix": "Exam"
 }

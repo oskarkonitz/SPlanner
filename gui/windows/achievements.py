@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
-from datetime import date  # <--- DODAŁEM BRAKUJĄCY IMPORT
+from datetime import date
+from core.planner import date_format
 from core.storage import save
 import random
 import math
@@ -48,7 +49,8 @@ class AchievementManager:
         if "global_stats" not in self.data:
             self.data["global_stats"] = {
                 "topics_done": 0, "notes_added": 0, "exams_added": 0,
-                "days_off": 0, "pomodoro_sessions": 0, "activity_started": False
+                "days_off": 0, "pomodoro_sessions": 0, "activity_started": False,
+                "had_overdue": False  # Nowa flaga dla Clean Sheet
             }
 
         self.definitions = [
@@ -174,17 +176,39 @@ class AchievementManager:
         return self.data["global_stats"].get("topics_done", 0) > 0
 
     def _check_clean_sheet(self):
-        if not self.data["global_stats"].get("activity_started", False): return False
+        # 1. Policz aktualne zaległości
         today = date.today()
-        # Clean Sheet sprawdzamy "na żywo", bo to stan bieżący
+        # Pobieramy format daty
+        # Bezpieczniej zaimportować wewnątrz, by uniknąć problemów cyklicznych,
+        # choć tutaj 'date' jest już zaimportowane
         from core.planner import date_format
+
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         overdue_count = 0
         for t in self.data["topics"]:
             if t.get("scheduled_date") and date_format(t["scheduled_date"]) < today:
                 if t["status"] == "todo" and t["exam_id"] in active_exams_ids:
                     overdue_count += 1
-        return overdue_count == 0
+
+        # 2. Sprawdź i zaktualizuj flagę 'had_overdue' w global_stats
+        # Ta flaga oznacza: "Użytkownik miał zaległości, które musi posprzątać"
+        had_overdue = self.data["global_stats"].get("had_overdue", False)
+
+        if overdue_count > 0:
+            # Jeśli są zaległości, ustawiamy flagę na przyszłość
+            if not had_overdue:
+                self.data["global_stats"]["had_overdue"] = True
+                save(self.data)
+            return False  # Nadal brudno
+
+        else:
+            # Brak zaległości (overdue == 0)
+            # Osiągnięcie przyznajemy TYLKO, jeśli wcześniej były zaległości (had_overdue == True)
+            if had_overdue:
+                return True
+            else:
+                # Nigdy nie było zaległości - brak nagrody (zgodnie z życzeniem "nie jakikolwiek")
+                return False
 
     def _check_balance(self, threshold):
         return self.data["global_stats"].get("days_off", 0) >= threshold
