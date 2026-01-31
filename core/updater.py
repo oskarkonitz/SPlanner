@@ -7,6 +7,7 @@ import time
 import zipfile
 import shutil
 import threading
+import tempfile  # <--- NOWOŚĆ: Do bezpiecznego zapisu
 import customtkinter as ctk
 from tkinter import messagebox
 from packaging import version
@@ -14,7 +15,7 @@ from packaging import version
 # --- KONFIGURACJA ---
 REPO_OWNER = "oskarkonitz"
 REPO_NAME = "SPlanner"
-CURRENT_VERSION = "1.0.4"
+CURRENT_VERSION = "1.0.5"
 
 
 def check_for_updates(silent=True):
@@ -27,7 +28,6 @@ def check_for_updates(silent=True):
         latest_tag = data["tag_name"].lstrip("v")
 
         if version.parse(latest_tag) > version.parse(CURRENT_VERSION):
-            # Znajdź odpowiedni plik (Asset) dla systemu
             system = platform.system()
             asset_url = None
             asset_name = None
@@ -44,8 +44,7 @@ def check_for_updates(silent=True):
             if asset_url:
                 ask_download(latest_tag, asset_url, asset_name, data["body"])
             else:
-                if not silent: messagebox.showwarning("Błąd",
-                                                      "Wykryto nową wersję, ale brak pliku dla Twojego systemu.")
+                if not silent: messagebox.showwarning("Błąd", "Brak pliku dla Twojego systemu.")
         else:
             if not silent: messagebox.showinfo("Info", f"Masz najnowszą wersję ({CURRENT_VERSION})")
 
@@ -57,11 +56,9 @@ def check_for_updates(silent=True):
 def ask_download(ver, url, filename, body):
     msg = f"Dostępna wersja {ver}!\n\nZmiany:\n{body}\n\nCzy chcesz zaktualizować teraz automatycznie?"
     if messagebox.askyesno("Aktualizacja", msg):
-        # Uruchamiamy pobieranie w GUI
         DownloadWindow(url, filename)
 
 
-# --- OKNO POBIERANIA ---
 class DownloadWindow(ctk.CTkToplevel):
     def __init__(self, url, filename):
         super().__init__()
@@ -80,21 +77,21 @@ class DownloadWindow(ctk.CTkToplevel):
         self.progress.pack(pady=10, padx=20)
         self.progress.set(0)
 
-        # Start w tle
         threading.Thread(target=self.start_download, daemon=True).start()
 
     def start_download(self):
         try:
-            # Pobieranie strumieniowe
             r = requests.get(self.url, stream=True)
             total_size = int(r.headers.get('content-length', 0))
             block_size = 1024
             wrote = 0
 
-            # Zapisujemy jako plik tymczasowy "update_new"
-            temp_name = "update_pkg.zip" if self.filename.endswith(".zip") else "update_new.exe"
+            # --- ZMIANA: Zapisujemy do folderu tymczasowego systemu ---
+            temp_dir = tempfile.gettempdir()
+            save_name = "update_pkg.zip" if self.filename.endswith(".zip") else "update_new.exe"
+            self.full_save_path = os.path.join(temp_dir, save_name)
 
-            with open(temp_name, 'wb') as f:
+            with open(self.full_save_path, 'wb') as f:
                 for data in r.iter_content(block_size):
                     wrote = wrote + len(data)
                     f.write(data)
@@ -104,19 +101,22 @@ class DownloadWindow(ctk.CTkToplevel):
                         self.lbl.configure(text=f"{int(prog * 100)}%")
 
             self.lbl.configure(text="Instalowanie...")
-            self.install_update(temp_name)
+            self.install_update()
 
         except Exception as e:
             messagebox.showerror("Błąd", f"Błąd pobierania: {e}")
             self.destroy()
 
-    def install_update(self, temp_file):
-        """Magia podmiany plików"""
+    def install_update(self):
         current_exe = sys.executable
         system = platform.system()
+        temp_file = self.full_save_path  # Używamy pełnej ścieżki z temp
 
         if system == "Windows":
-            # Skrypt .bat dla Windows
+            # Windows: Tworzymy .bat w tempie, żeby nie śmiecić
+            temp_dir = tempfile.gettempdir()
+            bat_path = os.path.join(temp_dir, "updater.bat")
+
             bat_script = f"""
 @echo off
 timeout /t 2 /nobreak > NUL
@@ -125,33 +125,42 @@ move "{temp_file}" "{current_exe}"
 start "" "{current_exe}"
 del "%~f0"
 """
-            with open("updater.bat", "w") as f:
+            with open(bat_path, "w") as f:
                 f.write(bat_script)
 
-            subprocess.Popen("updater.bat", shell=True)
-            os._exit(0)  # Zamykamy aplikację natychmiast
+            subprocess.Popen(bat_path, shell=True)
+            os._exit(0)
 
         elif system == "Darwin":  # macOS
-            # Szukamy ścieżki do .app (bo sys.executable jest głęboko w środku)
+            # 1. Znajdź prawdziwą ścieżkę do .app
             app_path = os.path.abspath(current_exe)
             while ".app" not in os.path.basename(app_path):
                 app_path = os.path.dirname(app_path)
-                if app_path == "/": break
+                # Zabezpieczenie przed pętlą (jeśli uruchomiono z terminala/python)
+                if app_path == "/" or not app_path:
+                    messagebox.showerror("Błąd", "Nie można zlokalizować aplikacji .app")
+                    return
 
-                # Skrypt .sh dla Maca (rozpakowuje ZIP, podmienia .app, usuwa kwarantannę)
+            # 2. Ustal folder nadrzędny (np. /Applications)
+            install_dir = os.path.dirname(app_path)
+
+            # 3. Skrypt .sh w tempie
+            temp_dir = tempfile.gettempdir()
+            sh_path = os.path.join(temp_dir, "updater.sh")
+
+            # WAŻNE: unzip -d wypakowuje do folderu nadrzędnego, nadpisując starą aplikację
             sh_script = f"""
 #!/bin/bash
 sleep 2
 rm -rf "{app_path}"
-unzip -o "{temp_file}"
-# Usuń atrybut kwarantanny (fix na "App is damaged")
-xattr -cr "Splanner.app"
-open "Splanner.app"
+unzip -o "{temp_file}" -d "{install_dir}"
+xattr -cr "{app_path}"
+open "{app_path}"
 rm "{temp_file}"
 rm "$0"
 """
-            with open("updater.sh", "w") as f:
+            with open(sh_path, "w") as f:
                 f.write(sh_script)
 
-            subprocess.Popen(["/bin/bash", "updater.sh"])
+            subprocess.Popen(["/bin/bash", sh_path])
             os._exit(0)

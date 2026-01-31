@@ -17,7 +17,7 @@ from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates  # <--- Dodaj to
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
 class GUI:
     def __init__(self, root):
