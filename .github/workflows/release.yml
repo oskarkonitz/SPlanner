@@ -32,6 +32,8 @@ jobs:
           pip install pyinstaller
 
       - name: Run Build Script
+        env:
+          PYTHONIOENCODING: utf-8
         run: python _dev_tools/build.py
 
       - name: Zip macOS App

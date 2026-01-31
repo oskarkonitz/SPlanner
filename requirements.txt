@@ -1,3 +1,4 @@
 tkcalendar
 babel
 platformdirs
+customtkinter

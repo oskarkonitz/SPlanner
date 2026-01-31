@@ -23,19 +23,19 @@ def build_app():
 
     # CZYSZCZENIE: Jeśli folder planner_build już istnieje, usuń go
     if os.path.exists(base_output_dir):
-        print(f"🧹 Czyszczenie starego folderu: {base_output_dir}...")
+        print(f" Czyszczenie starego folderu: {base_output_dir}...")
         try:
             shutil.rmtree(base_output_dir)  # Do tego potrzebny jest ten import!
         except Exception as e:
-            print(f"⚠️ Nie udało się usunąć folderu (może jest otwarty?): {e}")
+            print(f" Nie udało się usunąć folderu (może jest otwarty?): {e}")
 
     if not os.path.exists(base_output_dir):
         os.makedirs(base_output_dir)
-        print(f"📁 Utworzono folder na buildy: {base_output_dir}")
+        print(f" Utworzono folder na buildy: {base_output_dir}")
 
     # 2. Wykrywanie systemu
     system_os = platform.system()
-    print(f"🔧 Wykryto system: {system_os}")
+    print(f" Wykryto system: {system_os}")
 
     # --- LOGIKA SYSTEMÓW ---
     if system_os == "Darwin":  # macOS
@@ -53,11 +53,11 @@ def build_app():
 
     # Sprawdzenie ikony
     if icon_path and not os.path.exists(icon_path):
-        print(f"⚠️ Nie znaleziono ikony: {icon_path}. Używam domyślnej.")
+        print(f" Nie znaleziono ikony: {icon_path}. Używam domyślnej.")
         icon_path = None
 
     # 3. Konfiguracja PyInstaller
-    print(f"🚀 Konfiguracja budowania dla {system_os}...")
+    print(f" Konfiguracja budowania dla {system_os}...")
 
     opts = [
         main_script_path,
@@ -77,7 +77,7 @@ def build_app():
     # 4. Uruchomienie
     PyInstaller.__main__.run(opts)
 
-    print(f"\n✅ SUKCES! Build gotowy w: {os.path.join(dist_dir, 'StudyPlanner')}")
+    print(f"\n SUKCES! Build gotowy w: {os.path.join(dist_dir, 'StudyPlanner')}")
 
 
 if __name__ == "__main__":
