@@ -15,7 +15,7 @@ from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 import threading
-from core.updater import check_for_updates  # <--- Dodaj to
+from core.updater import check_for_updates
 
 VERSION = "1.0.5"
 
@@ -134,7 +134,10 @@ class GUI:
         settings_menu.add_cascade(label=self.txt.get("menu_colors", "Colors"), menu=colors_menu)
 
         settings_menu.add_separator()
-        settings_menu.add_command(label="Sprawdź aktualizacje", command=lambda: check_for_updates(silent=False))
+        settings_menu.add_command(
+            label=self.txt.get("menu_check_updates", "Check for updates"),
+            command=lambda: check_for_updates(self.txt, silent=False)
+        )
 
         self.menubar.add_cascade(label=self.txt.get("menu_settings", "Settings"), menu=settings_menu)
 
@@ -291,7 +294,7 @@ class GUI:
 
         # --- AUTO-UPDATE ---
         # Uruchamiamy w tle, żeby aplikacja włączyła się natychmiast
-        threading.Thread(target=lambda: check_for_updates(silent=True), daemon=True).start()
+        threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
 
     def sidebar_add(self):
         self.plan_view.open_add_window()

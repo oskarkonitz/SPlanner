@@ -292,5 +292,17 @@
 
     "drawer_title": "Notatka",
     "btn_saved": "Zapisano!",
-    "lbl_exam_prefix": "Egzamin"
+    "lbl_exam_prefix": "Egzamin",
+
+    "upd_title": "Aktualizacja",
+    "upd_no_file": "Brak pliku aktualizacji dla Twojego systemu.",
+    "upd_latest": "Masz najnowszą wersję ({version}).",
+    "upd_net_error": "Brak połączenia z internetem.",
+    "upd_available_msg": "Dostępna wersja {ver}!\n\nZmiany:\n{body}\n\nCzy chcesz zaktualizować teraz automatycznie?",
+    "upd_win_title": "Pobieranie aktualizacji...",
+    "upd_downloading": "Pobieranie...",
+    "upd_installing": "Instalowanie...",
+    "upd_err_download": "Błąd pobierania",
+    "upd_err_app": "Nie można zlokalizować aplikacji .app",
+    "menu_check_updates": "Sprawdź aktualizacje"
 }

@@ -7,7 +7,7 @@ import time
 import zipfile
 import shutil
 import threading
-import tempfile  # <--- NOWOŚĆ: Do bezpiecznego zapisu
+import tempfile
 import customtkinter as ctk
 from tkinter import messagebox
 from packaging import version
@@ -18,7 +18,8 @@ REPO_NAME = "SPlanner"
 CURRENT_VERSION = "1.0.5"
 
 
-def check_for_updates(silent=True):
+# Dodano argument 'txt' do funkcji
+def check_for_updates(txt, silent=True):
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
     try:
         response = requests.get(url, timeout=5)
@@ -42,27 +43,36 @@ def check_for_updates(silent=True):
                     asset_name = asset["name"]
 
             if asset_url:
-                ask_download(latest_tag, asset_url, asset_name, data["body"])
+                ask_download(txt, latest_tag, asset_url, asset_name, data["body"])
             else:
-                if not silent: messagebox.showwarning("Błąd", "Brak pliku dla Twojego systemu.")
+                if not silent:
+                    messagebox.showwarning(txt.get("msg_error", "Error"),
+                                           txt.get("upd_no_file", "No file for your system."))
         else:
-            if not silent: messagebox.showinfo("Info", f"Masz najnowszą wersję ({CURRENT_VERSION})")
+            if not silent:
+                messagebox.showinfo(txt.get("msg_info", "Info"),
+                                    txt.get("upd_latest", "You have the latest version").format(
+                                        version=CURRENT_VERSION))
 
     except Exception as e:
         print(f"Update error: {e}")
-        if not silent: messagebox.showerror("Błąd", "Brak połączenia z internetem.")
+        if not silent:
+            messagebox.showerror(txt.get("msg_error", "Error"), txt.get("upd_net_error", "No internet connection."))
 
 
-def ask_download(ver, url, filename, body):
-    msg = f"Dostępna wersja {ver}!\n\nZmiany:\n{body}\n\nCzy chcesz zaktualizować teraz automatycznie?"
-    if messagebox.askyesno("Aktualizacja", msg):
-        DownloadWindow(url, filename)
+def ask_download(txt, ver, url, filename, body):
+    # Formatuje wiadomość używając szablonu z pliku językowego
+    msg = txt.get("upd_available_msg", "New version {ver} available!").format(ver=ver, body=body)
+
+    if messagebox.askyesno(txt.get("upd_title", "Update"), msg):
+        DownloadWindow(txt, url, filename)
 
 
 class DownloadWindow(ctk.CTkToplevel):
-    def __init__(self, url, filename):
+    def __init__(self, txt, url, filename):
         super().__init__()
-        self.title("Pobieranie aktualizacji...")
+        self.txt = txt
+        self.title(txt.get("upd_win_title", "Downloading update..."))
         self.geometry("300x150")
         self.resizable(False, False)
         self.attributes("-topmost", True)
@@ -70,7 +80,7 @@ class DownloadWindow(ctk.CTkToplevel):
         self.url = url
         self.filename = filename
 
-        self.lbl = ctk.CTkLabel(self, text="Pobieranie...", font=("Arial", 14))
+        self.lbl = ctk.CTkLabel(self, text=txt.get("upd_downloading", "Downloading..."), font=("Arial", 14))
         self.lbl.pack(pady=20)
 
         self.progress = ctk.CTkProgressBar(self)
@@ -86,7 +96,6 @@ class DownloadWindow(ctk.CTkToplevel):
             block_size = 1024
             wrote = 0
 
-            # --- ZMIANA: Zapisujemy do folderu tymczasowego systemu ---
             temp_dir = tempfile.gettempdir()
             save_name = "update_pkg.zip" if self.filename.endswith(".zip") else "update_new.exe"
             self.full_save_path = os.path.join(temp_dir, save_name)
@@ -100,20 +109,20 @@ class DownloadWindow(ctk.CTkToplevel):
                         self.progress.set(prog)
                         self.lbl.configure(text=f"{int(prog * 100)}%")
 
-            self.lbl.configure(text="Instalowanie...")
+            self.lbl.configure(text=self.txt.get("upd_installing", "Installing..."))
             self.install_update()
 
         except Exception as e:
-            messagebox.showerror("Błąd", f"Błąd pobierania: {e}")
+            messagebox.showerror(self.txt.get("msg_error", "Error"),
+                                 f"{self.txt.get('upd_err_download', 'Download error')}: {e}")
             self.destroy()
 
     def install_update(self):
         current_exe = sys.executable
         system = platform.system()
-        temp_file = self.full_save_path  # Używamy pełnej ścieżki z temp
+        temp_file = self.full_save_path
 
         if system == "Windows":
-            # Windows: Tworzymy .bat w tempie, żeby nie śmiecić
             temp_dir = tempfile.gettempdir()
             bat_path = os.path.join(temp_dir, "updater.bat")
 
@@ -131,24 +140,19 @@ del "%~f0"
             subprocess.Popen(bat_path, shell=True)
             os._exit(0)
 
-        elif system == "Darwin":  # macOS
-            # 1. Znajdź prawdziwą ścieżkę do .app
+        elif system == "Darwin":
             app_path = os.path.abspath(current_exe)
             while ".app" not in os.path.basename(app_path):
                 app_path = os.path.dirname(app_path)
-                # Zabezpieczenie przed pętlą (jeśli uruchomiono z terminala/python)
                 if app_path == "/" or not app_path:
-                    messagebox.showerror("Błąd", "Nie można zlokalizować aplikacji .app")
+                    messagebox.showerror(self.txt.get("msg_error", "Error"),
+                                         self.txt.get("upd_err_app", "Cannot locate .app"))
                     return
 
-            # 2. Ustal folder nadrzędny (np. /Applications)
             install_dir = os.path.dirname(app_path)
-
-            # 3. Skrypt .sh w tempie
             temp_dir = tempfile.gettempdir()
             sh_path = os.path.join(temp_dir, "updater.sh")
 
-            # WAŻNE: unzip -d wypakowuje do folderu nadrzędnego, nadpisując starą aplikację
             sh_script = f"""
 #!/bin/bash
 sleep 2

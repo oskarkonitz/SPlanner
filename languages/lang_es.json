@@ -292,5 +292,17 @@
 
     "drawer_title": "Nota",
     "btn_saved": "¡Guardado!",
-    "lbl_exam_prefix": "Examen"
+    "lbl_exam_prefix": "Examen",
+
+    "upd_title": "Actualización",
+    "upd_no_file": "No se encontró archivo de actualización para su sistema.",
+    "upd_latest": "Tienes la última versión ({version}).",
+    "upd_net_error": "Sin conexión a internet.",
+    "upd_available_msg": "¡Versión {ver} disponible!\n\nCambios:\n{body}\n\n¿Desea actualizar automáticamente ahora?",
+    "upd_win_title": "Descargando actualización...",
+    "upd_downloading": "Descargando...",
+    "upd_installing": "Instalando...",
+    "upd_err_download": "Error de descarga",
+    "upd_err_app": "No se puede localizar la aplicación .app",
+    "menu_check_updates": "Buscar actualizaciones"
 }

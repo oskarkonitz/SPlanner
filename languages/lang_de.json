@@ -292,5 +292,17 @@
 
     "drawer_title": "Notiz",
     "btn_saved": "Gespeichert!",
-    "lbl_exam_prefix": "Prüfung"
+    "lbl_exam_prefix": "Prüfung",
+
+    "upd_title": "Aktualisierung",
+    "upd_no_file": "Keine Update-Datei für Ihr System gefunden.",
+    "upd_latest": "Sie haben die neueste Version ({version}).",
+    "upd_net_error": "Keine Internetverbindung.",
+    "upd_available_msg": "Version {ver} verfügbar!\n\nÄnderungen:\n{body}\n\nMöchten Sie jetzt automatisch aktualisieren?",
+    "upd_win_title": "Update wird heruntergeladen...",
+    "upd_downloading": "Herunterladen...",
+    "upd_installing": "Installieren...",
+    "upd_err_download": "Fehler beim Herunterladen",
+    "upd_err_app": "Die .app-Anwendung kann nicht gefunden werden",
+    "menu_check_updates": "Nach Updates suchen"
 }
