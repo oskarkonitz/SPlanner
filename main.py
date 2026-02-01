@@ -17,7 +17,7 @@ from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 
 class GUI:
     def __init__(self, root):
@@ -318,7 +318,39 @@ class GUI:
         self.plan_view.refresh_table()
 
     def menu_clear_data(self):
-        self.plan_view.clear_database()
+        # Pobieramy potwierdzenie od użytkownika
+        if messagebox.askyesno(self.txt.get("msg_confirm", "Confirm"), self.txt.get("msg_clear_confirm", "Clear all data?")):
+            # 1. Resetowanie głównych danych planera
+            self.data["exams"] = []
+            self.data["topics"] = []
+            self.data["notes"] = {}
+            self.data["blocked_dates"] = []
+
+            # 2. Resetowanie Osiągnięć i Statystyk globalnych
+            self.data["achievements"] = []
+            self.data["global_stats"] = {
+                "topics_done": 0,
+                "notes_added": 0,
+                "exams_added": 0,
+                "days_off": 0,
+                "pomodoro_sessions": 0,
+                "activity_started": False,
+                "had_overdue": False
+            }
+
+            # 3. Zapisanie pustych struktur do pliku
+            save(self.data)
+
+            # 4. Synchronizacja i odświeżenie widoków
+            self.plan_view.data = self.data  # Ważne: aktualizacja słownika w PlanWindow
+            self.plan_view.refresh_table()
+            self.refresh_dashboard()
+
+            # 5. Reset managera osiągnięć (żeby wyczyścić jego wewnętrzną kolejkę)
+            from gui.windows.achievements import AchievementManager
+            self.ach_manager = AchievementManager(self.root, self.txt, self.data)
+
+            messagebox.showinfo(self.txt.get("msg_info", "Info"), self.txt.get("msg_data_cleared", "Data cleared!"))
 
     def change_language(self, new_code):
         if new_code == self.data["settings"].get("lang", "en"):

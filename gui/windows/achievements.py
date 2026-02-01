@@ -7,7 +7,7 @@ import random
 import math
 
 
-# --- KLASA CZĄSTECZKI (BEZ ZMIAN) ---
+# --- KLASA CZĄSTECZKI ---
 class Particle:
     def __init__(self, canvas, x, y, color_palette):
         self.canvas = canvas
@@ -53,14 +53,9 @@ class AchievementManager:
                 "had_overdue": False
             }
 
-        # Zmieniona struktura: (ID, Ikona, Tytuł, Opis, MetodaSprawdzająca, PrógLiczbowy)
-        # PrógLiczbowy = None dla osiągnięć binarnych (tak/nie)
         self.definitions = [
-            # POJEDYNCZE (Static)
             ("first_step", "👶", "ach_first_step", "ach_desc_first_step", self._check_first_step, 1),
             ("clean_sheet", "🧹", "ach_clean_sheet", "ach_desc_clean_sheet", self._check_clean_sheet, None),
-
-            # BALANCE
             ("balance", "🏖️", "ach_balance", "ach_desc_balance", self._check_balance, 1),
             ("balance_2", "🏖️", "ach_balance_2", "ach_desc_balance_2", self._check_balance, 3),
             ("balance_3", "🏖️", "ach_balance_3", "ach_desc_balance_3", self._check_balance, 7),
@@ -68,8 +63,6 @@ class AchievementManager:
             ("balance_5", "🏖️", "ach_balance_5", "ach_desc_balance_5", self._check_balance, 20),
             ("balance_6", "🏖️", "ach_balance_6", "ach_desc_balance_6", self._check_balance, 60),
             ("balance_7", "🏖️", "ach_balance_7", "ach_desc_balance_7", self._check_balance, 360),
-
-            # SCRIBE
             ("scribe_1", "✍", "ach_scribe_1", "ach_desc_scribe_1", self._check_scribe, 5),
             ("scribe_2", "✍", "ach_scribe_2", "ach_desc_scribe_2", self._check_scribe, 10),
             ("scribe_3", "✍", "ach_scribe_3", "ach_desc_scribe_3", self._check_scribe, 25),
@@ -79,8 +72,6 @@ class AchievementManager:
             ("scribe_7", "✍", "ach_scribe_7", "ach_desc_scribe_7", self._check_scribe, 500),
             ("scribe_8", "✍", "ach_scribe_8", "ach_desc_scribe_8", self._check_scribe, 1000),
             ("scribe_9", "✍", "ach_scribe_9", "ach_desc_scribe_9", self._check_scribe, 2000),
-
-            # ENCYCLOPEDIA
             ("encyclopedia_1", "📚", "ach_encyclopedia_1", "ach_desc_encyclopedia_1", self._check_encyclopedia, 10),
             ("encyclopedia_2", "📚", "ach_encyclopedia_2", "ach_desc_encyclopedia_2", self._check_encyclopedia, 25),
             ("encyclopedia_3", "📚", "ach_encyclopedia_3", "ach_desc_encyclopedia_3", self._check_encyclopedia, 50),
@@ -90,8 +81,6 @@ class AchievementManager:
             ("encyclopedia_7", "📚", "ach_encyclopedia_7", "ach_desc_encyclopedia_7", self._check_encyclopedia, 500),
             ("encyclopedia_8", "📚", "ach_encyclopedia_8", "ach_desc_encyclopedia_8", self._check_encyclopedia, 1000),
             ("encyclopedia_9", "📚", "ach_encyclopedia_9", "ach_desc_encyclopedia_9", self._check_encyclopedia, 2000),
-
-            # TIME LORD
             ("time_lord_1", "🍅", "ach_time_lord_1", "ach_desc_time_lord_1", self._check_time_lord, 5),
             ("time_lord_2", "🍅", "ach_time_lord_2", "ach_desc_time_lord_2", self._check_time_lord, 10),
             ("time_lord_3", "🍅", "ach_time_lord_3", "ach_desc_time_lord_3", self._check_time_lord, 25),
@@ -99,8 +88,6 @@ class AchievementManager:
             ("time_lord_5", "🍅", "ach_time_lord_5", "ach_desc_time_lord_5", self._check_time_lord, 100),
             ("time_lord_6", "🍅", "ach_time_lord_6", "ach_desc_time_lord_6", self._check_time_lord, 500),
             ("time_lord_7", "🍅", "ach_time_lord_7", "ach_desc_time_lord_7", self._check_time_lord, 1000),
-
-            # SESSION MASTER
             ("session_master_1", "🎓", "ach_session_master_1", "ach_desc_session_master_1", self._check_session_master,
              1),
             ("session_master_2", "🎓", "ach_session_master_2", "ach_desc_session_master_2", self._check_session_master,
@@ -115,8 +102,6 @@ class AchievementManager:
              100),
             ("session_master_7", "🎓", "ach_session_master_7", "ach_desc_session_master_7", self._check_session_master,
              250),
-
-            # POLYGLOT
             ("polyglot_1", "🌍", "ach_polyglot_1", "ach_desc_polyglot_1", self._check_polyglot, 2),
             ("polyglot_2", "🌍", "ach_polyglot_2", "ach_desc_polyglot_2", self._check_polyglot, 3),
             ("polyglot_3", "🌍", "ach_polyglot_3", "ach_desc_polyglot_3", self._check_polyglot, 5),
@@ -125,8 +110,6 @@ class AchievementManager:
             ("polyglot_6", "🌍", "ach_polyglot_6", "ach_desc_polyglot_6", self._check_polyglot, 50),
             ("polyglot_7", "🌍", "ach_polyglot_7", "ach_desc_polyglot_7", self._check_polyglot, 100),
             ("polyglot_8", "🌍", "ach_polyglot_8", "ach_desc_polyglot_8", self._check_polyglot, 500),
-
-            # STRATEGIST
             ("strategist_1", "📅", "ach_strategist_1", "ach_desc_strategist_1", self._check_strategist, 7),
             ("strategist_2", "📅", "ach_strategist_2", "ach_desc_strategist_2", self._check_strategist, 14),
             ("strategist_3", "📅", "ach_strategist_3", "ach_desc_strategist_3", self._check_strategist, 30),
@@ -135,17 +118,11 @@ class AchievementManager:
 
     def check_all(self, silent=False):
         new_unlocks = []
-        # Rozpakowujemy teraz 6 elementów (doszedł threshold)
         for ach_id, icon, title_key, desc_key, check_func, threshold in self.definitions:
             if ach_id in self.data["achievements"]:
                 continue
 
-            # Przekazujemy threshold tylko jeśli istnieje (dla clean_sheet jest None)
-            is_unlocked = False
-            if threshold is not None:
-                is_unlocked = check_func(threshold)
-            else:
-                is_unlocked = check_func()
+            is_unlocked = check_func(threshold) if threshold is not None else check_func()
 
             if is_unlocked:
                 self.data["achievements"].append(ach_id)
@@ -169,9 +146,7 @@ class AchievementManager:
         self.is_showing_popup = False
         self.parent.after(200, self.process_queue)
 
-    # --- POMOCNICZE FUNKCJE DO POBIERANIA WARTOŚCI ---
     def get_current_metric(self, check_func):
-        """Zwraca aktualną wartość licznika dla danej funkcji sprawdzającej."""
         if check_func == self._check_first_step:
             return self.data["global_stats"].get("topics_done", 0)
         elif check_func == self._check_balance:
@@ -191,12 +166,10 @@ class AchievementManager:
         else:
             return 0
 
-    # --- CHECKS (Teraz przyjmują argument threshold) ---
     def _check_first_step(self, threshold):
         return self.data["global_stats"].get("topics_done", 0) >= threshold
 
     def _check_clean_sheet(self):
-        # Bez zmian logicznych, ale wywołanie jest bez argumentu
         today = date.today()
         from core.planner import date_format
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
@@ -230,7 +203,6 @@ class AchievementManager:
     def _check_polyglot(self, threshold):
         return self.data["global_stats"].get("exams_added", 0) >= threshold
 
-    # --- Helpery dla skomplikowanych ---
     def _get_session_master_count(self):
         exam_counts = {}
         for t in self.data["topics"]:
@@ -286,7 +258,10 @@ class UnlockPopup:
         title_txt = txt.get(title_key, title_key)
         desc_txt = txt.get(desc_key, desc_key)
 
-        self.canvas.create_text(width / 2, 40, text="✨ ODBLOKOWANO! ✨", font=("Arial", 14, "bold"), fill="#f39c12")
+        # --- ZMIANA: Usunięcie zabetonowanego tekstu powiadomienia ---
+        popup_header = txt.get("ach_unlocked_popup_title", "✨ UNLOCKED! ✨")
+
+        self.canvas.create_text(width / 2, 40, text=popup_header, font=("Arial", 14, "bold"), fill="#f39c12")
         self.canvas.create_text(width / 2, 110, text=icon, font=("Arial", 80), fill=desc_color)
         self.canvas.create_text(width / 2, 180, text=title_txt, font=("Arial", 22, "bold"), fill="#2ecc71")
         self.canvas.create_text(width / 2, 230, text=desc_txt, font=("Arial", 12), fill=desc_color, width=350,
@@ -343,7 +318,6 @@ class UnlockPopup:
         self.start_fade_out()
 
 
-# --- ELEMENTY LISTY OSIĄGNIĘĆ ---
 class StaticAchievementItem(ctk.CTkFrame):
     def __init__(self, parent, icon, title, desc, is_unlocked, *args, **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
@@ -373,8 +347,10 @@ class StaticAchievementItem(ctk.CTkFrame):
 
 
 class AccordionItem(ctk.CTkFrame):
-    def __init__(self, parent, icon, title, level_text, details_list, is_unlocked, *args, **kwargs):
+    # --- DODANO: Argument 'txt' do konstruktora ---
+    def __init__(self, parent, txt, icon, title, level_text, details_list, is_unlocked, *args, **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
+        self.txt = txt
         self.details_list = details_list
         self.is_expanded = False
 
@@ -407,8 +383,9 @@ class AccordionItem(ctk.CTkFrame):
                                  anchor="w")
         lbl_title.pack(fill="x")
 
-        lbl_hint = ctk.CTkLabel(info_frame, text="Kliknij, aby rozwinąć", font=("Arial", 10), text_color="gray",
-                                anchor="w")
+        # --- ZMIANA: Pobranie hintu ze słownika ---
+        lbl_hint = ctk.CTkLabel(info_frame, text=self.txt.get("ach_click_to_expand", "Click to expand"),
+                                font=("Arial", 10), text_color="gray", anchor="w")
         lbl_hint.pack(fill="x")
 
         for w in [lbl_icon, info_frame, lbl_title, lbl_hint, self.content_frame]:
@@ -445,12 +422,13 @@ class AchievementsWindow:
         self.data = data
         self.manager = AchievementManager(parent, txt, data)
         self.win = ctk.CTkToplevel(parent)
-        self.win.title(self.txt.get("win_achievements", "Osiągnięcia"))
+        self.win.title(self.txt.get("win_achievements", "Achievements"))
         self.win.geometry("500x650")
         self.win.resizable(False, True)
 
-        ctk.CTkLabel(self.win, text="🏆 " + self.txt.get("achievements_header", "Twoje Osiągnięcia"),
-                     font=("Arial", 20, "bold")).pack(pady=15)
+        # --- ZMIANA: Nagłówek okna pobrany ze słownika ---
+        header_text = self.txt.get("ach_win_header_label", "🏆 Your Achievements")
+        ctk.CTkLabel(self.win, text=header_text, font=("Arial", 20, "bold")).pack(pady=15)
 
         self.scroll_frame = ctk.CTkScrollableFrame(self.win, width=460, height=500)
         self.scroll_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -464,12 +442,10 @@ class AchievementsWindow:
     def build_list(self):
         unlocked_ids = self.data.get("achievements", [])
         families = {}
-        # Kolejność
         order = ["first_step", "clean_sheet", "balance", "scribe", "encyclopedia", "time_lord", "session_master",
                  "polyglot", "strategist"]
         family_meta = {}
 
-        # Zaktualizowane rozpakowywanie o threshold
         for ach_id, icon, title_key, desc_key, check_func, threshold in self.manager.definitions:
             parts = ach_id.rsplit('_', 1)
             if len(parts) == 2 and parts[1].isdigit():
@@ -486,11 +462,9 @@ class AchievementsWindow:
 
             is_unlocked = ach_id in unlocked_ids
 
-            # --- DODAWANIE LICZNIKA (PROGRESU) JEŚLI ZABLOKOWANE ---
             if not is_unlocked and threshold is not None:
                 current_val = self.manager.get_current_metric(check_func)
                 d_text += f" ({current_val}/{threshold})"
-            # -------------------------------------------------------
 
             families[base].append({
                 "id": ach_id, "lvl": lvl, "title": t_text, "desc": d_text,
@@ -505,7 +479,6 @@ class AchievementsWindow:
             items = sorted(families[base], key=lambda x: x["lvl"])
             meta = family_meta[base]
 
-            # Jeśli rodzina ma tylko 1 element (level 0), robimy statyczny
             if len(items) == 1 and items[0]["lvl"] == 0:
                 item = items[0]
                 StaticAchievementItem(
@@ -516,26 +489,23 @@ class AchievementsWindow:
                     is_unlocked=item["unlocked"]
                 ).pack(fill="x", pady=5)
             else:
-                # Akordeon dla wielopoziomowych
                 highest_lvl_idx = -1
                 for i, it in enumerate(items):
                     if it["unlocked"]: highest_lvl_idx = i
 
                 is_unlocked_any = highest_lvl_idx >= 0
 
-                if is_unlocked_any:
-                    display_title = items[highest_lvl_idx]["title"]
-                    level_suffix = ""
-                else:
-                    display_title = meta["title"]
-                    level_suffix = ""
+                display_title = items[highest_lvl_idx]["title"] if is_unlocked_any else meta["title"]
+                level_suffix = ""
 
                 details = []
                 for it in items:
                     details.append((it["title"], it["desc"], it["unlocked"]))
 
+                # --- ZMIANA: Przekazanie self.txt do AccordionItem ---
                 AccordionItem(
                     self.scroll_frame,
+                    self.txt,
                     icon=meta["icon"],
                     title=display_title,
                     level_text=level_suffix,

@@ -141,6 +141,7 @@
     "menu_notes": "Notizen",
     "win_note_title": "Notizen",
     "menu_lock": "Sperren / Entsperren",
+    "menu_move_tomorrow": "Auf morgen verschieben",
 
     "menu_ignore_barrier": "In Planung ignorieren (Barriere)",
     "msg_barrier_changed": "Planungseinstellungen geändert. Es wird empfohlen, den Plan neu zu erstellen.",
@@ -290,6 +291,10 @@
     "ach_polyglot_8": "Polyglot VIII",
     "ach_desc_polyglot_8": "Fügen Sie Prüfungen für 500 verschiedene Fächer hinzu.",
 
+    "ach_win_header_label": "🏆 Deine Erfolge",
+    "ach_unlocked_popup_title": "✨ FREIGESCHALTET! ✨",
+    "ach_click_to_expand": "Klicken zum Ausklappen",
+
     "drawer_title": "Notiz",
     "btn_saved": "Gespeichert!",
     "lbl_exam_prefix": "Prüfung",
@@ -304,5 +309,9 @@
     "upd_installing": "Installieren...",
     "upd_err_download": "Fehler beim Herunterladen",
     "upd_err_app": "Die .app-Anwendung kann nicht gefunden werden",
-    "menu_check_updates": "Nach Updates suchen"
+    "menu_check_updates": "Nach Updates suchen",
+
+    "msg_confirm": "Bestätigung",
+    "msg_clear_confirm": "Sind Sie sicher, dass Sie alle Daten löschen möchten, einschließlich Fortschritt und Erfolge?",
+    "msg_data_cleared": "Alle Daten wurden erfolgreich gelöscht."
 }

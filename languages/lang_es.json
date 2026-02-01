@@ -141,6 +141,7 @@
     "menu_notes": "Notas",
     "win_note_title": "Notas",
     "menu_lock": "Bloquear / Desbloquear",
+    "menu_move_tomorrow": "Mover a mañana",
 
     "menu_ignore_barrier": "Ignorar en la planificación (Barrera)",
     "msg_barrier_changed": "Configuración de planificación cambiada. Se recomienda regenerar el plan.",
@@ -290,6 +291,10 @@
     "ach_polyglot_8": "Políglota VIII",
     "ach_desc_polyglot_8": "Añade exámenes para 500 asignaturas diferentes.",
 
+    "ach_win_header_label": "🏆 Tus Logros",
+    "ach_unlocked_popup_title": "¡✨ DESBLOQUEADO! ✨",
+    "ach_click_to_expand": "Haz clic para expandir",
+
     "drawer_title": "Nota",
     "btn_saved": "¡Guardado!",
     "lbl_exam_prefix": "Examen",
@@ -304,5 +309,9 @@
     "upd_installing": "Instalando...",
     "upd_err_download": "Error de descarga",
     "upd_err_app": "No se puede localizar la aplicación .app",
-    "menu_check_updates": "Buscar actualizaciones"
+    "menu_check_updates": "Buscar actualizaciones",
+
+    "msg_confirm": "Confirmación",
+    "msg_clear_confirm": "¿Estás seguro de que quieres eliminar todos los datos, incluyendo el progreso y los logros?",
+    "msg_data_cleared": "Todos los datos han sido eliminados correctamente."
 }

@@ -144,6 +144,7 @@
 
     "menu_ignore_barrier": "Ignoruj w planowaniu (Bariera)",
     "msg_barrier_changed": "Zmieniono ustawienia planowania. Zalecane ponowne wygenerowanie planu.",
+    "menu_move_tomorrow": "Przenieś na jutro",
 
     "menu_addons": "Dodatki",
     "menu_timer": "Timer Pomodoro",
@@ -290,6 +291,10 @@
     "ach_polyglot_8": "Poliglota VIII",
     "ach_desc_polyglot_8": "Dodaj egzaminy z 500 różnych przedmiotów.",
 
+    "ach_win_header_label": "🏆 Twoje Osiągnięcia",
+    "ach_unlocked_popup_title": "✨ ODBLOKOWANO! ✨",
+    "ach_click_to_expand": "Kliknij, aby rozwinąć",
+
     "drawer_title": "Notatka",
     "btn_saved": "Zapisano!",
     "lbl_exam_prefix": "Egzamin",
@@ -304,5 +309,9 @@
     "upd_installing": "Instalowanie...",
     "upd_err_download": "Błąd pobierania",
     "upd_err_app": "Nie można zlokalizować aplikacji .app",
-    "menu_check_updates": "Sprawdź aktualizacje"
+    "menu_check_updates": "Sprawdź aktualizacje",
+
+    "msg_confirm": "Potwierdzenie",
+    "msg_clear_confirm": "Czy na pewno chcesz usunąć wszystkie dane, w tym postępy i osiągnięcia?",
+    "msg_data_cleared": "Wszystkie dane zostały pomyślnie usunięte."
 }

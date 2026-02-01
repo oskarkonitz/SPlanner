@@ -331,7 +331,13 @@ class PlanWindow:
                     display_text += f" {self.txt.get('tag_day_off', '(Day Off)')}"
                     icon = "○"
 
-            self.tree.insert("", "end", iid=f"date_{day_str}", values=(icon, f"{display_text} ({day_str})", ""),
+            # Pobieramy nazwę dnia tygodnia z pliku językowego
+            weekday_idx = date_format(day_str).weekday()
+            day_name = self.txt["days_short"][weekday_idx]
+
+            # Wstawiamy wiersz z dodanym dniem tygodnia
+            self.tree.insert("", "end", iid=f"date_{day_str}",
+                             values=(icon, f"{display_text} ({day_name}, {day_str})", ""),
                              tags=(tag,))
 
             if not is_blocked or has_exams:
