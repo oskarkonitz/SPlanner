@@ -5,7 +5,7 @@ from tkcalendar import DateEntry
 from datetime import datetime, timedelta
 import uuid
 from core.storage import save
-
+from gui.windows.color_picker import ColorPickerWindow
 
 class AddExamWindow:
     def __init__(self, parent, txt, data, btn_style, callback=None):
@@ -41,16 +41,36 @@ class AddExamWindow:
         cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
         self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
                                          onvalue=True, offvalue=False)
-        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=5)
+        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=(10, 5))
+
+        # --- NOWOŚĆ: WYBÓR KOLORU (PRZENIESIONE) ---
+        # Sprawdzamy aktualny motyw aplikacji
+        # Zapisujemy None - czyli "brak wyboru" (domyślny systemowy)
+        self.selected_color = None
+
+        # Ale przycisk wizualnie musi mieć kolor pasujący do tła, żeby użytkownik go widział
+        mode = ctk.get_appearance_mode()
+        btn_visual_color = "#000000" if mode == "Light" else "#ffffff"
+
+        color_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        color_frame.grid(row=4, column=0, columnspan=2, pady=(5, 15))
+
+        tk.Label(color_frame, text=self.txt.get("lbl_color", "Color:")).pack(side="left", padx=5)
+
+        self.btn_color = ctk.CTkButton(color_frame, text="", width=30, height=30,
+                                       fg_color=btn_visual_color,  # Wizualnie: kolor tekstu
+                                       command=self.open_color_picker)
+        self.btn_color.pack(side="left", padx=5)
+        # ----------------------------
 
         # WPROWADZENIE LISTY TEMATOW
-        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=4, column=0, columnspan=2, pady=5)
+        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=5, column=0, columnspan=2, pady=(0, 5))
         self.text_topics = tk.Text(self.win, width=40, height=10)
-        self.text_topics.grid(row=5, column=0, columnspan=2, padx=10)
+        self.text_topics.grid(row=6, column=0, columnspan=2, padx=10, pady=(0, 10))
 
         # PRZYCISKI
         btn_frame = tk.Frame(self.win)
-        btn_frame.grid(row=6, column=0, columnspan=2, padx=20, pady=20)
+        btn_frame.grid(row=7, column=0, columnspan=2, padx=20, pady=20)
 
         btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save"], command=self.save_new_exam, **self.btn_style)
         btn_save.pack(side="left", padx=5)
@@ -58,6 +78,13 @@ class AddExamWindow:
         btn_exit = ctk.CTkButton(btn_frame, text=self.txt["btn_cancel"], command=self.win.destroy, **self.btn_style)
         btn_exit.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_exit.pack(side="left", padx=5)
+
+    def open_color_picker(self):
+        def on_color_picked(color):
+            self.selected_color = color
+            self.btn_color.configure(fg_color=color)
+
+        ColorPickerWindow(self.win, self.txt, self.selected_color, on_color_picked)
 
     # FUNKCJA ZAPISUJACA NOWY EGZAMIN W BAZIE DANYCH
     def save_new_exam(self):
@@ -79,7 +106,8 @@ class AddExamWindow:
             "subject": subject,
             "title": title,
             "date": date_str,
-            "ignore_barrier": self.var_ignore_barrier.get()
+            "ignore_barrier": self.var_ignore_barrier.get(),
+            "color": self.selected_color  # <--- DODANO TO POLE
         }
         self.data["exams"].append(new_exam)
 

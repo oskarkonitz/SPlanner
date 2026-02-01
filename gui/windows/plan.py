@@ -351,17 +351,44 @@ class PlanWindow:
 
                 if not is_blocked:
                     if todays_exams and todays_topics: self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
+
                     for topic in todays_topics:
+                        # 1. Znajdź nazwę przedmiotu i rodzica (egzamin), żeby pobrać kolor
                         subj_name = self.txt["val_other"]
+                        parent_exam = None
+
                         for exam in self.data["exams"]:
                             if exam["id"] == topic["exam_id"]:
                                 subj_name = exam["subject"]
+                                parent_exam = exam
                                 break
+
+                        # 2. Logika znaczników (ikonek)
                         has_note = topic.get("note", "").strip()
                         marks = " ✎" if has_note else ""
-                        if topic.get("locked", False): marks += "☒"
-                        self.tree.insert("", "end", iid=topic["id"], values=(f"{marks} │", subj_name, topic["name"]),
-                                         tags=(topic["status"],))
+                        if topic.get("locked", False): marks += " ☒"
+
+                        # 3. Logika kolorów (TO ZMIENIAMY)
+                        final_tags = []
+
+                        if topic["status"] == "done":
+                            final_tags.append("done")
+                        else:
+                            # ZMIANA TUTAJ: Sprawdzamy, czy kolor fizycznie istnieje (nie jest None i nie jest pusty)
+                            if parent_exam and parent_exam.get("color"):
+                                col = parent_exam["color"]
+                                tag_col_name = f"theme_{parent_exam['id']}"
+                                self.tree.tag_configure(tag_col_name, foreground=col, font=("Arial", 13, "bold"))
+                                final_tags.append(tag_col_name)
+                            else:
+                                # Jeśli parent_exam["color"] to None -> wpadamy tutaj.
+                                # Tag "todo" jest obsługiwany przez theme_manager i sam zmienia kolory!
+                                final_tags.append("todo")
+
+                        # 4. Wstawienie do tabeli
+                        self.tree.insert("", "end", iid=topic["id"],
+                                         values=(f"{marks} │", subj_name, topic["name"]),
+                                         tags=tuple(final_tags))
                 self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
             self.tree.insert("", "end", values=("", "", ""))
 

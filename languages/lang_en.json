@@ -303,7 +303,7 @@
     "upd_no_file": "No update file found for your system.",
     "upd_latest": "You have the latest version ({version}).",
     "upd_net_error": "No internet connection.",
-    "upd_available_msg": "Version {ver} is available!\n\nChangelog:\n{body}\n\nDo you want to update automatically now?",
+    "upd_available_msg": "Update available: v{current} -> v{ver}\n\nChangelog:\n{body}\n\nDo you want to update automatically now?",
     "upd_win_title": "Downloading update...",
     "upd_downloading": "Downloading...",
     "upd_installing": "Installing...",
@@ -313,5 +313,9 @@
 
     "msg_confirm": "Confirmation",
     "msg_clear_confirm": "Are you sure you want to delete all data, including progress and achievements?",
-    "msg_data_cleared": "All data has been successfully cleared."
+    "msg_data_cleared": "All data has been successfully cleared.",
+
+    "lbl_color": "Color:",
+    "win_color_picker": "Select Color",
+    "btn_select": "Select"
 }

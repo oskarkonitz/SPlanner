@@ -15,7 +15,7 @@ from packaging import version
 # --- KONFIGURACJA ---
 REPO_OWNER = "oskarkonitz"
 REPO_NAME = "SPlanner"
-CURRENT_VERSION = "1.0.6"
+CURRENT_VERSION = "1.0.7"
 
 
 # Dodano argument 'txt' do funkcji
@@ -62,7 +62,12 @@ def check_for_updates(txt, silent=True):
 
 def ask_download(txt, ver, url, filename, body):
     # Formatuje wiadomość używając szablonu z pliku językowego
-    msg = txt.get("upd_available_msg", "New version {ver} available!").format(ver=ver, body=body)
+    # DODANO: parametr 'current=CURRENT_VERSION'
+    msg = txt.get("upd_available_msg", "New version {ver} available!").format(
+        ver=ver,
+        body=body,
+        current=CURRENT_VERSION
+    )
 
     if messagebox.askyesno(txt.get("upd_title", "Update"), msg):
         DownloadWindow(txt, url, filename)

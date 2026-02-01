@@ -303,7 +303,7 @@
     "upd_no_file": "Keine Update-Datei für Ihr System gefunden.",
     "upd_latest": "Sie haben die neueste Version ({version}).",
     "upd_net_error": "Keine Internetverbindung.",
-    "upd_available_msg": "Version {ver} verfügbar!\n\nÄnderungen:\n{body}\n\nMöchten Sie jetzt automatisch aktualisieren?",
+    "upd_available_msg": "Update verfügbar: v{current} -> v{ver}\n\nÄnderungen:\n{body}\n\nMöchten Sie jetzt automatisch aktualisieren?",
     "upd_win_title": "Update wird heruntergeladen...",
     "upd_downloading": "Herunterladen...",
     "upd_installing": "Installieren...",
@@ -313,5 +313,9 @@
 
     "msg_confirm": "Bestätigung",
     "msg_clear_confirm": "Sind Sie sicher, dass Sie alle Daten löschen möchten, einschließlich Fortschritt und Erfolge?",
-    "msg_data_cleared": "Alle Daten wurden erfolgreich gelöscht."
+    "msg_data_cleared": "Alle Daten wurden erfolgreich gelöscht.",
+
+    "lbl_color": "Farbe:",
+    "win_color_picker": "Farbe wählen",
+    "btn_select": "Wählen"
 }

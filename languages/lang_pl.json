@@ -303,7 +303,7 @@
     "upd_no_file": "Brak pliku aktualizacji dla Twojego systemu.",
     "upd_latest": "Masz najnowszą wersję ({version}).",
     "upd_net_error": "Brak połączenia z internetem.",
-    "upd_available_msg": "Dostępna wersja {ver}!\n\nZmiany:\n{body}\n\nCzy chcesz zaktualizować teraz automatycznie?",
+    "upd_available_msg": "Dostępna aktualizacja: v{current} -> v{ver}\n\nZmiany:\n{body}\n\nCzy chcesz zaktualizować teraz automatycznie?",
     "upd_win_title": "Pobieranie aktualizacji...",
     "upd_downloading": "Pobieranie...",
     "upd_installing": "Instalowanie...",
@@ -313,5 +313,9 @@
 
     "msg_confirm": "Potwierdzenie",
     "msg_clear_confirm": "Czy na pewno chcesz usunąć wszystkie dane, w tym postępy i osiągnięcia?",
-    "msg_data_cleared": "Wszystkie dane zostały pomyślnie usunięte."
+    "msg_data_cleared": "Wszystkie dane zostały pomyślnie usunięte.",
+
+    "lbl_color": "Kolor:",
+    "win_color_picker": "Wybierz kolor",
+    "btn_select": "Wybierz"
 }

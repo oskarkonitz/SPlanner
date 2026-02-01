@@ -4,6 +4,7 @@ import customtkinter as ctk
 from tkcalendar import DateEntry
 import uuid
 from core.storage import save
+from gui.windows.color_picker import ColorPickerWindow
 
 # funkcja sprawdzajaca czy zaznaczony element jest egzaminem czy tematem
 def select_edit_item(parent, data, txt, tree, btn_style, callback=None):
@@ -65,11 +66,31 @@ class EditExamWindow():
         cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
         self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
                                          onvalue=True, offvalue=False)
-        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=5)
+        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=(10, 5))
 
-        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=4, column=0, pady=5, columnspan=2)
+        # Ustalamy domyślny kolor na podstawie motywu
+        self.selected_color = exam_data.get("color")
+
+        # Ustalamy jaki kolor ma mieć przycisk (wizualnie)
+        if self.selected_color:
+            btn_visual_color = self.selected_color
+        else:
+            # Jeśli brak koloru, pokaż domyślny dla motywu (żeby przycisk nie był pusty)
+            mode = ctk.get_appearance_mode()
+            btn_visual_color = "#000000" if mode == "Light" else "#ffffff"
+
+        color_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        color_frame.grid(row=4, column=0, columnspan=2, pady=(5, 15))
+
+        tk.Label(color_frame, text=self.txt.get("lbl_color", "Color:")).pack(side="left", padx=5)
+        self.btn_color = ctk.CTkButton(color_frame, text="", width=30, height=30,
+                                       fg_color=btn_visual_color,
+                                       command=self.open_color_picker)
+        self.btn_color.pack(side="left", padx=5)
+
+        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=5, column=0, pady=(0, 5), columnspan=2)
         self.txt_topics = tk.Text(self.win, width=40, height=10)
-        self.txt_topics.grid(row=5, column=0, columnspan=2, padx=10)
+        self.txt_topics.grid(row=6, column=0, columnspan=2, padx=10, pady=(0, 10))
 
         # wczytanie tematow
         self.topics_list = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
@@ -78,7 +99,7 @@ class EditExamWindow():
 
         #przyciski
         btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_frame.grid(row=6, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=7, column=0, columnspan=2, pady=20)
 
         btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save_changes"], command=self.save_changes, **self.btn_style)
         btn_save.pack(side="left", padx=5)
@@ -89,11 +110,19 @@ class EditExamWindow():
         btn_cancel.pack(side="left", padx=5)
         btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
 
+    def open_color_picker(self):
+        def on_color_picked(color):
+            self.selected_color = color
+            self.btn_color.configure(fg_color=color)
+
+        ColorPickerWindow(self.win, self.txt, self.selected_color, on_color_picked)
+
     def save_changes(self):
         self.exam_data["subject"] = self.ent_subject.get()
         self.exam_data["date"] = self.ent_date.get()
         self.exam_data["title"] = self.ent_title.get()
         self.exam_data["ignore_barrier"] = self.var_ignore_barrier.get()
+        self.exam_data["color"] = self.selected_color
 
         new_names = [line.strip() for line in self.txt_topics.get("1.0", tk.END).split("\n") if line.strip()]
         existing_map = {t["name"]: t for t in self.topics_list}
