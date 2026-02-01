@@ -317,5 +317,14 @@
 
     "lbl_color": "Color:",
     "win_color_picker": "Seleccionar color",
-    "btn_select": "Seleccionar"
+    "btn_select": "Seleccionar",
+
+    "btn_tools": "Herramientas",
+    "btn_restore": "Restaurar",
+    "btn_move_today": "Mover a Hoy",
+    "btn_block_gen": "Bloquear y Gen.",
+    "btn_unblock_gen": "Desbloquear y Gen.",
+    "drawer_tools_title": "Acciones Rápidas",
+    "btn_block": "Bloquear",
+    "btn_unblock": "Desbloquear"
 }

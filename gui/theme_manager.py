@@ -6,18 +6,18 @@ import customtkinter as ctk
 THEMES = {
     "light": {
         "mode": "Light",
-        "bg_root": "#f3f3f3",  # Tło całej aplikacji (szarawe)
-        "bg_sidebar": "#f3f3f3",  # <-- ZMIANA: To samo co root (jednolitość)
+        "bg_root": "#f3f3f3",
+        "bg_sidebar": "#f3f3f3",
         "fg_text": "#1a1a1a",
 
-        # Przyciski
-        "btn_fg": "#ffffff",
-        "btn_hover": "#e6e6e6",
+        # Przyciski - ZMIANA TUTAJ
+        "btn_fg": "#e0e0e0",       # Ciemniejszy od tła (było #ffffff)
+        "btn_hover": "#d6d6d6",    # Jeszcze ciemniejszy po najechaniu
         "btn_text": "#1a1a1a",
-        "btn_border": "#d1d1d1",
+        "btn_border": "#b0b0b0",   # Wyraźniejsza ramka
 
-        # Tabela (musi się wyróżniać)
-        "bg_tree": "#ffffff",  # Biała tabela na szarym tle
+        # Tabela
+        "bg_tree": "#ffffff",
         "fg_tree": "#000000",
         "bg_tree_head": "#e5e5e5",
         "fg_tree_head": "#000000",
@@ -31,8 +31,8 @@ THEMES = {
     },
     "dark": {
         "mode": "Dark",
-        "bg_root": "#242424",  # Ciemne tło
-        "bg_sidebar": "#242424",  # <-- ZMIANA: To samo co root
+        "bg_root": "#242424",
+        "bg_sidebar": "#242424",
         "fg_text": "#e0e0e0",
 
         # Przyciski
@@ -42,7 +42,7 @@ THEMES = {
         "btn_border": "#3a3a3a",
 
         # Tabela
-        "bg_tree": "#2b2b2b",  # Jaśniejsza tabela
+        "bg_tree": "#2b2b2b",
         "fg_tree": "#e0e0e0",
         "bg_tree_head": "#3a3a3a",
         "fg_tree_head": "#ffffff",
@@ -157,7 +157,6 @@ def apply_theme(app, theme_name):
     else:
         app.root.option_add("*CTkLabel.text_color", colors["fg_text"])  # biały
 
-    # 7. Tagi w tabeli
     # 7. Tagi w tabeli
     if hasattr(app, 'plan_view') and hasattr(app.plan_view, 'tree'):
         tree = app.plan_view.tree

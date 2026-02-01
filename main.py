@@ -16,8 +16,9 @@ from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates
+from gui.windows.plan import ToolsDrawer
 
-VERSION = "1.0.7"
+VERSION = "1.1.0"
 
 class GUI:
     def __init__(self, root):
@@ -189,7 +190,10 @@ class GUI:
             "height": 32,
             "corner_radius": 20,
             "fg_color": "#3a3a3a",
-            "text_color": "white"
+            "text_color": "white",
+            "hover_color": "#454545",  # <--- Dodano brakujący klucz (domyślny ciemny hover)
+            "border_color": "#3a3a3a",  # <--- Dodano brakujący klucz
+            "border_width": 0  # <--- Dodano brakujący klucz
         }
 
         self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.root.quit, **self.btn_style)
@@ -212,73 +216,35 @@ class GUI:
         self.btn_exit.bind("<Enter>", on_enter_exit)
         self.btn_exit.bind("<Leave>", on_leave_exit)
 
+        # --- ZMIANA: Tę sekcję wklej ZAMIAST starego kodu przycisków w __init__ ---
+
         self.middle_frame = tk.Frame(self.sidebar)
-        self.middle_frame.pack(expand=True)
+        self.middle_frame.pack(expand=True, fill="x", padx=15)
 
-        self.btn_status = ctk.CTkButton(self.middle_frame, text=self.txt["btn_toggle_status"],
-                                        command=self.sidebar_toggle, **self.btn_style)
-        self.btn_status.pack(pady=5)
+        # Definicja nowych przycisków dynamicznych
+        self.btn_1 = ctk.CTkButton(self.middle_frame, text="", **self.btn_style)
+        self.btn_1.pack(pady=5, fill="x")
 
-        # Logika kolorów Statusu
-        def on_enter_status(event):
-            color = None
-            if self.status_btn_mode == "todo":
-                color = "#2ecc71"
-            elif self.status_btn_mode == "done":
-                if self.current_theme == "light":
-                    color = "#555555"
-                else:
-                    color = "#ffffff"
-            elif self.status_btn_mode == "locked":
-                color = "#e74c3c"
-            elif self.status_btn_mode == "date_free":
-                color = "#c0392b"
-            elif self.status_btn_mode == "date_blocked":
-                color = "#27ae60"
+        self.btn_2 = ctk.CTkButton(self.middle_frame, text="", **self.btn_style)
+        self.btn_2.pack(pady=5, fill="x")
 
-            if color:
-                self.btn_status.configure(border_color=color, text_color=color)
+        self.btn_3 = ctk.CTkButton(self.middle_frame, text="", **self.btn_style)
+        self.btn_3.pack(pady=5, fill="x")
 
-        def on_leave_status(event):
-            self.btn_status.configure(
-                border_color=self.btn_style["border_color"],
-                text_color=self.btn_style["text_color"]
-            )
-
-        self.btn_status.bind("<Enter>", on_enter_status)
-        self.btn_status.bind("<Leave>", on_leave_status)
-
-        self.btn_edit = ctk.CTkButton(self.middle_frame, text=self.txt["btn_edit"], command=self.sidebar_edit,
-                                      **self.btn_style)
-        self.btn_edit.pack(pady=5)
-
-        # Logika kolorów Edycji
-        def on_enter_edit(event):
-            color = None
-            if self.edit_btn_mode == "editable":
-                color = "#3498db"
-            elif self.edit_btn_mode == "locked":
-                color = "#e74c3c"
-
-            if color:
-                self.btn_edit.configure(border_color=color, text_color=color)
-
-        def on_leave_edit(event):
-            self.btn_edit.configure(
-                border_color=self.btn_style["border_color"],
-                text_color=self.btn_style["text_color"]
-            )
-
-        self.btn_edit.bind("<Enter>", on_enter_edit)
-        self.btn_edit.bind("<Leave>", on_leave_edit)
-
+        # Kontener na widok planu
         self.plan_container = ctk.CTkFrame(self.root, fg_color="transparent", corner_radius=0)
         self.plan_container.grid(row=0, column=1, sticky="nsew")
 
+        # --- WAŻNA POPRAWKA: selection_callback wskazuje na update_sidebar_buttons ---
         self.plan_view = PlanWindow(parent=self.plan_container, txt=self.txt, data=self.data, btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
-                                    selection_callback=self.update_status_button_state)
+                                    selection_callback=self.update_sidebar_buttons)
 
+        # --- NOWOŚĆ: WYMUSZAMY ODŚWIEŻENIE PRZYCISKÓW NA STARCIE ---
+        # Dzięki temu nie będą szarymi paskami, tylko od razu pokażą "Add Exam", "Archive" itd.
+        self.update_sidebar_buttons("idle", "idle", "idle")
+
+        # Odznaczanie po kliknięciu w tło
         self.sidebar.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
         self.middle_frame.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
         self.label_title.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
@@ -289,11 +255,21 @@ class GUI:
 
         self.celebration_shown = False
 
+        # Inicjalizacja szufladki narzędziowej
+        callbacks = {
+            "timer": self.open_timer,
+            "achievements": self.open_achievements,
+            "days_off": self.open_blocked_days,
+            "gen_full": self.menu_gen_plan,
+            "gen_new": self.menu_gen_plan_new
+        }
+        self.tools_drawer = ToolsDrawer(self.root, self.txt, self.btn_style, callbacks)
+
+        # Aplikowanie motywu i start
         apply_theme(self, self.current_theme)
         self.refresh_dashboard()
 
         # --- AUTO-UPDATE ---
-        # Uruchamiamy w tle, żeby aplikacja włączyła się natychmiast
         threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
 
     def sidebar_add(self):
@@ -379,23 +355,136 @@ class GUI:
             refresh_callback=self.refresh_dashboard # <--- TO NAPRAWIA PROBLEM
         )
 
-    def update_status_button_state(self, status_mode, edit_mode="default"):
-        self.status_btn_mode = status_mode
-        self.edit_btn_mode = edit_mode
+    def update_sidebar_buttons(self, s1, s2, s3):
+        # 1. RESET UI
+        self.btn_1.pack_forget()
+        self.btn_2.pack_forget()
+        self.btn_3.pack_forget()
 
-        self.btn_status.configure(border_color=self.btn_style["border_color"], text_color=self.btn_style["text_color"])
-        self.btn_edit.configure(border_color=self.btn_style["border_color"], text_color=self.btn_style["text_color"])
+        def config_btn(btn, mode):
+            if mode == "hidden" or mode == "disabled":
+                return False
 
-        if status_mode == "date_free":
-            txt_block = self.txt.get("btn_block_day", "Block & Generate")
-            self.btn_status.configure(text=txt_block)
+            # Reset do stylu bazowego
+            current_text_col = self.btn_style.get("text_color", "white")
+            current_hover = self.btn_style.get("hover_color", "#454545")
 
-        elif status_mode == "date_blocked":
-            txt_unblock = self.txt.get("btn_unblock_day", "Unblock & Generate")
-            self.btn_status.configure(text=txt_unblock)
+            # --- DEFINICJE KOLORÓW ---
+            COL_GREEN = "#00b800"
+            COL_BLUE = "#3399ff"
+            COL_RED = "#e74c3c"
+            COL_ORANGE = "#e67e22"
 
+            text = "Button"
+            cmd = None
+            color = None
+
+            # --- MAPOWANIE AKCJI ---
+            if mode == "idle":
+                pass
+
+            # PRZYCISKI MENU
+            elif mode == "add":
+                text = self.txt["btn_add_exam"]
+                cmd = self.sidebar_add
+            elif mode == "archive":
+                text = self.txt["win_archive_title"]
+                cmd = self.sidebar_archive
+            elif mode == "tools":
+                text = self.txt.get("btn_tools", "Tools")
+                cmd = self.toggle_tools_drawer
+
+            # PRZYCISKI AKCJI
+            elif mode == "complete":
+                text = self.txt.get("tag_done", "Done")
+                cmd = self.plan_view.toggle_status
+                color = COL_GREEN
+
+            elif mode == "restore":
+                text = self.txt.get("btn_restore", "Restore")
+                cmd = self.plan_view.restore_status
+
+                # --- ZMIANA: Biały w Dark Mode, Szary w Light Mode ---
+                if self.current_theme == "dark":
+                    color = "#ffffff"
+                else:
+                    color = "gray"
+
+            elif mode.startswith("edit"):
+                text = self.txt["btn_edit"]
+                cmd = self.sidebar_edit
+                color = COL_BLUE
+
+            elif mode == "delete":
+                text = self.txt["btn_delete"]
+                cmd = self.plan_view.delete_selected_item
+                color = COL_RED
+
+            elif mode == "move_today":
+                text = self.txt.get("btn_move_today", "To Today")
+                cmd = self.plan_view.move_selected_to_today
+                color = COL_ORANGE
+
+            # --- ZMIANA: Ujednolicenie koloru czerwonego dla Block i Block & Gen ---
+            elif mode == "block":
+                text = self.txt.get("btn_block", "Block")
+                cmd = lambda: self.plan_view.toggle_status(generate=False)
+                color = COL_RED
+            elif mode == "unblock":
+                text = self.txt.get("btn_unblock", "Unblock")
+                cmd = lambda: self.plan_view.toggle_status(generate=False)
+                color = COL_GREEN
+            elif mode == "block_gen":
+                text = self.txt.get("btn_block_gen", "Block & Gen.")
+                cmd = lambda: self.plan_view.toggle_status(generate=True)
+                color = COL_RED
+            elif mode == "unblock_gen":
+                text = self.txt.get("btn_unblock_gen", "Unblock & Gen.")
+                cmd = lambda: self.plan_view.toggle_status(generate=True)
+                color = COL_GREEN
+
+            # --- APLIKOWANIE STYLU ---
+            btn.configure(text=text, command=cmd)
+
+            if color:
+                # STYL "OUTLINE"
+                btn.configure(
+                    fg_color="transparent",
+                    border_color=color,
+                    text_color=color,
+                    border_width=1.2,
+                    hover_color=current_hover
+                )
+            else:
+                # STYL "SOLID"
+                btn.configure(
+                    fg_color=self.btn_style["fg_color"],
+                    text_color=current_text_col,
+                    border_color=self.btn_style.get("border_color", "gray"),
+                    border_width=1,
+                    hover_color=current_hover
+                )
+
+            return True
+
+        if s1 == "idle":
+            s1, s2, s3 = "add", "archive", "tools"
+
+        show_1 = config_btn(self.btn_1, s1)
+        show_2 = config_btn(self.btn_2, s2)
+        show_3 = config_btn(self.btn_3, s3)
+
+        if show_1: self.btn_1.pack(pady=5, fill="x")
+        if show_2: self.btn_2.pack(pady=5, fill="x")
+        if show_3: self.btn_3.pack(pady=5, fill="x")
+
+        self.middle_frame.update_idletasks()
+
+    def toggle_tools_drawer(self):
+        if self.tools_drawer.is_open:
+            self.tools_drawer.close_panel()
         else:
-            self.btn_status.configure(text=self.txt["btn_toggle_status"])
+            self.tools_drawer.open_panel()
 
     def open_achievements(self):
         from gui.windows.achievements import AchievementsWindow

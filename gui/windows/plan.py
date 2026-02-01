@@ -128,6 +128,130 @@ class NoteDrawer(ctk.CTkFrame):
         self.animation_id = self.after(16, lambda: self.animate(target))
 
 
+# --- NOWA KLASA: LEWA SZUFLADKA (Z BEZPIECZNIKIEM KLIKNIĘĆ) ---
+class ToolsDrawer(ctk.CTkFrame):
+    def __init__(self, parent, txt, btn_style, callbacks):
+        super().__init__(parent, width=220, corner_radius=20, fg_color=("gray90", "gray20"))
+
+        self.txt = txt
+        self.callbacks = callbacks
+        self.is_open = False
+        self.animation_id = None
+        self.ignore_click = False  # <--- NOWOŚĆ: Flaga ignorująca pierwsze kliknięcie
+
+        # Pozycja ukryta
+        self.target_x = 0.01
+        self.hidden_x = -0.3
+
+        self.place(relx=self.hidden_x, rely=0.15)
+
+        # UI - Nagłówek
+        head = ctk.CTkFrame(self, fg_color="transparent")
+        head.pack(fill="x", padx=15, pady=(15, 5))
+
+        ctk.CTkLabel(head, text=self.txt.get("drawer_tools_title", "Tools"),
+                     font=("Arial", 14, "bold")).pack(side="left")
+
+        ctk.CTkButton(head, text="✕", width=25, height=25, fg_color="transparent",
+                      text_color="gray", hover_color=("gray85", "gray30"),
+                      command=self.close_panel).pack(side="right")
+
+        # Kontener na przyciski
+        content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Helper do przycisków
+        def add_btn(text_key, cmd, color=None):
+            current_hover = btn_style.get("hover_color", "#454545")
+
+            if color:
+                # STYL OUTLINE
+                btn = ctk.CTkButton(content_frame,
+                                    text=self.txt.get(text_key, text_key),
+                                    command=lambda: [cmd(), self.close_panel()],
+                                    height=35,
+                                    corner_radius=17,
+                                    fg_color="transparent",
+                                    border_color=color,
+                                    text_color=color,
+                                    border_width=1.2,
+                                    hover_color=current_hover)
+            else:
+                # STYL SOLID
+                current_text_col = btn_style.get("text_color", "white")
+                btn = ctk.CTkButton(content_frame,
+                                    text=self.txt.get(text_key, text_key),
+                                    command=lambda: [cmd(), self.close_panel()],
+                                    height=35,
+                                    corner_radius=17,
+                                    fg_color=btn_style["fg_color"],
+                                    text_color=current_text_col,
+                                    border_color=btn_style.get("border_color", "gray"),
+                                    border_width=1,
+                                    hover_color=current_hover)
+
+            btn.pack(fill="x", pady=4)
+
+        add_btn("menu_timer", self.callbacks["timer"], "#e6b800")
+        add_btn("win_achievements", self.callbacks["achievements"], "violet")
+        add_btn("menu_days_off", self.callbacks["days_off"], "#5dade2")
+
+        ctk.CTkFrame(content_frame, height=2, fg_color="gray80").pack(fill="x", pady=10)
+
+        add_btn("btn_gen_full", self.callbacks["gen_full"])
+        add_btn("btn_gen_new", self.callbacks["gen_new"])
+
+        # --- CLICK OUTSIDE LOGIC ---
+        self.bind_id = self.winfo_toplevel().bind("<Button-1>", self.check_click_outside, add="+")
+
+    def check_click_outside(self, event):
+        # Jeśli zamknięta LUB flaga ignorowania jest aktywna -> nie rób nic
+        if not self.is_open or self.ignore_click:
+            return
+
+        try:
+            x = self.winfo_rootx()
+            y = self.winfo_rooty()
+            w = self.winfo_width()
+            h = self.winfo_height()
+        except:
+            return
+
+            # Jeśli kliknięcie wewnątrz szufladki -> nie zamykaj
+        if x <= event.x_root <= x + w and y <= event.y_root <= y + h:
+            return
+
+            # Kliknięcie na zewnątrz -> zamykamy
+        self.close_panel()
+
+    def open_panel(self):
+        self.lift()
+        self.is_open = True
+
+        # <--- FIX: Blokujemy zamykanie na 150ms po otwarciu
+        self.ignore_click = True
+        self.after(150, lambda: setattr(self, 'ignore_click', False))
+
+        self.animate(self.target_x)
+
+    def close_panel(self):
+        self.is_open = False
+        self.animate(self.hidden_x)
+
+    def animate(self, target):
+        try:
+            current = float(self.place_info().get('relx'))
+        except:
+            return
+
+        if abs(target - current) < 0.005:
+            self.place(relx=target)
+            return
+
+        step = (target - current) * 0.25
+        self.place(relx=current + step)
+        self.after(16, lambda: self.animate(target))
+
 # --- GŁÓWNA KLASA OKNA PLANU ---
 class PlanWindow:
     def __init__(self, parent, txt, data, btn_style, dashboard_callback, selection_callback):
@@ -224,6 +348,50 @@ class PlanWindow:
         save(self.data)
         self.refresh_table(preserve_selection=True)
         if self.dashboard_callback: self.dashboard_callback()
+
+    # --- METODY DLA NOWYCH PRZYCISKÓW ---
+    def delete_selected_item(self):
+        selected = self.tree.selection()
+        if not selected: return
+        item_id = selected[0]
+
+        # Jeśli to egzamin
+        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
+        if target_exam:
+            # Używamy istniejącej metody z EditExamWindow lub robimy szybkie usuwanie
+            if messagebox.askyesno(self.txt["msg_warning"],
+                                   self.txt["msg_confirm_del_exam"].format(subject=target_exam["subject"])):
+                self.data["exams"] = [e for e in self.data["exams"] if e["id"] != target_exam["id"]]
+                self.data["topics"] = [t for t in self.data["topics"] if t["exam_id"] != target_exam["id"]]
+                save(self.data)
+                self.refresh_table()
+                if self.dashboard_callback: self.dashboard_callback()
+            return
+
+        # Jeśli to temat
+        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
+        if target_topic:
+            if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_topic"]):
+                self.data["topics"] = [t for t in self.data["topics"] if t["id"] != target_topic["id"]]
+                save(self.data)
+                self.refresh_table()
+                if self.dashboard_callback: self.dashboard_callback()
+
+    def restore_status(self):
+        # Cofanie statusu Done -> Todo
+        self.toggle_status()
+
+    def move_selected_to_today(self):
+        selected = self.tree.selection()
+        if not selected: return
+        item_id = selected[0]
+        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
+        if target_topic:
+            target_topic["scheduled_date"] = str(date.today())
+            target_topic["locked"] = True  # Blokujemy, żeby algorytm nie zabrał
+            save(self.data)
+            self.refresh_table(preserve_selection=True)
+            if self.dashboard_callback: self.dashboard_callback()
 
     # --- LOGIKA OTWIERANIA NOTATEK Z MENU ---
     def open_notes(self):
@@ -399,79 +567,72 @@ class PlanWindow:
     # --- ZMIANA ZAZNACZENIA (POPRAWIONA LOGIKA) ---
     def on_selection_change(self, event):
         selected = self.tree.selection()
+
+        # Domyślny stan (Nic nie zaznaczone)
+        # Format: (tryb_przycisku_1, tryb_przycisku_2, tryb_przycisku_3)
         if not selected:
-            if self.drawer.is_open:
-                self.drawer.close_panel()
-            self.selection_callback("default", "default")
+            if self.drawer.is_open: self.drawer.close_panel()
+            self.selection_callback("idle", None, None)
             return
 
         item_id = selected[0]
+
+        # Identyfikacja obiektu
         target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
         target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
+        is_date = str(item_id).startswith("date_")
 
-        # Zidentyfikuj aktualnie wybrany obiekt danych
-        current_data = target_topic or target_exam
-
-        # Sprawdź, czy ma notatkę
-        has_note_content = False
-        if current_data and current_data.get("note", "").strip():
-            has_note_content = True
-
-        # Przygotuj dane do ewentualnego otwarcia
-        item_for_drawer = None
-        drawer_title = ""
-        if current_data:
-            if target_topic:
-                exam = next((e for e in self.data["exams"] if e["id"] == target_topic["exam_id"]), None)
-                subject_name = exam["subject"] if exam else "???"
-                drawer_title = f"{subject_name}: {target_topic['name']}"
-            elif target_exam:
-                prefix = self.txt.get("lbl_exam_prefix", "Egzamin")
-                drawer_title = f"{prefix}: {target_exam['subject']}"
-            item_for_drawer = current_data
-
-        # --- LOGIKA DECYZYJNA ---
-        if has_note_content and item_for_drawer:
-            # Sytuacja A: Wpis ma notatkę -> Otwórz / Zaktualizuj
-            self.drawer.load_note(item_for_drawer, drawer_title)
-        else:
-            # Sytuacja B: Wpis NIE ma notatki.
-            # Normalnie zamykamy, ALE jeśli użytkownik właśnie wymusił otwarcie (kliknął "Notes"),
-            # szufladka jest otwarta na tym samym elemencie. Wtedy NIE zamykamy.
-            should_close = True
-
-            if self.drawer.is_open and self.drawer.current_item_data and current_data:
-                # Jeśli ID w szufladzie zgadza się z ID zaznaczenia -> Zostaw otwarte (edycja nowej notatki)
-                if str(self.drawer.current_item_data["id"]) == str(current_data["id"]):
-                    should_close = False
-
-            if should_close and self.drawer.is_open:
-                self.drawer.close_panel()
-            # Jeśli jest zamknięta, zostawiamy zamkniętą (ważne, by nie odpalać animacji zamykania bez potrzeby)
-
-        # Statusy przycisków
-        tags = self.tree.item(item_id, "tags")
-        status_mode = "disabled"
-        edit_mode = "disabled"
+        # --- LOGIKA PRZYCISKÓW ---
+        state_1 = "disabled"
+        state_2 = "disabled"
+        state_3 = "disabled"
 
         if target_topic:
-            edit_mode = "editable"
-            if "todo" in tags:
-                status_mode = "todo"
-            elif "done" in tags:
-                status_mode = "done"
+            # Temat
+            is_done = target_topic["status"] == "done"
+            is_overdue = False
+            if target_topic.get("scheduled_date") and date_format(
+                    target_topic["scheduled_date"]) < date.today() and not is_done:
+                is_overdue = True
+
+            if is_overdue:
+                # Dla zaległych
+                state_1 = "complete"  # Góra: Done (Zielony)
+                state_2 = "move_today"  # Środek: Move to Today (Pomarańczowy)
+                state_3 = "edit_topic"  # Dół: Edit (Niebieski)
+            elif is_done:
+                # Dla zrobionych
+                state_1 = "restore"  # Góra: Restore (Szary)
+                state_2 = "edit_topic"  # Środek: Edit (Niebieski)
+                state_3 = "delete"  # Dół: Delete (Czerwony)
             else:
-                status_mode = "default"
+                # Dla zwykłych zadań
+                state_1 = "complete"  # Góra: Done (Zielony)
+                state_2 = "edit_topic"  # Środek: Edit (Niebieski)
+                state_3 = "delete"  # Dół: Delete (Czerwony)
+
         elif target_exam:
-            edit_mode = "editable"
-            status_mode = "disabled"
-        elif str(item_id).startswith("date_"):
-            edit_mode = "disabled"
+            # Egzamin
+            state_1 = "hidden"  # Puste (zgodnie z życzeniem)
+            state_2 = "edit_exam"
+            state_3 = "delete"
+
+        elif is_date:
+            # Data
             date_str = str(item_id).replace("date_", "")
             blocked_list = self.data.get("blocked_dates", [])
-            status_mode = "date_blocked" if date_str in blocked_list else "date_free"
+            is_blocked = date_str in blocked_list
 
-        self.selection_callback(status_mode, edit_mode)
+            if is_blocked:
+                state_1 = "unblock"
+                state_2 = "unblock_gen"
+            else:
+                state_1 = "block"
+                state_2 = "block_gen"
+
+            state_3 = "hidden"
+
+        self.selection_callback(state_1, state_2, state_3)
 
     def on_tree_click(self, event):
         item_id = self.tree.identify_row(event.y)
@@ -501,13 +662,19 @@ class PlanWindow:
             self.tree.selection_remove(selection)
             if self.drawer.is_open:
                 self.drawer.close_panel()
-        if self.selection_callback: self.selection_callback("default", "default")
 
-    def toggle_status(self):
+        # POPRAWKA: Wysyłamy 3 argumenty "idle", żeby pasowało do update_sidebar_buttons w main.py
+        if self.selection_callback:
+            self.selection_callback("idle", "idle", "idle")
+
+    def toggle_status(self, generate=True):
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
+
         target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
+
+        # --- ZMIANA STATUSU TEMATU ---
         if target_topic:
             target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
             if target_topic["status"] == "done":
@@ -517,16 +684,27 @@ class PlanWindow:
             save(self.data)
             self.refresh_table(preserve_selection=True)
             if self.dashboard_callback: self.dashboard_callback()
+
+        # --- BLOKOWANIE / ODBLOKOWANIE DATY ---
         elif str(item_id).startswith("date_"):
             date_str = str(item_id).replace("date_", "")
             if "blocked_dates" not in self.data: self.data["blocked_dates"] = []
+
+            # Logika dodawania/usuwania
             if date_str in self.data["blocked_dates"]:
                 self.data["blocked_dates"].remove(date_str)
             else:
                 self.data["blocked_dates"].append(date_str)
                 if "global_stats" not in self.data: self.data["global_stats"] = {}
                 self.data["global_stats"]["days_off"] = self.data["global_stats"].get("days_off", 0) + 1
-            self.run_and_refresh()
+
+            # DECYZJA: Generować czy tylko zapisać?
+            if generate:
+                self.run_and_refresh()
+            else:
+                save(self.data)
+                self.refresh_table(preserve_selection=True)  # Tylko odświeża widok (pokaże ikonkę blokady)
+                if self.dashboard_callback: self.dashboard_callback()
 
     def run_and_refresh(self, only_unscheduled=False):
         try:

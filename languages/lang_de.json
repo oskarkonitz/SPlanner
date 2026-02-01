@@ -317,5 +317,14 @@
 
     "lbl_color": "Farbe:",
     "win_color_picker": "Farbe wählen",
-    "btn_select": "Wählen"
+    "btn_select": "Wählen",
+
+    "btn_tools": "Werkzeuge",
+    "btn_restore": "Wiederherstellen",
+    "btn_move_today": "Auf Heute",
+    "btn_block_gen": "Blockieren & Gen.",
+    "btn_unblock_gen": "Freigeben & Gen.",
+    "drawer_tools_title": "Schnellaktionen",
+    "btn_block": "Blockieren",
+    "btn_unblock": "Freigeben"
 }
