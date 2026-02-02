@@ -1,5 +1,4 @@
 import customtkinter as ctk
-import tkinter as tk
 from tkinter import messagebox
 from core.storage import save
 
@@ -226,3 +225,29 @@ class TimerWindow:
         # wywołujemy dopiero teraz, gdy okno timera znika.
         if self.session_completed and self.callback:
             self.callback()
+
+    def winfo_exists(self):
+        # Sprawdzamy wszystkie popularne nazwy zmiennych, pod którymi może być okno
+        for attr in ['window', 'win', 'root', 'toplevel']:
+            if hasattr(self, attr):
+                obj = getattr(self, attr)
+                # Sprawdzamy czy obiekt istnieje i czy jest widgetem Tkinter
+                if obj and hasattr(obj, 'winfo_exists'):
+                    # Jeśli okno zostało zniszczone (zamknięte), winfo_exists zwróci 0 (False)
+                    try:
+                        return bool(obj.winfo_exists())
+                    except Exception:
+                        return False
+        return False
+
+    def lift(self):
+        # To samo dla wyciągania na wierzch
+        for attr in ['window', 'win', 'root', 'toplevel']:
+            if hasattr(self, attr):
+                obj = getattr(self, attr)
+                if obj and hasattr(obj, 'lift'):
+                    try:
+                        obj.lift()
+                        return
+                    except Exception:
+                        pass

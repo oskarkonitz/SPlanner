@@ -105,6 +105,7 @@
     "msg_db_cleared": "Database has been reset.",
     "msg_archive_header": "All Exams",
     "msg_archive_sub": "Double-click to view details",
+    "msg_timer_warning": "Pomodoro is running! Do you really want to exit?",
     "msg_select_del": "Select an exam to delete.",
     "msg_confirm_del_perm": "Are you sure you want to permanently delete {type} {name}?",
     "msg_archived_del": "Exam removed from archive.",

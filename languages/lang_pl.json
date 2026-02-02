@@ -92,6 +92,7 @@
     "msg_select_edit": "Najpierw zaznacz element, który chcesz edytować.",
     "msg_cant_edit": "Nie można edytować tego elementu.",
     "msg_data_updated": "Dane zaktualizowane, kliknij Odśwież",
+    "msg_timer_warning": "Pomodoro odlicza! Czy na pewno chcesz wyjść?",
     "msg_confirm_del_exam": "Czy na pewno chcesz usunąć '{subject}'?",
     "msg_exam_deleted": "Egzamin usunięty, odśwież aby zobaczyć zmiany.",
     "msg_topic_name_req": "Temat musi mieć nazwę.",

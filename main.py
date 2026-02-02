@@ -18,11 +18,13 @@ import threading
 from core.updater import check_for_updates
 from gui.windows.plan import ToolsDrawer
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 class GUI:
     def __init__(self, root):
         self.root = root
+
+        self.timer_window = None
 
         #  Ładowanie danych
         self.data = load()
@@ -218,7 +220,7 @@ class GUI:
             "border_width": 0  # <--- Dodano brakujący klucz
         }
 
-        self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.root.quit, **self.btn_style)
+        self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.on_close, **self.btn_style)
         self.btn_exit.pack(side="bottom", pady=30)
 
         def on_enter_exit(event):
@@ -293,6 +295,8 @@ class GUI:
 
         # --- AUTO-UPDATE ---
         threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def sidebar_add(self):
         self.plan_view.open_add_window()
@@ -519,7 +523,12 @@ class GUI:
         AchievementsWindow(self.root, self.txt, self.data, self.btn_style)
 
     def open_timer(self):
-        TimerWindow(self.root, self.txt, self.btn_style, self.data, callback=self.refresh_dashboard)
+        # Sprawdzamy czy okno już istnieje
+        if self.timer_window is None or not self.timer_window.winfo_exists():
+            # Przypisujemy instancję do zmiennej self.timer_window
+            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style, self.data, callback=self.refresh_dashboard)
+        else:
+            self.timer_window.lift()  # Jeśli istnieje, wyciągamy na wierzch
 
     def animate_bar(self, bar, target_value):
         current_value = bar.get()
@@ -653,6 +662,19 @@ class GUI:
 
     def open_plan_window(self):
         PlanWindow(self.root, self.txt, self.data, self.btn_style, dashboard_callback=self.refresh_dashboard)
+
+    def on_close(self):
+        # 1. Sprawdzamy czy okno timera istnieje I czy timer odlicza
+        if self.timer_window is not None and self.timer_window.winfo_exists():
+            # Sprawdzamy flagę is_running wewnątrz obiektu TimerWindow
+            # Używamy getattr dla bezpieczeństwa, gdyby zmienna nie istniała
+            if getattr(self.timer_window, "is_running", False):
+                msg = self.txt.get("msg_timer_warning", "Pomodoro is running! Are you sure you want to exit?")
+                if not messagebox.askyesno(self.txt["msg_warning"], msg):
+                    return  # Anuluj zamykanie
+
+        # 2. Jeśli timer nie działa (lub użytkownik potwierdził), zamykamy aplikację
+        self.root.quit()
 
 
 if __name__ == "__main__":

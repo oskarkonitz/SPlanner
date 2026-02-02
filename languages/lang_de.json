@@ -89,6 +89,7 @@
     "msg_plan_done": "Planung abgeschlossen",
     "msg_fill_fields": "Füllen Sie die fehlenden Felder aus",
     "msg_exam_added": "Prüfung und {count} Themen hinzugefügt",
+    "msg_timer_warning": "Pomodoro läuft! Möchten Sie wirklich beenden?",
     "msg_select_edit": "Wählen Sie zuerst das Element aus, das Sie bearbeiten möchten.",
     "msg_cant_edit": "Dieses Element kann nicht bearbeitet werden.",
     "msg_data_updated": "Daten aktualisiert, klicken Sie auf Aktualisieren",
