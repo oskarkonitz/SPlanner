@@ -326,5 +326,9 @@
     "btn_unblock_gen": "Unblock & Gen.",
     "drawer_tools_title": "Quick Actions",
     "btn_block": "Block",
-    "btn_unblock": "Unblock"
+    "btn_unblock": "Unblock",
+
+    "menu_switch_time": "Show next exam after...",
+    "switch_midnight": "Midnight (Default)",
+    "switch_hour_suffix": ":00"
 }

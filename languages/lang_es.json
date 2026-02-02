@@ -326,5 +326,9 @@
     "btn_unblock_gen": "Desbloquear y Gen.",
     "drawer_tools_title": "Acciones Rápidas",
     "btn_block": "Bloquear",
-    "btn_unblock": "Desbloquear"
+    "btn_unblock": "Desbloquear",
+
+    "menu_switch_time": "Mostrar sig. examen después de...",
+    "switch_midnight": "Medianoche (Por defecto)",
+    "switch_hour_suffix": ":00"
 }

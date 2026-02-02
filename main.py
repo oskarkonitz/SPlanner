@@ -3,7 +3,7 @@ import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
-import random
+from datetime import date, datetime
 from datetime import date
 from core.storage import load, save, load_language
 from core.planner import date_format
@@ -108,6 +108,28 @@ class GUI:
 
         # menu ustawienia
         settings_menu = tk.Menu(self.menubar, tearoff=0)
+
+        # --- NOWE MENU: PRZEŁĄCZANIE EGZAMINU ---
+        switch_menu = tk.Menu(settings_menu, tearoff=0)
+        # Pobieramy zapisaną godzinę (domyślnie 24 = północ)
+        current_switch = self.data["settings"].get("next_exam_switch_hour", 24)
+        self.switch_hour_var = tk.IntVar(value=current_switch)
+
+        # Opcje godzinowe (możesz dodać własne)
+        hours_options = [12, 14, 16, 18, 20, 22]
+
+        for h in hours_options:
+            label = f"{h}{self.txt.get('switch_hour_suffix', ':00')}"
+            switch_menu.add_radiobutton(label=label, value=h, variable=self.switch_hour_var,
+                                        command=lambda h=h: self.set_switch_hour(h))
+
+        # Opcja domyślna (Północ)
+        switch_menu.add_separator()
+        switch_menu.add_radiobutton(label=self.txt.get("switch_midnight", "Midnight"), value=24,
+                                    variable=self.switch_hour_var,
+                                    command=lambda: self.set_switch_hour(24))
+
+        settings_menu.add_cascade(label=self.txt.get("menu_switch_time", "Switch Time"), menu=switch_menu)
 
         # Języki
         lang_menu = tk.Menu(settings_menu, tearoff=0)
@@ -337,6 +359,12 @@ class GUI:
         if restart:
             self.root.destroy()
             os.execl(sys.executable, sys.executable, *sys.argv)
+
+    def set_switch_hour(self, hour):
+        self.data["settings"]["next_exam_switch_hour"] = hour
+        save(self.data)
+        # Odśwież dashboard natychmiast, żeby zobaczyć efekt
+        self.refresh_dashboard()
 
     def change_theme(self, theme_name):
         self.data["settings"]["theme"] = theme_name
@@ -574,7 +602,19 @@ class GUI:
             self.bar_today.set(0)
 
         # C. Najbliższy egzamin
-        future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
+        # 1. Sprawdzamy ustawienia godziny
+        switch_hour = self.data["settings"].get("next_exam_switch_hour", 24)
+        now_hour = datetime.now().hour
+
+        # 2. Decyzja: czy "dzisiaj" już minęło?
+        # Jeśli aktualna godzina >= ustawionej (i nie jest to północ 24), to szukamy od JUTRA
+        if switch_hour < 24 and now_hour >= switch_hour:
+            # Szukamy egzaminów TYLKO w przyszłości (> today)
+            future_exams = [e for e in self.data["exams"] if date_format(e["date"]) > today]
+        else:
+            # Standardowo: szukamy od dzisiaj włącznie (>= today)
+            future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
+
         future_exams.sort(key=lambda x: x["date"])
 
         if future_exams:

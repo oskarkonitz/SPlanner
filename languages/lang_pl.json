@@ -326,5 +326,9 @@
     "btn_unblock_gen": "Odblokuj i Generuj",
     "drawer_tools_title": "Szybkie Akcje",
     "btn_block": "Zablokuj",
-    "btn_unblock": "Odblokuj"
+    "btn_unblock": "Odblokuj",
+
+    "menu_switch_time": "Pokaż nast. egzamin po...",
+    "switch_midnight": "Północy (Domyślnie)",
+    "switch_hour_suffix": ":00"
 }

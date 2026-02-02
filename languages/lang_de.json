@@ -326,5 +326,9 @@
     "btn_unblock_gen": "Freigeben & Gen.",
     "drawer_tools_title": "Schnellaktionen",
     "btn_block": "Blockieren",
-    "btn_unblock": "Freigeben"
+    "btn_unblock": "Freigeben",
+
+    "menu_switch_time": "Nächste Prüfung anzeigen ab...",
+    "switch_midnight": "Mitternacht (Standard)",
+    "switch_hour_suffix": ":00"
 }
