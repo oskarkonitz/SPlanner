@@ -340,5 +340,8 @@
     "lbl_no_date": "Sin fecha",
     "win_date_picker": "Seleccionar fecha",
     "win_color_picker_task": "Color de tarea",
-    "msg_confirm_del_task": "¿Eliminar esta tarea?"
+    "msg_confirm_del_task": "¿Eliminar esta tarea?",
+
+    "msg_empty_plan": "Sin exámenes.\n¡Haz clic en 'Añadir Examen' para comenzar!",
+    "msg_empty_todo": "Sin tareas.\n¡Escribe una tarea arriba y haz clic en '+'!"
 }

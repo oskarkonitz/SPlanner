@@ -272,7 +272,8 @@ class PlanWindow:
         self.table_frame.pack(fill="both", expand=True, padx=0, pady=8)
 
         columns = ("data", "przedmiot", "temat")
-        self.tree = ttk.Treeview(self.table_frame, columns=columns, show="headings", selectmode="browse")
+        self.tree = ttk.Treeview(self.table_frame, columns=columns, show="tree", selectmode="browse")
+        self.tree.column("#0", width=0, stretch=False)
 
         self.tree.heading("data", text="")
         self.tree.column("data", width=55, anchor="e", stretch=False)
@@ -298,6 +299,11 @@ class PlanWindow:
         self.tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y", padx=(2, 0))
         self.tree.pack(side="left", fill="both", expand=True)
+
+        self.lbl_empty = ctk.CTkLabel(self.table_frame,
+                                      text=self.txt.get("msg_empty_plan", "No exams."),
+                                      font=("Arial", 16, "bold"),
+                                      text_color="gray")
 
         self.tree.bind("<<TreeviewSelect>>", self.on_selection_change)
         self.tree.bind("<Button-1>", self.on_tree_click)
@@ -455,7 +461,7 @@ class PlanWindow:
                                  tags=("overdue",))
             self.tree.insert("", "end", values=("", "", ""))
 
-        # 2. DATY
+        # 2. DATY (Główna pętla)
         all_dates = set()
         for exam in self.data["exams"]:
             if date_format(exam["date"]) >= date.today(): all_dates.add(str(exam["date"]))
@@ -468,7 +474,7 @@ class PlanWindow:
                 if bd >= str(date.today()) and bd <= max(all_dates): all_dates.add(bd)
         sorted_dates = sorted(list(all_dates))
 
-        # 3. GŁÓWNA PĘTLA
+        # Rysowanie wierszy...
         for day_str in sorted_dates:
             todays_exams = [e for e in self.data["exams"] if e["date"] == day_str]
             todays_topics = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == day_str]
@@ -501,11 +507,9 @@ class PlanWindow:
                     display_text += f" {self.txt.get('tag_day_off', '(Day Off)')}"
                     icon = "○"
 
-            # Pobieramy nazwę dnia tygodnia z pliku językowego
             weekday_idx = date_format(day_str).weekday()
             day_name = self.txt["days_short"][weekday_idx]
 
-            # Wstawiamy wiersz z dodanym dniem tygodnia
             self.tree.insert("", "end", iid=f"date_{day_str}",
                              values=(icon, f"{display_text} ({day_name}, {day_str})", ""),
                              tags=(tag,))
@@ -523,39 +527,30 @@ class PlanWindow:
                     if todays_exams and todays_topics: self.tree.insert("", "end", values=("│", "", ""), tags=("todo",))
 
                     for topic in todays_topics:
-                        # 1. Znajdź nazwę przedmiotu i rodzica (egzamin), żeby pobrać kolor
                         subj_name = self.txt["val_other"]
                         parent_exam = None
-
                         for exam in self.data["exams"]:
                             if exam["id"] == topic["exam_id"]:
                                 subj_name = exam["subject"]
                                 parent_exam = exam
                                 break
 
-                        # 2. Logika znaczników (ikonek)
                         has_note = topic.get("note", "").strip()
                         marks = " ✎" if has_note else ""
                         if topic.get("locked", False): marks += " ☒"
 
-                        # 3. Logika kolorów (TO ZMIENIAMY)
                         final_tags = []
-
                         if topic["status"] == "done":
                             final_tags.append("done")
                         else:
-                            # ZMIANA TUTAJ: Sprawdzamy, czy kolor fizycznie istnieje (nie jest None i nie jest pusty)
                             if parent_exam and parent_exam.get("color"):
                                 col = parent_exam["color"]
                                 tag_col_name = f"theme_{parent_exam['id']}"
                                 self.tree.tag_configure(tag_col_name, foreground=col, font=("Arial", 13, "bold"))
                                 final_tags.append(tag_col_name)
                             else:
-                                # Jeśli parent_exam["color"] to None -> wpadamy tutaj.
-                                # Tag "todo" jest obsługiwany przez theme_manager i sam zmienia kolory!
                                 final_tags.append("todo")
 
-                        # 4. Wstawienie do tabeli
                         self.tree.insert("", "end", iid=topic["id"],
                                          values=(f"{marks} │", subj_name, topic["name"]),
                                          tags=tuple(final_tags))
@@ -565,6 +560,18 @@ class PlanWindow:
         if selected_id and self.tree.exists(selected_id):
             self.tree.selection_set(selected_id)
             self.tree.see(selected_id)
+
+        # --- LOGIKA PUSTEGO STANU (ZMODYFIKOWANA) ---
+        # Sprawdzamy czy są jakiekolwiek egzaminy w PRZYSZŁOŚCI (lub dzisiaj)
+        # Jeśli lista sorted_dates jest pusta ORAZ nie ma zaległych tematów -> Pusto
+        has_future_items = len(sorted_dates) > 0
+        has_overdue_items = len(overdue_topics) > 0
+
+        if not has_future_items and not has_overdue_items:
+            self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
+            self.lbl_empty.lift()
+        else:
+            self.lbl_empty.place_forget()
 
     # --- ZMIANA ZAZNACZENIA (POPRAWIONA LOGIKA) ---
     def on_selection_change(self, event):

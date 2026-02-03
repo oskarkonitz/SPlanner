@@ -340,5 +340,8 @@
     "lbl_no_date": "No Date",
     "win_date_picker": "Select Date",
     "win_color_picker_task": "Task Color",
-    "msg_confirm_del_task": "Delete this task?"
+    "msg_confirm_del_task": "Delete this task?",
+
+    "msg_empty_plan": "No exams added.\nClick 'Add Exam' to start planning!",
+    "msg_empty_todo": "No tasks yet.\nType a task above and click '+' to add one!"
 }

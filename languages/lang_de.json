@@ -340,5 +340,8 @@
     "lbl_no_date": "Kein Datum",
     "win_date_picker": "Datum wählen",
     "win_color_picker_task": "Aufgabenfarbe",
-    "msg_confirm_del_task": "Diese Aufgabe löschen?"
+    "msg_confirm_del_task": "Diese Aufgabe löschen?",
+
+    "msg_empty_plan": "Keine Prüfungen.\nKlicken Sie auf 'Prüfung hinzufügen', um zu beginnen!",
+    "msg_empty_todo": "Keine Aufgaben.\nGeben Sie oben eine Aufgabe ein und klicken Sie auf '+'!"
 }

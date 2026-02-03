@@ -63,7 +63,8 @@ class TodoWindow:
         self.table_frame.pack(fill="both", expand=True, padx=0, pady=8)
 
         columns = ("status", "task")
-        self.tree = ttk.Treeview(self.table_frame, columns=columns, show="headings", selectmode="browse")
+        self.tree = ttk.Treeview(self.table_frame, columns=columns, show="tree", selectmode="browse")
+        self.tree.column("#0", width=0, stretch=False)
 
         self.tree.heading("status", text=self.txt.get("col_status", "Status"))
         self.tree.column("status", width=60, anchor="center", stretch=False)
@@ -77,12 +78,18 @@ class TodoWindow:
         self.tree.tag_configure("default", font=("Arial", 13, "bold"))
         self.tree.tag_configure("overdue_header", foreground="#e74c3c", font=("Arial", 13, "bold"))
         self.tree.tag_configure("overdue_item", font=("Arial", 13, "bold"))
+        self.tree.tag_configure("today_color", font=("Arial", 13, "bold"), foreground="violet")
 
         scrollbar = ctk.CTkScrollbar(self.table_frame, orientation="vertical", command=self.tree.yview,
                                      fg_color="transparent", bg_color="transparent")
         self.tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y", padx=(2, 0))
         self.tree.pack(side="left", fill="both", expand=True)
+
+        self.lbl_empty = ctk.CTkLabel(self.table_frame,
+                                      text=self.txt.get("msg_empty_todo", "No tasks."),
+                                      font=("Arial", 16, "bold"),
+                                      text_color="gray")
 
         self.tree.bind("<Double-1>", self.toggle_status)
         self.tree.bind("<Delete>", self.delete_task)
@@ -216,8 +223,16 @@ class TodoWindow:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        self.tree.insert("", "end", values=("", ""), tags=("default",))
+
         tasks = self.data.get("daily_tasks", [])
-        if not tasks: return
+
+        # Nawet jeśli tasks nie jest puste, musimy sprawdzić, czy coś się WYŚWIETLI
+        if not tasks:
+            # Baza pusta
+            self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
+            self.lbl_empty.lift()
+            return
 
         today_str = str(date.today())
 
@@ -234,8 +249,10 @@ class TodoWindow:
                 overdue_tasks.append(t)
             elif t_date >= today_str or t["status"] == "done":
                 if t["status"] == "done" and t_date < today_str:
-                    continue
+                    continue  # Ukrywamy stare zrobione
                 upcoming_tasks.append(t)
+
+        # --- RYSOWANIE TABELI ---
 
         if overdue_tasks:
             overdue_label = self.txt.get("tag_overdue", "OVERDUE")
@@ -255,14 +272,23 @@ class TodoWindow:
                 display_date = day if day else self.txt.get("lbl_no_date", "No Date")
                 if day == today_str:
                     display_date += f" ({self.txt.get('tag_today', 'Today')})"
-
-                self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
+                    self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("today_color",))
+                else:
+                    self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
                 for t in day_tasks:
                     self._insert_task_row(t)
                 self.tree.insert("", "end", values=("", ""), tags=("default",))
 
         if sel_id and self.tree.exists(sel_id):
             self.tree.selection_set(sel_id)
+
+        # --- LOGIKA PUSTEGO STANU (ZMODYFIKOWANA) ---
+        # Jeśli nie ma nic zaległego I nic nadchodzącego (czyli są same stare zrobione) -> Pusto
+        if not overdue_tasks and not upcoming_tasks:
+            self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
+            self.lbl_empty.lift()
+        else:
+            self.lbl_empty.place_forget()
 
     def _insert_task_row(self, t):
         status_icon = "☑" if t["status"] == "done" else "☐"

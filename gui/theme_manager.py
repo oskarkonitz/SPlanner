@@ -10,11 +10,11 @@ THEMES = {
         "bg_sidebar": "#f3f3f3",
         "fg_text": "#1a1a1a",
 
-        # Przyciski - ZMIANA TUTAJ
-        "btn_fg": "#e0e0e0",       # Ciemniejszy od tła (było #ffffff)
-        "btn_hover": "#d6d6d6",    # Jeszcze ciemniejszy po najechaniu
+        # Przyciski
+        "btn_fg": "#e0e0e0",
+        "btn_hover": "#d6d6d6",
         "btn_text": "#1a1a1a",
-        "btn_border": "#b0b0b0",   # Wyraźniejsza ramka
+        "btn_border": "#b0b0b0",
 
         # Tabela
         "bg_tree": "#ffffff",
@@ -29,12 +29,12 @@ THEMES = {
         "date_entry_fg": "#000000",
         "date_btn_bg": "#e1e1e1",
 
-        # Tabview
+        # Zakładki (Tabview)
         "tab_text": "#1a1a1a",
-        "tab_fg": "#e0e0e0",             # Tło paska zakładek
-        "tab_btn_fg": "#e0e0e0",         # Tło nieaktywnej zakładki
+        "tab_fg": "#e0e0e0",
+        "tab_btn_fg": "#e0e0e0",
         "tab_btn_hover": "#d6d6d6",
-        "tab_btn_selected": "#ffffff",   # Aktywna zakładka (biała)
+        "tab_btn_selected": "#ffffff",
         "tab_btn_text": "#1a1a1a",
     },
     "dark": {
@@ -62,12 +62,12 @@ THEMES = {
         "date_entry_fg": "#ffffff",
         "date_btn_bg": "#4a4a4a",
 
-        # Tabview
+        # Zakładki (Tabview)
         "tab_text": "#e0e0e0",
-        "tab_fg": "#2b2b2b",             # Tło paska zakładek
-        "tab_btn_fg": "#2b2b2b",         # Tło nieaktywnej zakładki
+        "tab_fg": "#2b2b2b",
+        "tab_btn_fg": "#2b2b2b",
         "tab_btn_hover": "#3a3a3a",
-        "tab_btn_selected": "#454545",   # Aktywna zakładka (jaśniejsza szara)
+        "tab_btn_selected": "#454545",
         "tab_btn_text": "#ffffff",
     }
 }
@@ -81,11 +81,10 @@ def apply_theme(app, theme_name):
     ctk.set_default_color_theme("blue")
 
     # 2. Globalna konfiguracja standardowych widżetów Tkinter
-    # To naprawia tło za elementami w oknach Edycji/Archiwum
     app.root.option_add("*Background", colors["bg_root"])
     app.root.option_add("*Foreground", colors["fg_text"])
-    app.root.option_add("*Frame.background", colors["bg_root"])  # <-- WAŻNE
-    app.root.option_add("*Label.background", colors["bg_root"])  # <-- WAŻNE
+    app.root.option_add("*Frame.background", colors["bg_root"])
+    app.root.option_add("*Label.background", colors["bg_root"])
 
     # 3. Konfiguracja Tabeli i Stylów
     style = ttk.Style()
@@ -124,7 +123,6 @@ def apply_theme(app, theme_name):
     if hasattr(app, 'root'):
         app.root.configure(bg=colors["bg_root"])
 
-    # Ustawiamy wszystko na jeden kolor (bg_root)
     frames = ['sidebar', 'middle_frame', 'stats_frame', 'plan_container']
     for frame_name in frames:
         if hasattr(app, frame_name):
@@ -167,47 +165,49 @@ def apply_theme(app, theme_name):
                     border_width=1
                 )
 
-    # Ta komenda ustawia domyślny kolor tekstu dla WSZYSTKICH nowych Labeli CTk
     if theme_name == "light":
-        app.root.option_add("*CTkLabel.text_color", colors["fg_text"])  # czarny
+        app.root.option_add("*CTkLabel.text_color", colors["fg_text"])
     else:
-        app.root.option_add("*CTkLabel.text_color", colors["fg_text"])  # biały
+        app.root.option_add("*CTkLabel.text_color", colors["fg_text"])
 
-    # 7. Tagi w tabeli
+        # 7. Tagi w tabeli
     if hasattr(app, 'plan_view') and hasattr(app.plan_view, 'tree'):
         tree = app.plan_view.tree
-
-        # A. Najpierw ustawiamy kolor bazowy (czarny/biały) dla ogólnych tekstów
         tags_basic = ["todo", "normal", "date_header"]
         for tag in tags_basic:
             tree.tag_configure(tag, foreground=colors["fg_tree"])
 
-        # B. TERAZ WYMUSZAMY KOLORY (nadpisujemy date_header w tych miejscach)
-        # Dzięki temu, że robimy to tutaj, motyw nie "zamazuje" kolorów
         tree.tag_configure("today", foreground="violet")
-        tree.tag_configure("red", foreground="#ff007f")  # Lekko jaśniejszy czerwony, czytelny na ciemnym
+        tree.tag_configure("red", foreground="#ff007f")
         tree.tag_configure("orange", foreground="orange")
 
-        # Żółty jest słabo widoczny na białym tle, więc dajemy ciemniejszy złoty dla Light mode
         yellow_col = "#e6b800" if theme_name == "light" else "yellow"
         tree.tag_configure("yellow", foreground=yellow_col)
 
-        tree.tag_configure("done", foreground="#00b800")  # Zieleń
+        tree.tag_configure("done", foreground="#00b800")
         tree.tag_configure("exam", foreground="#ff4444")
 
-        # C. Zaległe
         if theme_name == "dark":
             tree.tag_configure("overdue", foreground="#888888")
         else:
             tree.tag_configure("overdue", foreground="#555555")
 
+    # 8. Konfiguracja Tabview (Zakładek)
     if hasattr(app, 'tabview'):
         app.tabview.configure(
-            fg_color=colors["bg_root"],  # Tło zawartości karty
-            segmented_button_fg_color=colors["tab_fg"],  # Tło paska przycisków
+            fg_color=colors["bg_root"],
+            segmented_button_fg_color=colors["tab_fg"],
             segmented_button_selected_color=colors["tab_btn_selected"],
             segmented_button_unselected_color=colors["tab_btn_fg"],
             segmented_button_selected_hover_color=colors["tab_btn_hover"],
             segmented_button_unselected_hover_color=colors["tab_btn_hover"],
             text_color=colors["tab_text"]
         )
+
+    # 9. Placeholder (Empty State) Background - FIX TŁA
+    # Ustawiamy tło labela na kolor tła tabeli (bg_tree), żeby się zlało
+    if hasattr(app, 'plan_view') and hasattr(app.plan_view, 'lbl_empty'):
+        app.plan_view.lbl_empty.configure(fg_color=colors["bg_tree"])
+
+    if hasattr(app, 'todo_view') and hasattr(app.todo_view, 'lbl_empty'):
+        app.todo_view.lbl_empty.configure(fg_color=colors["bg_tree"])

@@ -340,5 +340,8 @@
     "lbl_no_date": "Bez daty",
     "win_date_picker": "Wybierz datę",
     "win_color_picker_task": "Kolor zadania",
-    "msg_confirm_del_task": "Usunąć to zadanie?"
+    "msg_confirm_del_task": "Usunąć to zadanie?",
+
+    "msg_empty_plan": "Brak egzaminów.\nKliknij 'Dodaj Egzamin', aby rozpocząć!",
+    "msg_empty_todo": "Brak zadań.\nWpisz zadanie powyżej i kliknij '+', aby dodać!"
 }
