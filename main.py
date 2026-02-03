@@ -19,7 +19,7 @@ from core.updater import check_for_updates
 from gui.windows.plan import ToolsDrawer
 from gui.windows.todo import TodoWindow
 
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 class GUI:
     def __init__(self, root):
@@ -284,6 +284,8 @@ class GUI:
         self.tab_plan = self.tabview.add(self.txt.get("tab_plan", "Study Plan"))
         self.tab_todo = self.tabview.add(self.txt.get("tab_todo", "Daily Tasks"))
 
+        self.create_badges()
+
         self.tab_plan.grid_columnconfigure(0, weight=1)
         self.tab_plan.grid_rowconfigure(0, weight=1)
         self.tab_todo.grid_columnconfigure(0, weight=1)
@@ -346,6 +348,20 @@ class GUI:
         threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def create_badges(self):
+        badge_font = ("Arial", 10, "bold")
+
+        # Rodzicem pozostaje self.tabview, aby kółka mogły wystawać poza pasek
+        self.badge_plan = ctk.CTkLabel(
+            self.tabview, text="", width=20, height=20, corner_radius=10,
+            font=badge_font, fg_color="transparent", text_color="white"
+        )
+
+        self.badge_todo = ctk.CTkLabel(
+            self.tabview, text="", width=20, height=20, corner_radius=10,
+            font=badge_font, fg_color="transparent", text_color="white"
+        )
 
     def _migrate_stats(self):
         # Stara logika migracji (zachowana dla kompatybilności)
@@ -632,6 +648,79 @@ class GUI:
 
         _step(0)
 
+    def update_badges_logic(self):
+        # Wymuszamy na systemie przeliczenie pikseli okna
+        self.root.update_idletasks()
+
+        # Pobieramy fizyczny pasek z przyciskami
+        seg_btn = self.tabview._segmented_button
+        seg_x = seg_btn.winfo_x()  # Pozycja X lewej krawędzi paska
+        seg_y = seg_btn.winfo_y()  # Pozycja Y górnej krawędzi paska
+        seg_w = seg_btn.winfo_width()  # Całkowita szerokość paska
+
+        # Obliczamy punkty styku (prawy górny róg każdego przycisku)
+        # Zakładamy, że przyciski dzielą pasek po połowie
+        plan_x_px = seg_x + (seg_w / 2) - 10
+        todo_x_px = seg_x + seg_w - 10
+        badge_y_px = seg_y - 12  # Lekko nad paskiem
+
+        today = date.today()
+        today_str = str(today)
+
+        # --- LOGIKA LICZNIKA PLANU ---
+        active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
+        p_overdue = 0
+        p_today_todo = 0
+        p_today_done = 0
+        for t in self.data["topics"]:
+            if t["exam_id"] not in active_exams_ids: continue
+            t_date = t.get("scheduled_date")
+            if not t_date: continue
+            t_date_obj = date_format(t_date)
+            if t_date_obj < today and t["status"] == "todo":
+                p_overdue += 1
+            elif t_date_obj == today:
+                if t["status"] == "todo":
+                    p_today_todo += 1
+                elif t["status"] == "done":
+                    p_today_done += 1
+
+        total_p = p_overdue + p_today_todo
+
+        # --- RYSUJEMY ODZNAKĘ PLANU ---
+        if total_p > 0 or p_today_done > 0:
+            color = "#e74c3c" if p_overdue > 0 else ("#e67e22" if p_today_todo > 0 else "#2ecc71")
+            text = str(total_p) if total_p > 0 else "✓"
+            self.badge_plan.configure(fg_color=color, text=text)
+            self.badge_plan.place(x=plan_x_px, y=badge_y_px)
+            self.badge_plan.lift()
+        else:
+            self.badge_plan.place_forget()
+
+        # --- LOGIKA LICZNIKA TODO ---
+        t_overdue = sum(1 for t in self.data.get("daily_tasks", [])
+                        if t.get("date", "") < today_str and t["status"] == "todo")
+        t_today_todo = sum(1 for t in self.data.get("daily_tasks", [])
+                           if t.get("date", "") == today_str and t["status"] == "todo")
+        t_today_done = sum(1 for t in self.data.get("daily_tasks", [])
+                           if t.get("date", "") == today_str and t["status"] == "done")
+
+        total_t = t_overdue + t_today_todo
+
+        # --- RYSUJEMY ODZNAKĘ TODO ---
+        if total_t > 0 or t_today_done > 0:
+            color = "#e74c3c" if t_overdue > 0 else ("#e67e22" if t_today_todo > 0 else "#2ecc71")
+            text = str(total_t) if total_t > 0 else "✓"
+            self.badge_todo.configure(fg_color=color, text=text)
+            self.badge_todo.place(x=todo_x_px, y=badge_y_px)
+            self.badge_todo.lift()
+        else:
+            self.badge_todo.place_forget()
+
+        # Zawsze wyciągamy na wierzch po umiejscowieniu
+        self.badge_plan.lift()
+        self.badge_todo.lift()
+
     def refresh_dashboard(self):
         today = date.today()
         today_str = str(today)
@@ -791,6 +880,11 @@ class GUI:
             self.lbl_next_exam.configure(text=text, text_color=color)
         else:
             self.lbl_next_exam.configure(text=self.txt["stats_no_upcoming"], text_color="green")
+
+        if hasattr(self, 'ach_manager'):
+            self.ach_manager.check_all(silent=False)
+
+        self.update_badges_logic()
 
         if hasattr(self, 'ach_manager'):
             self.ach_manager.check_all(silent=False)
