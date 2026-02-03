@@ -50,12 +50,29 @@ class AchievementManager:
             self.data["global_stats"] = {
                 "topics_done": 0, "notes_added": 0, "exams_added": 0,
                 "days_off": 0, "pomodoro_sessions": 0, "activity_started": False,
-                "had_overdue": False
+                "had_overdue": False, "daily_study_time": 0, "total_study_time": 0,
+                "all_time_best_time": 0
             }
 
         self.definitions = [
             ("first_step", "👶", "ach_first_step", "ach_desc_first_step", self._check_first_step, 1),
             ("clean_sheet", "🧹", "ach_clean_sheet", "ach_desc_clean_sheet", self._check_clean_sheet, None),
+
+            # --- POZIOMY DLA MARATHON RUNNER (Daily Hours) ---
+            ("hours_daily_1", "⏳", "ach_hours_daily_1", "ach_desc_hours_daily_1", self._check_daily_hours, 1),
+            ("hours_daily_2", "⏳", "ach_hours_daily_2", "ach_desc_hours_daily_2", self._check_daily_hours, 2),
+            ("hours_daily_3", "⏳", "ach_hours_daily_3", "ach_desc_hours_daily_3", self._check_daily_hours, 4),
+            ("hours_daily_4", "⏳", "ach_hours_daily_4", "ach_desc_hours_daily_4", self._check_daily_hours, 6),
+
+            # --- POZIOMY DLA DEDICATED (Total Hours) ---
+            ("hours_total_1", "⌛", "ach_hours_total_1", "ach_desc_hours_total_1", self._check_total_hours, 10),
+            ("hours_total_2", "⌛", "ach_hours_total_2", "ach_desc_hours_total_2", self._check_total_hours, 50),
+            ("hours_total_3", "⌛", "ach_hours_total_3", "ach_desc_hours_total_3", self._check_total_hours, 100),
+            ("hours_total_4", "⌛", "ach_hours_total_4", "ach_desc_hours_total_4", self._check_total_hours, 200),
+
+            # --- REKORD ---
+            ("record_breaker", "🚀", "ach_record_breaker", "ach_desc_record_breaker", self._check_new_record, None),
+
             ("balance", "🏖️", "ach_balance", "ach_desc_balance", self._check_balance, 1),
             ("balance_2", "🏖️", "ach_balance_2", "ach_desc_balance_2", self._check_balance, 3),
             ("balance_3", "🏖️", "ach_balance_3", "ach_desc_balance_3", self._check_balance, 7),
@@ -163,6 +180,15 @@ class AchievementManager:
             return self._get_session_master_count()
         elif check_func == self._check_strategist:
             return self._get_max_strategy_days()
+        elif check_func == self._check_daily_hours:
+            # Zwracamy w godzinach
+            sec = self.data["global_stats"].get("daily_study_time", 0)
+            return round(sec / 3600, 1)
+        elif check_func == self._check_total_hours:
+            sec = self.data["global_stats"].get("total_study_time", 0)
+            return int(sec / 3600)
+        elif check_func == self._check_new_record:
+            return 1 if self._check_new_record() else 0
         else:
             return 0
 
@@ -230,6 +256,25 @@ class AchievementManager:
     def _check_strategist(self, threshold):
         return self._get_max_strategy_days() >= threshold
 
+    def _check_daily_hours(self, threshold_hours):
+        seconds = self.data["global_stats"].get("daily_study_time", 0)
+        return (seconds / 3600) >= threshold_hours
+
+    def _check_total_hours(self, threshold_hours):
+        seconds = self.data["global_stats"].get("total_study_time", 0)
+        return (seconds / 3600) >= threshold_hours
+
+    def _check_new_record(self, threshold=None):
+        current = self.data["global_stats"].get("daily_study_time", 0)
+        best = self.data["global_stats"].get("all_time_best_time", 0)
+
+        # --- ZMIANA: Zabezpieczenie przed rekordem 0 (pierwsze użycie) ---
+        if best == 0:
+            return False
+
+        # Rekord pobity, jeśli czas > best ORAZ minęło co najmniej 60 sekund
+        return current > best and current > 60
+
 
 class UnlockPopup:
     def __init__(self, parent, txt, icon, title_key, desc_key, on_close=None):
@@ -258,7 +303,6 @@ class UnlockPopup:
         title_txt = txt.get(title_key, title_key)
         desc_txt = txt.get(desc_key, desc_key)
 
-        # --- ZMIANA: Usunięcie zabetonowanego tekstu powiadomienia ---
         popup_header = txt.get("ach_unlocked_popup_title", "✨ UNLOCKED! ✨")
 
         self.canvas.create_text(width / 2, 40, text=popup_header, font=("Arial", 14, "bold"), fill="#f39c12")
@@ -347,7 +391,6 @@ class StaticAchievementItem(ctk.CTkFrame):
 
 
 class AccordionItem(ctk.CTkFrame):
-    # --- DODANO: Argument 'txt' do konstruktora ---
     def __init__(self, parent, txt, icon, title, level_text, details_list, is_unlocked, *args, **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
         self.txt = txt
@@ -383,7 +426,6 @@ class AccordionItem(ctk.CTkFrame):
                                  anchor="w")
         lbl_title.pack(fill="x")
 
-        # --- ZMIANA: Pobranie hintu ze słownika ---
         lbl_hint = ctk.CTkLabel(info_frame, text=self.txt.get("ach_click_to_expand", "Click to expand"),
                                 font=("Arial", 10), text_color="gray", anchor="w")
         lbl_hint.pack(fill="x")
@@ -426,7 +468,6 @@ class AchievementsWindow:
         self.win.geometry("500x650")
         self.win.resizable(False, True)
 
-        # --- ZMIANA: Nagłówek okna pobrany ze słownika ---
         header_text = self.txt.get("ach_win_header_label", "🏆 Your Achievements")
         ctk.CTkLabel(self.win, text=header_text, font=("Arial", 20, "bold")).pack(pady=15)
 
@@ -442,8 +483,8 @@ class AchievementsWindow:
     def build_list(self):
         unlocked_ids = self.data.get("achievements", [])
         families = {}
-        order = ["first_step", "clean_sheet", "balance", "scribe", "encyclopedia", "time_lord", "session_master",
-                 "polyglot", "strategist"]
+        order = ["first_step", "clean_sheet", "record_breaker", "hours_daily", "hours_total",
+                 "balance", "scribe", "encyclopedia", "time_lord", "session_master", "polyglot", "strategist"]
         family_meta = {}
 
         for ach_id, icon, title_key, desc_key, check_func, threshold in self.manager.definitions:
@@ -502,7 +543,6 @@ class AchievementsWindow:
                 for it in items:
                     details.append((it["title"], it["desc"], it["unlocked"]))
 
-                # --- ZMIANA: Przekazanie self.txt do AccordionItem ---
                 AccordionItem(
                     self.scroll_frame,
                     self.txt,

@@ -32,30 +32,39 @@ class GUI:
 
         # --- MIGRACJA DANYCH DO SYSTEMU GLOBALNEGO (PERSISTENT STATS) ---
         if "global_stats" not in self.data:
-            # Jeśli to pierwsze uruchomienie po aktualizacji, zliczamy to co jest teraz
-            # żeby użytkownik nie zaczynał od zera, jeśli ma już bazę.
-            existing_notes = sum(1 for t in self.data.get("topics", []) if t.get("note", "").strip())
-            existing_notes += sum(1 for e in self.data.get("exams", []) if e.get("note", "").strip())
+            self._migrate_stats()
 
-            existing_done = sum(1 for t in self.data.get("topics", []) if t["status"] == "done")
-            existing_exams = len(self.data.get("exams", []))
-            existing_blocked = len(self.data.get("blocked_dates", []))
+        # --- ZAPEWNIENIE NOWYCH PÓL TIMERA ---
+        gs = self.data["global_stats"]
+        if "daily_study_time" not in gs: gs["daily_study_time"] = 0
+        if "last_study_date" not in gs: gs["last_study_date"] = ""
+        if "all_time_best_time" not in gs: gs["all_time_best_time"] = 0
+        if "total_study_time" not in gs: gs["total_study_time"] = 0
+        save(self.data)
 
-            # Pobieramy pomodoro ze starego miejsca (stats -> pomodoro_count)
-            existing_pomodoro = self.data.get("stats", {}).get("pomodoro_count", 0)
+        # --- LOGIKA NOWEGO DNIA (RESET LICZNIKA) ---
+        today_str = str(date.today())
+        last_date = gs.get("last_study_date", "")
 
-            self.data["global_stats"] = {
-                "topics_done": existing_done,
-                "notes_added": existing_notes,
-                "exams_added": existing_exams,
-                "days_off": existing_blocked,
-                "pomodoro_sessions": existing_pomodoro,
-                "activity_started": False  # Flaga do Clean Sheet (musi coś zrobić, żeby dostać)
-            }
-            # Jeśli użytkownik ma już jakieś zrobione zadania, uznajemy, że activity_started = True
-            if existing_done > 0:
-                self.data["global_stats"]["activity_started"] = True
+        # Lista na osiągnięcia zdobyte "wczoraj", które trzeba pokazać teraz
+        self.pending_unlocks = []
 
+        if last_date != today_str:
+            daily = gs.get("daily_study_time", 0)
+            best = gs.get("all_time_best_time", 0)
+
+            # Sprawdź czy był rekord przed resetem
+            if daily > best:
+                gs["all_time_best_time"] = daily
+                # FIX: Jeśli to nie pierwszy dzień (best > 0) i nie ma jeszcze osiągnięcia -> ZAPISZ DO POWIADOMIENIA
+                if best > 0 and "record_breaker" not in self.data["achievements"]:
+                    self.data["achievements"].append("record_breaker")
+                    # Dodajemy do kolejki: (ikona, klucz_tytuł, klucz_opis)
+                    self.pending_unlocks.append(("🚀", "ach_record_breaker", "ach_desc_record_breaker"))
+
+            # Reset na nowy dzień
+            gs["daily_study_time"] = 0
+            gs["last_study_date"] = today_str
             save(self.data)
         # ---------------------------------------------------------------
 
@@ -66,7 +75,13 @@ class GUI:
         self.txt = load_language(self.current_lang)
 
         self.ach_manager = AchievementManager(self.root, self.txt, self.data)
-        # Sprawdzamy cicho na starcie
+
+        # --- FIX: Wyświetlenie zaległych powiadomień po resecie dnia ---
+        if hasattr(self, 'pending_unlocks') and self.pending_unlocks:
+            self.ach_manager.notification_queue.extend(self.pending_unlocks)
+            # Uruchamiamy kolejkę z małym opóźnieniem, żeby okno zdążyło się narysować
+            self.root.after(1000, self.ach_manager.process_queue)
+
         self.ach_manager.check_all(silent=True)
 
         #  Konfiguracja okna
@@ -209,6 +224,10 @@ class GUI:
         self.bar_total.configure(progress_color="#3498db")
         self.bar_total.pack(pady=(8, 10))
 
+        self.lbl_daily_time = ctk.CTkLabel(self.stats_frame, text="00:00", font=("Arial", 13, "bold"),
+                                           text_color="orange")
+        self.lbl_daily_time.pack(pady=(5, 0))
+
         #  Styl przycisków
         self.btn_style = {
             "font": ("Arial", 13, "bold"),
@@ -327,6 +346,25 @@ class GUI:
         threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def _migrate_stats(self):
+        # Stara logika migracji (zachowana dla kompatybilności)
+        existing_notes = sum(1 for t in self.data.get("topics", []) if t.get("note", "").strip())
+        existing_notes += sum(1 for e in self.data.get("exams", []) if e.get("note", "").strip())
+        existing_done = sum(1 for t in self.data.get("topics", []) if t["status"] == "done")
+        existing_exams = len(self.data.get("exams", []))
+        existing_blocked = len(self.data.get("blocked_dates", []))
+        existing_pomodoro = self.data.get("stats", {}).get("pomodoro_count", 0)
+
+        self.data["global_stats"] = {
+            "topics_done": existing_done,
+            "notes_added": existing_notes,
+            "exams_added": existing_exams,
+            "days_off": existing_blocked,
+            "pomodoro_sessions": existing_pomodoro,
+            "activity_started": existing_done > 0
+        }
+        save(self.data)
 
     def sidebar_add(self):
         self.plan_view.open_add_window()
@@ -705,6 +743,15 @@ class GUI:
         else:
             self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
             self.bar_today.set(0)
+
+        # 4. CZAS DZIENNY (Obliczanie i wyświetlanie)
+        daily_sec = self.data["global_stats"].get("daily_study_time", 0)
+        mins, secs = divmod(daily_sec, 60)
+        hours, mins = divmod(mins, 60)
+        time_str = f"{hours:02d}:{mins:02d}"
+
+        lbl_prefix = self.txt.get("lbl_daily_focus", "Daily Focus")
+        self.lbl_daily_time.configure(text=f"{lbl_prefix}: {time_str}")
 
         # C. Najbliższy egzamin (Bez zmian)
         switch_hour = self.data["settings"].get("next_exam_switch_hour", 24)

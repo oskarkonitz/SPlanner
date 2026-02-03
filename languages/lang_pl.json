@@ -148,7 +148,7 @@
     "menu_move_tomorrow": "Przenieś na jutro",
 
     "menu_addons": "Dodatki",
-    "menu_timer": "Timer Pomodoro",
+    "menu_timer": "Liczniki",
     "timer_focus": "Nauka (25m)",
     "timer_break": "Przerwa (5m)",
     "timer_custom": "Własny",
@@ -343,5 +343,33 @@
     "msg_confirm_del_task": "Usunąć to zadanie?",
 
     "msg_empty_plan": "Brak egzaminów.\nKliknij 'Dodaj Egzamin', aby rozpocząć!",
-    "msg_empty_todo": "Brak zadań.\nWpisz zadanie powyżej i kliknij '+', aby dodać!"
+    "msg_empty_todo": "Brak zadań.\nWpisz zadanie powyżej i kliknij '+', aby dodać!",
+
+    "lbl_daily_focus": "Czas Dziś",
+    "timer_tab_pomo": "Pomodoro",
+    "timer_tab_stopwatch": "Stoper",
+
+    "ach_hours_total_100": "Dedykacja",
+    "ach_desc_hours_total_100": "Osiągnij 100 godzin całkowitego czasu nauki.",
+
+    "ach_hours_daily_1": "Maratończyk I",
+    "ach_desc_hours_daily_1": "Ucz się przez 1 godzinę jednego dnia.",
+    "ach_hours_daily_2": "Maratończyk II",
+    "ach_desc_hours_daily_2": "Ucz się przez 2 godziny jednego dnia.",
+    "ach_hours_daily_3": "Maratończyk III",
+    "ach_desc_hours_daily_3": "Ucz się przez 4 godziny jednego dnia.",
+    "ach_hours_daily_4": "Maratończyk IV",
+    "ach_desc_hours_daily_4": "Ucz się przez 6 godzin jednego dnia.",
+
+    "ach_hours_total_1": "Dedykacja I",
+    "ach_desc_hours_total_1": "Osiągnij 10 godzin całkowitego czasu nauki.",
+    "ach_hours_total_2": "Dedykacja II",
+    "ach_desc_hours_total_2": "Osiągnij 50 godzin całkowitego czasu nauki.",
+    "ach_hours_total_3": "Dedykacja III",
+    "ach_desc_hours_total_3": "Osiągnij 100 godzin całkowitego czasu nauki.",
+    "ach_hours_total_4": "Dedykacja IV",
+    "ach_desc_hours_total_4": "Osiągnij 200 godzin całkowitego czasu nauki.",
+
+    "ach_record_breaker": "Rekordzista",
+    "ach_desc_record_breaker": "Pobij swój dzienny rekord czasu nauki!"
 }

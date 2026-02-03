@@ -7,8 +7,6 @@ from core.planner import plan, date_format
 from gui.windows.add_exam import AddExamWindow
 from gui.windows.archive import ArchiveWindow
 from gui.windows.edit import select_edit_item, EditExamWindow, EditTopicWindow
-# NoteWindow nie jest już używane, ale import zostawiamy dla kompatybilności
-from gui.windows.note import NoteWindow
 
 
 # --- KLASA PANELU BOCZNEGO (DRAWER) ---

@@ -148,7 +148,7 @@
     "msg_barrier_changed": "Planning settings changed. It is recommended to regenerate the plan.",
 
     "menu_addons": "Add-ons",
-    "menu_timer": "Pomodoro Timer",
+    "menu_timer": "Timers",
     "timer_focus": "Study (25m)",
     "timer_break": "Break (5m)",
     "timer_custom": "Custom",
@@ -343,5 +343,33 @@
     "msg_confirm_del_task": "Delete this task?",
 
     "msg_empty_plan": "No exams added.\nClick 'Add Exam' to start planning!",
-    "msg_empty_todo": "No tasks yet.\nType a task above and click '+' to add one!"
+    "msg_empty_todo": "No tasks yet.\nType a task above and click '+' to add one!",
+
+    "lbl_daily_focus": "Daily Focus",
+    "timer_tab_pomo": "Pomodoro",
+    "timer_tab_stopwatch": "Stopwatch",
+
+    "ach_hours_total_100": "Dedicated",
+    "ach_desc_hours_total_100": "Reach 100 hours of total study time.",
+
+    "ach_hours_daily_1": "Marathon Runner I",
+    "ach_desc_hours_daily_1": "Study for 1 hour in a single day.",
+    "ach_hours_daily_2": "Marathon Runner II",
+    "ach_desc_hours_daily_2": "Study for 2 hours in a single day.",
+    "ach_hours_daily_3": "Marathon Runner III",
+    "ach_desc_hours_daily_3": "Study for 4 hours in a single day.",
+    "ach_hours_daily_4": "Marathon Runner IV",
+    "ach_desc_hours_daily_4": "Study for 6 hours in a single day.",
+
+    "ach_hours_total_1": "Dedicated I",
+    "ach_desc_hours_total_1": "Reach 10 hours of total study time.",
+    "ach_hours_total_2": "Dedicated II",
+    "ach_desc_hours_total_2": "Reach 50 hours of total study time.",
+    "ach_hours_total_3": "Dedicated III",
+    "ach_desc_hours_total_3": "Reach 100 hours of total study time.",
+    "ach_hours_total_4": "Dedicated IV",
+    "ach_desc_hours_total_4": "Reach 200 hours of total study time.",
+
+    "ach_record_breaker": "Record Breaker",
+    "ach_desc_record_breaker": "Beat your daily study time record!"
 }

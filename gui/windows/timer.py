@@ -10,134 +10,267 @@ class TimerWindow:
         self.btn_style = btn_style
         self.data = data
         self.callback = callback
-        # Flaga, czy podczas sesji coś zarobiono (żeby nie odświeżać bez sensu)
-        self.session_completed = False
 
-        # Konfiguracja
-        self.WORK_TIME = 25 * 60
-        self.BREAK_TIME = 5 * 60
-        self.time_left = self.WORK_TIME
-        self.total_time_for_progress = self.WORK_TIME
+        self.session_completed = False
         self.is_running = False
         self.timer_id = None
         self.is_mini_mode = False
 
+        self.mode = "pomo"
+
+        self.WORK_TIME = 25 * 60
+        self.BREAK_TIME = 5 * 60
+        self.time_left = self.WORK_TIME
+        self.total_time_for_progress = self.WORK_TIME
+
+        self.stopwatch_seconds = 0
+
         self.win = ctk.CTkToplevel(parent)
         self.win.title(self.txt.get("win_timer_title", "Timer"))
-        self.win.geometry("300x270")
+        self.win.geometry("300x340")
         self.win.resizable(False, False)
         self.win.attributes("-topmost", True)
         self.win.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.setup_ui()
 
-    # ... (metody setup_ui, toggle_mini_mode, open_custom_dialog, format_time, set_mode, toggle_timer, start_timer, stop_timer, reset_timer, count_down, update_display - BEZ ZMIAN) ...
-
     def setup_ui(self):
-        # ... (kod identyczny jak w poprzedniej wersji) ...
-        # Skopiuj ze starego pliku lub zostaw jak jest, zmian tu nie ma
-        self.btn_mini = ctk.CTkButton(self.win, text="—", width=30, height=30, font=("Arial", 16, "bold"),
-                                      fg_color="transparent", text_color="gray", hover_color=("gray90", "gray20"),
-                                      command=self.toggle_mini_mode)
-        self.btn_mini.place(relx=0.96, rely=0.02, anchor="ne")
-        self.mode_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        self.mode_frame.pack(pady=(40, 5), padx=5)
-        self.btn_focus = ctk.CTkButton(self.mode_frame, text=self.txt.get("timer_focus", "Nauka (25m)"), width=80,
-                                       height=25, fg_color="#219653", hover_color="#1e8449",
-                                       command=lambda: self.set_mode("work"))
+        # 1. Przełącznik trybów (TAB)
+        self.tab_mode = ctk.CTkSegmentedButton(self.win,
+                                               values=[self.txt.get("timer_tab_pomo", "Pomodoro"),
+                                                       self.txt.get("timer_tab_stopwatch", "Stopwatch")],
+                                               command=self.switch_tab)
+        self.tab_mode.set(self.txt.get("timer_tab_pomo", "Pomodoro"))
+
+        # 2. SEKCJA POMODORO
+        self.frame_pomo = ctk.CTkFrame(self.win, fg_color="transparent")
+
+        self.mode_frame = ctk.CTkFrame(self.frame_pomo, fg_color="transparent")
+
+        self.btn_focus = ctk.CTkButton(self.mode_frame, text=self.txt.get("timer_focus", "Focus"), width=70, height=25,
+                                       fg_color="#219653", hover_color="#1e8449",
+                                       command=lambda: self.set_pomo_mode("work"))
         self.btn_focus.pack(side="left", padx=2)
-        self.btn_break = ctk.CTkButton(self.mode_frame, text=self.txt.get("timer_break", "Przerwa (5m)"), width=80,
-                                       height=25, fg_color="#3498db", hover_color="#2980b9",
-                                       command=lambda: self.set_mode("break"))
+        self.btn_break = ctk.CTkButton(self.mode_frame, text=self.txt.get("timer_break", "Break"), width=70, height=25,
+                                       fg_color="#3498db", hover_color="#2980b9",
+                                       command=lambda: self.set_pomo_mode("break"))
         self.btn_break.pack(side="left", padx=2)
-        self.btn_custom = ctk.CTkButton(self.mode_frame, text=self.txt.get("timer_custom", "Własny"), width=80,
-                                        height=25, fg_color="#9b59b6", hover_color="#8e44ad",
-                                        command=self.open_custom_dialog)
+        self.btn_custom = ctk.CTkButton(self.mode_frame, text=self.txt.get("timer_custom", "Custom"), width=70,
+                                        height=25,
+                                        fg_color="#9b59b6", hover_color="#8e44ad", command=self.open_custom_dialog)
         self.btn_custom.pack(side="left", padx=2)
-        self.lbl_time = ctk.CTkLabel(self.win, text=self.format_time(self.WORK_TIME), font=("Arial", 60, "bold"))
-        self.lbl_time.pack(pady=(0, 0))
-        self.progress = ctk.CTkProgressBar(self.win, width=240, height=10)
+
+        self.pomo_center_frame = ctk.CTkFrame(self.frame_pomo, fg_color="transparent")
+        self.lbl_time = ctk.CTkLabel(self.pomo_center_frame, text=self.format_time(self.WORK_TIME),
+                                     font=("Arial", 60, "bold"))
+        self.progress = ctk.CTkProgressBar(self.pomo_center_frame, width=240, height=10)
         self.progress.set(1.0)
-        self.progress.pack(pady=(10, 10))
+
+        # 3. SEKCJA STOPER
+        self.frame_stopwatch = ctk.CTkFrame(self.win, fg_color="transparent")
+        self.stopwatch_center_frame = ctk.CTkFrame(self.frame_stopwatch, fg_color="transparent")
+        self.lbl_stopwatch = ctk.CTkLabel(self.stopwatch_center_frame, text="00:00:00", font=("Arial", 50, "bold"),
+                                          text_color="#e67e22")
+        self.lbl_daily_sum = ctk.CTkLabel(self.stopwatch_center_frame, text="Daily: 00:00", font=("Arial", 12),
+                                          text_color="gray")
+
+        # 4. WSPÓLNE STEROWANIE
         self.ctrl_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        self.ctrl_frame.pack(pady=0)
         self.btn_start = ctk.CTkButton(self.ctrl_frame, text=self.txt.get("timer_start", "START"), width=80,
                                        command=self.toggle_timer, **self.btn_style)
         self.btn_start.pack(side="left", padx=5)
         self.btn_reset = ctk.CTkButton(self.ctrl_frame, text=self.txt.get("timer_reset", "RESET"), width=80,
                                        fg_color="gray", hover_color="darkgray", command=self.reset_timer)
         self.btn_reset.pack(side="left", padx=5)
-        self.btn_close_win = ctk.CTkButton(self.win, text=self.txt.get("btn_close", "Zamknij"), width=100, height=25,
-                                           fg_color="transparent", border_width=1, border_color="gray",
-                                           text_color=("gray10", "gray90"), hover_color=("gray80", "gray30"),
-                                           command=self.on_close)
-        self.btn_close_win.pack(pady=(10, 10))
 
-    # ... (resztę metod skopiuj jak w oryginale, zmian nie wymagają) ...
+        # 5. Dolny przycisk Close
+        txt_col = self.btn_style.get("text_color", "black")
+        hover_col = self.btn_style.get("hover_color", "gray")
+        self.btn_close_bottom = ctk.CTkButton(self.win, text=self.txt.get("btn_close", "Close"),
+                                              width=60, height=20,
+                                              fg_color="transparent",
+                                              border_width=1,
+                                              border_color=txt_col,
+                                              text_color=txt_col,
+                                              hover_color=hover_col,
+                                              font=("Arial", 11),
+                                              command=self.on_close)
+
+        # 6. PRZYCISK MINI-MODE
+        self.btn_mini = ctk.CTkButton(self.win, text="—", width=30, height=30, font=("Arial", 16, "bold"),
+                                      fg_color="transparent", text_color="gray", hover_color=("gray90", "gray20"),
+                                      command=self.toggle_mini_mode)
+        self.btn_mini.place(relx=0.96, rely=0.02, anchor="ne")
+
+        # Inicjalne pakowanie
+        self.repack_normal_mode()
+
+    def repack_normal_mode(self):
+        """Przywraca pełny widok okna, resetując kolejność pakowania."""
+
+        # 1. Czyścimy GŁÓWNE kontenery
+        self.tab_mode.pack_forget()
+        self.frame_pomo.pack_forget()
+        self.frame_stopwatch.pack_forget()
+        self.ctrl_frame.pack_forget()
+        self.btn_close_bottom.pack_forget()
+
+        # 2. Zakładki (GÓRA)
+        self.tab_mode.pack(side="top", pady=(10, 5), padx=10)
+
+        # 3. Stopka (DÓŁ - Pakujemy zanim zapakujemy środek z expand=True!)
+        self.btn_close_bottom.pack(side="bottom", pady=(0, 15))
+        self.ctrl_frame.pack(side="bottom", pady=(5, 5))
+
+        # 4. Środek (Wypełnienie)
+        if self.mode == "pomo":
+            # --- POPRAWKA: Czyścimy wewnętrzne elementy Pomodoro, aby wymusić kolejność ---
+            self.mode_frame.pack_forget()
+            self.pomo_center_frame.pack_forget()
+
+            # Teraz pakujemy w dobrej kolejności:
+            self.mode_frame.pack(side="top", pady=(10, 5), padx=5)  # Przyciski na górze ramki
+
+            # Resetujemy pozycje w kontenerze centrującym
+            self.lbl_time.configure(font=("Arial", 60, "bold"))
+            self.lbl_time.pack(expand=True, anchor="s", pady=(0, 5))
+            self.progress.pack(expand=True, anchor="n", pady=(5, 0))
+
+            self.pomo_center_frame.pack(fill="both", expand=True)  # Kontener pośrodku
+            self.frame_pomo.pack(fill="both", expand=True)  # Główna ramka
+        else:
+            # --- POPRAWKA: Czyścimy wewnętrzne elementy Stopera ---
+            self.stopwatch_center_frame.pack_forget()
+
+            # Przywracamy elementy wewnątrz Stopera
+            self.stopwatch_center_frame.pack(fill="both", expand=True)
+
+            self.lbl_stopwatch.configure(font=("Arial", 50, "bold"))
+            self.lbl_stopwatch.pack(expand=True, anchor="s", pady=(0, 5))
+            self.lbl_daily_sum.pack(expand=True, anchor="n", pady=(5, 0))
+
+            self.frame_stopwatch.pack(fill="both", expand=True)
+
+        # Wyciągamy przycisk mini na wierzch
+        self.btn_mini.lift()
+
     def toggle_mini_mode(self):
         if not self.is_mini_mode:
+            # --- PRZEJŚCIE DO MINI ---
             self.is_mini_mode = True
-            self.mode_frame.pack_forget()
-            self.progress.pack_forget()
-            self.ctrl_frame.pack_forget()
-            self.btn_close_win.pack_forget()
             self.btn_mini.configure(text="+")
-            self.win.geometry("200x80")
-            self.lbl_time.pack(pady=(15, 0))
-            self.lbl_time.configure(font=("Arial", 40, "bold"))
+            self.win.geometry("220x90")
+
+            # Ukrywamy zewnętrzne elementy
+            self.tab_mode.pack_forget()
+            self.ctrl_frame.pack_forget()
+            self.btn_close_bottom.pack_forget()
+
+            if self.mode == "pomo":
+                # Ukrywamy przyciski i pasek, zostawiamy kontener
+                self.mode_frame.pack_forget()
+                self.progress.pack_forget()
+
+                # Zmieniamy styl i pozycję licznika (nadal w pomo_center_frame)
+                self.lbl_time.configure(font=("Arial", 45, "bold"))
+                # W trybie mini centrujemy go idealnie
+                self.lbl_time.pack_configure(anchor="center", pady=(15, 0))
+            else:
+                self.lbl_daily_sum.pack_forget()
+
+                self.lbl_stopwatch.configure(font=("Arial", 35, "bold"))
+                self.lbl_stopwatch.pack_configure(anchor="center", pady=(15, 0))
+
         else:
+            # --- POWRÓT DO NORMAL ---
             self.is_mini_mode = False
-            self.btn_mini.configure(text="-")
-            self.win.geometry("300x270")
-            self.lbl_time.configure(font=("Arial", 60, "bold"))
-            self.lbl_time.pack_forget()
-            self.mode_frame.pack(pady=(40, 5))
-            self.lbl_time.pack(pady=(0, 0))
-            self.progress.pack(pady=(10, 10))
-            self.ctrl_frame.pack(pady=0)
-            self.btn_close_win.pack(pady=(10, 10))
+            self.btn_mini.configure(text="—")
+            self.win.geometry("300x340")
 
-    def open_custom_dialog(self):
+            # Przywracamy pełny układ (to naprawi kolejność)
+            self.repack_normal_mode()
+
+    def switch_tab(self, value):
         self.stop_timer()
-        dialog = ctk.CTkToplevel(self.win)
-        dialog.title(self.txt.get("timer_custom_title", "Ustaw czas"))
-        dialog.geometry("250x150")
-        dialog.attributes("-topmost", True)
-        dialog.transient(self.win)
-        dialog.lift()
-        dialog.focus_force()
-        ctk.CTkLabel(dialog, text=self.txt.get("timer_enter_minutes", "Podaj minuty:"), font=("Arial", 12)).pack(
-            pady=(20, 5))
-        entry = ctk.CTkEntry(dialog, width=100)
-        entry.pack(pady=5)
-        entry.focus()
 
-        def on_confirm(event=None):
-            try:
-                minutes = int(entry.get())
-                if minutes > 0:
-                    seconds = minutes * 60
-                    self.time_left = seconds
-                    self.total_time_for_progress = seconds
-                    self.lbl_time.configure(text_color=("#000000", "#ffffff"))
-                    self.update_display()
-                    dialog.destroy()
-                else:
-                    messagebox.showerror("Error", self.txt.get("msg_pos_number_err", "Wpisz liczbę dodatnią."))
-                    dialog.attributes("-topmost", True)
-            except ValueError:
-                messagebox.showerror("Error", self.txt.get("msg_number_err", "To nie jest poprawna liczba."))
-                dialog.attributes("-topmost", True)
+        if self.is_mini_mode:
+            self.toggle_mini_mode()  # Wyjście z mini przy zmianie zakładki
 
-        btn_ok = ctk.CTkButton(dialog, text="OK", width=80, command=on_confirm, **self.btn_style)
-        btn_ok.pack(pady=10)
-        dialog.bind('<Return>', on_confirm)
+        if value == self.txt.get("timer_tab_pomo", "Pomodoro"):
+            self.mode = "pomo"
+        else:
+            self.mode = "stopwatch"
+            self.update_daily_sum_label()
 
-    def format_time(self, seconds):
-        mins, secs = divmod(seconds, 60)
-        return f"{mins:02d}:{secs:02d}"
+        self.repack_normal_mode()
 
-    def set_mode(self, mode):
+    def update_daily_sum_label(self):
+        daily_sec = self.data["global_stats"].get("daily_study_time", 0)
+        mins, secs = divmod(daily_sec, 60)
+        hours, mins = divmod(mins, 60)
+        self.lbl_daily_sum.configure(text=f"Total Today: {hours:02d}:{mins:02d}")
+
+    # --- LOGIKA CZASU (BEZ ZMIAN) ---
+    def increment_daily_stats(self):
+        if "global_stats" not in self.data: return
+        self.data["global_stats"]["daily_study_time"] = self.data["global_stats"].get("daily_study_time", 0) + 1
+        self.data["global_stats"]["total_study_time"] = self.data["global_stats"].get("total_study_time", 0) + 1
+
+        if self.data["global_stats"]["daily_study_time"] % 60 == 0:
+            save(self.data)
+            if self.callback: self.callback()
+
+    def toggle_timer(self):
+        if self.is_running:
+            self.stop_timer()
+        else:
+            self.start_timer()
+
+    def start_timer(self):
+        if not self.is_running:
+            if self.mode == "pomo" and self.time_left <= 0: return
+            self.is_running = True
+            self.btn_start.configure(text=self.txt.get("timer_pause", "PAUSE"), fg_color="#e74c3c",
+                                     hover_color="#c0392b")
+            if self.mode == "pomo":
+                self.count_down()
+            else:
+                self.count_up()
+
+    def stop_timer(self):
+        if self.is_running:
+            self.is_running = False
+            self.btn_start.configure(text=self.txt.get("timer_start", "START"), fg_color="#1f6aa5",
+                                     hover_color="#144870")
+            if self.timer_id: self.win.after_cancel(self.timer_id)
+            save(self.data)
+            if self.callback: self.callback()
+
+    def reset_timer(self):
+        self.stop_timer()
+        if self.mode == "pomo":
+            self.time_left = self.total_time_for_progress
+            self.update_pomo_display()
+        else:
+            self.stopwatch_seconds = 0
+            self.lbl_stopwatch.configure(text="00:00:00")
+
+    def count_down(self):
+        if self.is_running and self.time_left > 0:
+            self.time_left -= 1
+            self.update_pomo_display()
+            is_break = (self.total_time_for_progress == self.BREAK_TIME)
+            if not is_break: self.increment_daily_stats()
+            self.timer_id = self.win.after(1000, self.count_down)
+        elif self.time_left == 0:
+            self.finish_pomo()
+
+    def update_pomo_display(self):
+        self.lbl_time.configure(text=self.format_time(self.time_left))
+        prog = self.time_left / self.total_time_for_progress if self.total_time_for_progress > 0 else 0
+        self.progress.set(prog)
+
+    def set_pomo_mode(self, mode):
         self.stop_timer()
         if mode == "work":
             self.time_left = self.WORK_TIME
@@ -147,107 +280,83 @@ class TimerWindow:
             self.time_left = self.BREAK_TIME
             self.total_time_for_progress = self.BREAK_TIME
             self.lbl_time.configure(text_color="#3498db")
-        self.update_display()
+        self.update_pomo_display()
 
-    def toggle_timer(self):
+    def count_up(self):
         if self.is_running:
-            self.stop_timer()
-        else:
-            self.start_timer()
+            self.stopwatch_seconds += 1
+            m, s = divmod(self.stopwatch_seconds, 60)
+            h, m = divmod(m, 60)
+            self.lbl_stopwatch.configure(text=f"{h:02d}:{m:02d}:{s:02d}")
+            self.increment_daily_stats()
+            if self.stopwatch_seconds % 60 == 0: self.update_daily_sum_label()
+            self.timer_id = self.win.after(1000, self.count_up)
 
-    def start_timer(self):
-        if not self.is_running and self.time_left > 0:
-            self.is_running = True
-            self.btn_start.configure(text=self.txt.get("timer_pause", "PAUZA"), fg_color="#e74c3c",
-                                     hover_color="#c0392b")
-            self.count_down()
+    def format_time(self, seconds):
+        mins, secs = divmod(seconds, 60)
+        return f"{mins:02d}:{secs:02d}"
 
-    def stop_timer(self):
-        if self.is_running:
-            self.is_running = False
-            self.btn_start.configure(text=self.txt.get("timer_start", "START"), fg_color="#1f6aa5",
-                                     hover_color="#144870")
-            if self.timer_id: self.win.after_cancel(self.timer_id)
-
-    def reset_timer(self):
+    def open_custom_dialog(self):
         self.stop_timer()
-        self.time_left = self.total_time_for_progress
-        self.update_display()
-        if self.total_time_for_progress == self.BREAK_TIME:
-            self.lbl_time.configure(text_color="#3498db")
-        else:
-            self.lbl_time.configure(text_color=("#000000", "#ffffff"))
+        dialog = ctk.CTkToplevel(self.win)
+        dialog.title("Set Time")
+        dialog.geometry("250x150")
+        dialog.attributes("-topmost", True)
+        ctk.CTkLabel(dialog, text="Minutes:", font=("Arial", 12)).pack(pady=(20, 5))
+        entry = ctk.CTkEntry(dialog, width=100)
+        entry.pack(pady=5);
+        entry.focus()
 
-    def count_down(self):
-        if self.is_running and self.time_left > 0:
-            self.time_left -= 1
-            self.update_display()
-            self.timer_id = self.win.after(1000, self.count_down)
-        elif self.time_left == 0:
-            self.finish()
+        def on_confirm(event=None):
+            try:
+                mins = int(entry.get())
+                if mins > 0:
+                    self.time_left = mins * 60
+                    self.total_time_for_progress = self.time_left
+                    self.update_pomo_display()
+                    dialog.destroy()
+            except:
+                pass
 
-    def update_display(self):
-        self.lbl_time.configure(text=self.format_time(self.time_left))
-        if self.total_time_for_progress > 0:
-            prog = self.time_left / self.total_time_for_progress
-        else:
-            prog = 0
-        self.progress.set(prog)
+        ctk.CTkButton(dialog, text="OK", width=80, command=on_confirm).pack(pady=10)
+        dialog.bind('<Return>', on_confirm)
 
-    def finish(self):
+    def finish_pomo(self):
         self.stop_timer()
         self.win.bell()
         self.lbl_time.configure(text="00:00", text_color="green")
-        self.progress.set(0)
-        self.win.lift()
-        self.win.attributes("-topmost", True)
-
-        minutes_done = self.total_time_for_progress / 60
-        if minutes_done >= 20:
-            earned_sessions = int(minutes_done / 25)
-            if earned_sessions < 1: earned_sessions = 1
-
-            if "global_stats" not in self.data: self.data["global_stats"] = {}
-            current_count = self.data["global_stats"].get("pomodoro_sessions", 0)
-            self.data["global_stats"]["pomodoro_sessions"] = current_count + earned_sessions
+        mins = self.total_time_for_progress / 60
+        if mins >= 20:
+            earned = max(1, int(mins / 25))
+            self.data["global_stats"]["pomodoro_sessions"] = self.data["global_stats"].get("pomodoro_sessions",
+                                                                                           0) + earned
             save(self.data)
-
-            # Oznaczamy, że w tej sesji okna użytkownik coś osiągnął
             self.session_completed = True
-
-            # Tu NIE wywołujemy callbacku (nie puszczamy fajerwerków jeszcze)
+        self.win.attributes("-topmost", True)
 
     def on_close(self):
         self.stop_timer()
         self.win.destroy()
-
-        # Callback (sprawdzenie osiągnięć i animacja w oknie głównym)
-        # wywołujemy dopiero teraz, gdy okno timera znika.
         if self.session_completed and self.callback:
             self.callback()
 
     def winfo_exists(self):
-        # Sprawdzamy wszystkie popularne nazwy zmiennych, pod którymi może być okno
         for attr in ['window', 'win', 'root', 'toplevel']:
             if hasattr(self, attr):
                 obj = getattr(self, attr)
-                # Sprawdzamy czy obiekt istnieje i czy jest widgetem Tkinter
                 if obj and hasattr(obj, 'winfo_exists'):
-                    # Jeśli okno zostało zniszczone (zamknięte), winfo_exists zwróci 0 (False)
                     try:
                         return bool(obj.winfo_exists())
-                    except Exception:
+                    except:
                         return False
         return False
 
     def lift(self):
-        # To samo dla wyciągania na wierzch
         for attr in ['window', 'win', 'root', 'toplevel']:
             if hasattr(self, attr):
                 obj = getattr(self, attr)
                 if obj and hasattr(obj, 'lift'):
                     try:
-                        obj.lift()
-                        return
-                    except Exception:
+                        obj.lift(); return
+                    except:
                         pass

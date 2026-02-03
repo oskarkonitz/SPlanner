@@ -148,7 +148,7 @@
     "msg_barrier_changed": "Planungseinstellungen geändert. Es wird empfohlen, den Plan neu zu erstellen.",
 
     "menu_addons": "Extras",
-    "menu_timer": "Pomodoro-Timer",
+    "menu_timer": "Timer",
     "timer_focus": "Lernen (25m)",
     "timer_break": "Pause (5m)",
     "timer_custom": "Eigene",
@@ -343,5 +343,33 @@
     "msg_confirm_del_task": "Diese Aufgabe löschen?",
 
     "msg_empty_plan": "Keine Prüfungen.\nKlicken Sie auf 'Prüfung hinzufügen', um zu beginnen!",
-    "msg_empty_todo": "Keine Aufgaben.\nGeben Sie oben eine Aufgabe ein und klicken Sie auf '+'!"
+    "msg_empty_todo": "Keine Aufgaben.\nGeben Sie oben eine Aufgabe ein und klicken Sie auf '+'!",
+
+    "lbl_daily_focus": "Fokus Heute",
+    "timer_tab_pomo": "Pomodoro",
+    "timer_tab_stopwatch": "Stoppuhr",
+
+    "ach_hours_total_100": "Dediziert",
+    "ach_desc_hours_total_100": "Erreiche 100 Stunden Gesamtzeit.",
+
+    "ach_hours_daily_1": "Marathonläufer I",
+    "ach_desc_hours_daily_1": "Lerne 1 Stunde an einem Tag.",
+    "ach_hours_daily_2": "Marathonläufer II",
+    "ach_desc_hours_daily_2": "Lerne 2 Stunden an einem Tag.",
+    "ach_hours_daily_3": "Marathonläufer III",
+    "ach_desc_hours_daily_3": "Lerne 4 Stunden an einem Tag.",
+    "ach_hours_daily_4": "Marathonläufer IV",
+    "ach_desc_hours_daily_4": "Lerne 6 Stunden an einem Tag.",
+
+    "ach_hours_total_1": "Dediziert I",
+    "ach_desc_hours_total_1": "Erreiche 10 Stunden Gesamtzeit.",
+    "ach_hours_total_2": "Dediziert II",
+    "ach_desc_hours_total_2": "Erreiche 50 Stunden Gesamtzeit.",
+    "ach_hours_total_3": "Dediziert III",
+    "ach_desc_hours_total_3": "Erreiche 100 Stunden Gesamtzeit.",
+    "ach_hours_total_4": "Dediziert IV",
+    "ach_desc_hours_total_4": "Erreiche 200 Stunden Gesamtzeit.",
+
+    "ach_record_breaker": "Rekordbrecher",
+    "ach_desc_record_breaker": "Schlage deinen täglichen Lernzeitrekord!"
 }

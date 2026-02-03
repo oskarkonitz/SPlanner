@@ -148,7 +148,7 @@
     "msg_barrier_changed": "Configuración de planificación cambiada. Se recomienda regenerar el plan.",
 
     "menu_addons": "Extras",
-    "menu_timer": "Temporizador Pomodoro",
+    "menu_timer": "Temporizador",
     "timer_focus": "Estudio (25m)",
     "timer_break": "Descanso (5m)",
     "timer_custom": "Personalizado",
@@ -343,5 +343,33 @@
     "msg_confirm_del_task": "¿Eliminar esta tarea?",
 
     "msg_empty_plan": "Sin exámenes.\n¡Haz clic en 'Añadir Examen' para comenzar!",
-    "msg_empty_todo": "Sin tareas.\n¡Escribe una tarea arriba y haz clic en '+'!"
+    "msg_empty_todo": "Sin tareas.\n¡Escribe una tarea arriba y haz clic en '+'!",
+
+    "lbl_daily_focus": "Foco Diario",
+    "timer_tab_pomo": "Pomodoro",
+    "timer_tab_stopwatch": "Cronómetro",
+
+    "ach_hours_total_100": "Dedicado",
+    "ach_desc_hours_total_100": "Alcanza 100 horas de tiempo total.",
+
+    "ach_hours_daily_1": "Maratonista I",
+    "ach_desc_hours_daily_1": "Estudia 1 hora en un solo día.",
+    "ach_hours_daily_2": "Maratonista II",
+    "ach_desc_hours_daily_2": "Estudia 2 horas en un solo día.",
+    "ach_hours_daily_3": "Maratonista III",
+    "ach_desc_hours_daily_3": "Estudia 4 horas en un solo día.",
+    "ach_hours_daily_4": "Maratonista IV",
+    "ach_desc_hours_daily_4": "Estudia 6 horas en un solo día.",
+
+    "ach_hours_total_1": "Dedicado I",
+    "ach_desc_hours_total_1": "Alcanza 10 horas de tiempo total.",
+    "ach_hours_total_2": "Dedicado II",
+    "ach_desc_hours_total_2": "Alcanza 50 horas de tiempo total.",
+    "ach_hours_total_3": "Dedicado III",
+    "ach_desc_hours_total_3": "Alcanza 100 horas de tiempo total.",
+    "ach_hours_total_4": "Dedicado IV",
+    "ach_desc_hours_total_4": "Alcanza 200 horas de tiempo total.",
+
+    "ach_record_breaker": "Romperécords",
+    "ach_desc_record_breaker": "¡Supera tu récord diario de tiempo de estudio!"
 }
