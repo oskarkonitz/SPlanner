@@ -27,7 +27,15 @@ THEMES = {
         # DateEntry
         "date_entry_bg": "#ffffff",
         "date_entry_fg": "#000000",
-        "date_btn_bg": "#e1e1e1"
+        "date_btn_bg": "#e1e1e1",
+
+        # Tabview
+        "tab_text": "#1a1a1a",
+        "tab_fg": "#e0e0e0",             # Tło paska zakładek
+        "tab_btn_fg": "#e0e0e0",         # Tło nieaktywnej zakładki
+        "tab_btn_hover": "#d6d6d6",
+        "tab_btn_selected": "#ffffff",   # Aktywna zakładka (biała)
+        "tab_btn_text": "#1a1a1a",
     },
     "dark": {
         "mode": "Dark",
@@ -52,7 +60,15 @@ THEMES = {
         # DateEntry
         "date_entry_bg": "#343638",
         "date_entry_fg": "#ffffff",
-        "date_btn_bg": "#4a4a4a"
+        "date_btn_bg": "#4a4a4a",
+
+        # Tabview
+        "tab_text": "#e0e0e0",
+        "tab_fg": "#2b2b2b",             # Tło paska zakładek
+        "tab_btn_fg": "#2b2b2b",         # Tło nieaktywnej zakładki
+        "tab_btn_hover": "#3a3a3a",
+        "tab_btn_selected": "#454545",   # Aktywna zakładka (jaśniejsza szara)
+        "tab_btn_text": "#ffffff",
     }
 }
 
@@ -184,3 +200,14 @@ def apply_theme(app, theme_name):
             tree.tag_configure("overdue", foreground="#888888")
         else:
             tree.tag_configure("overdue", foreground="#555555")
+
+    if hasattr(app, 'tabview'):
+        app.tabview.configure(
+            fg_color=colors["bg_root"],  # Tło zawartości karty
+            segmented_button_fg_color=colors["tab_fg"],  # Tło paska przycisków
+            segmented_button_selected_color=colors["tab_btn_selected"],
+            segmented_button_unselected_color=colors["tab_btn_fg"],
+            segmented_button_selected_hover_color=colors["tab_btn_hover"],
+            segmented_button_unselected_hover_color=colors["tab_btn_hover"],
+            text_color=colors["tab_text"]
+        )

@@ -17,6 +17,7 @@ from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates
 from gui.windows.plan import ToolsDrawer
+from gui.windows.todo import TodoWindow
 
 VERSION = "1.1.1"
 
@@ -240,8 +241,6 @@ class GUI:
         self.btn_exit.bind("<Enter>", on_enter_exit)
         self.btn_exit.bind("<Leave>", on_leave_exit)
 
-        # --- ZMIANA: Tę sekcję wklej ZAMIAST starego kodu przycisków w __init__ ---
-
         self.middle_frame = tk.Frame(self.sidebar)
         self.middle_frame.pack(expand=True, fill="x", padx=15)
 
@@ -255,14 +254,45 @@ class GUI:
         self.btn_3 = ctk.CTkButton(self.middle_frame, text="", **self.btn_style)
         self.btn_3.pack(pady=5, fill="x")
 
-        # Kontener na widok planu
-        self.plan_container = ctk.CTkFrame(self.root, fg_color="transparent", corner_radius=0)
-        self.plan_container.grid(row=0, column=1, sticky="nsew")
+        self.tabview = ctk.CTkTabview(self.root, corner_radius=0)
+        self.tabview.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+        self.tabview._segmented_button.grid_configure(pady=(10, 5))
+        self.tabview._segmented_button.configure(corner_radius=20, height=32)
 
-        # --- WAŻNA POPRAWKA: selection_callback wskazuje na update_sidebar_buttons ---
-        self.plan_view = PlanWindow(parent=self.plan_container, txt=self.txt, data=self.data, btn_style=self.btn_style,
+        # --- KONFIGURACJA ZMIANY ZAKŁADEK ---
+        self.tabview.configure(command=self.on_tab_change)
+
+        self.tab_plan = self.tabview.add(self.txt.get("tab_plan", "Study Plan"))
+        self.tab_todo = self.tabview.add(self.txt.get("tab_todo", "Daily Tasks"))
+
+        self.tab_plan.grid_columnconfigure(0, weight=1)
+        self.tab_plan.grid_rowconfigure(0, weight=1)
+        self.tab_todo.grid_columnconfigure(0, weight=1)
+        self.tab_todo.grid_rowconfigure(0, weight=1)
+
+        # --- ZAKŁADKA 1: PLAN NAUKI ---
+        self.plan_view = PlanWindow(parent=self.tab_plan,
+                                    txt=self.txt,
+                                    data=self.data,
+                                    btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
-                                    selection_callback=self.update_sidebar_buttons)
+                                    selection_callback=self.update_sidebar_buttons,
+                                    drawer_parent=self.root)
+
+        # --- ZAKŁADKA 2: TODO LIST ---
+
+        self.todo_view = TodoWindow(parent=self.tab_todo,
+                                    txt=self.txt,
+                                    data=self.data,
+                                    btn_style=self.btn_style,
+                                    dashboard_callback=self.refresh_dashboard)
+
+        # --- KONFIGURACJA ZDARZEŃ ---
+        # Musimy obsłużyć odznaczanie w obu zakładkach
+        self.update_sidebar_buttons("idle", "idle", "idle")
+
+        # Odznaczanie po kliknięciu w tło (dla Planu)
+        self.sidebar.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
 
         # --- NOWOŚĆ: WYMUSZAMY ODŚWIEŻENIE PRZYCISKÓW NA STARCIE ---
         # Dzięki temu nie będą szarymi paskami, tylko od razu pokażą "Add Exam", "Archive" itd.
@@ -318,6 +348,18 @@ class GUI:
 
     def menu_refresh(self):
         self.plan_view.refresh_table()
+
+    def on_tab_change(self):
+        # 1. Odznacz wszystko w Planie
+        if hasattr(self, 'plan_view'):
+            self.plan_view.deselect_all()
+
+        # 2. Odznacz wszystko w Todo
+        if hasattr(self, 'todo_view'):
+            self.todo_view.deselect_all()
+
+        # 3. Zresetuj przyciski boczne do stanu "idle" (puste/szare)
+        self.update_sidebar_buttons("idle", "idle", "idle")
 
     def menu_clear_data(self):
         # Pobieramy potwierdzenie od użytkownika
@@ -554,36 +596,90 @@ class GUI:
 
     def refresh_dashboard(self):
         today = date.today()
+        today_str = str(today)
         current_colors = THEMES.get(self.current_theme, THEMES["light"])
         default_text = current_colors["fg_text"]
 
-        # A. Postęp Całkowity
+        # --- 1. DANE Z PLANU NAUKI (EXAMS/TOPICS) ---
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         active_topics = [t for t in self.data["topics"] if t["exam_id"] in active_exams_ids]
-        total = len(active_topics)
-        done = len([t for t in active_topics if t["status"] == "done"])
 
+        plan_total = len(active_topics)
+        plan_done = len([t for t in active_topics if t["status"] == "done"])
+
+        # Plan na dziś
+        today_plan_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == today_str]
+        today_plan_total = len(today_plan_all)
+        today_plan_done = len([t for t in today_plan_all if t["status"] == "done"])
+
+        # --- 2. DANE Z DAILY TASKS (TODO) ---
+        # Zasada: Bierzemy wszystkie z przyszłości/dzisiaj.
+        # Z przeszłości bierzemy TYLKO niezrobione (zaległe).
+
+        todo_list = self.data.get("daily_tasks", [])
+
+        todo_total = 0
+        todo_done = 0
+
+        today_todo_total = 0
+        today_todo_done = 0
+
+        for t in todo_list:
+            t_date = t.get("date", "")
+            is_done = t["status"] == "done"
+
+            # --- Logika ogólna (Total Progress) ---
+            # Jeśli data pusta -> liczymy zawsze
+            if not t_date:
+                todo_total += 1
+                if is_done: todo_done += 1
+
+            # Jeśli data >= Dziś -> liczymy zawsze
+            elif t_date >= today_str:
+                todo_total += 1
+                if is_done: todo_done += 1
+
+                # --- Logika "Na dziś" ---
+                if t_date == today_str:
+                    today_todo_total += 1
+                    if is_done: today_todo_done += 1
+
+            # Jeśli data < Dziś (Przeszłość)
+            else:
+                # Jeśli zrobione -> IGNORUJEMY (historyczne, nie wchodzą w statystyki)
+                if is_done:
+                    continue
+                else:
+                    # Jeśli niezrobione -> ZALEGŁE (wchodzą w Total jako do zrobienia)
+                    todo_total += 1
+                    # todo_done nie zwiększamy, bo jest todo
+
+        # --- 3. SUMOWANIE ---
+        final_total = plan_total + todo_total
+        final_done = plan_done + todo_done
+
+        final_today_total = today_plan_total + today_todo_total
+        final_today_done = today_plan_done + today_todo_done
+
+        # A. Wyświetlanie Total Progress
         prog_val = 0.0
         prog_percent = 0
-        if total > 0:
-            prog_val = done / total
+        if final_total > 0:
+            prog_val = final_done / final_total
             prog_percent = int(prog_val * 100)
 
         self.lbl_progress.configure(
-            text=self.txt["stats_total_progress"].format(done=done, total=total, progress=prog_percent))
+            text=self.txt["stats_total_progress"].format(done=final_done, total=final_total, progress=prog_percent))
         self.animate_bar(self.bar_total, prog_val)
 
-        # B. Postęp Dziś
-        today_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == str(today)]
-        t_tot = len(today_all)
-        t_don = len([t for t in today_all if t["status"] == "done"])
-
-        if t_tot > 0:
-            p_day_val = t_don / t_tot
+        # B. Wyświetlanie Today Progress
+        if final_today_total > 0:
+            p_day_val = final_today_done / final_today_total
             p_day_perc = int(p_day_val * 100)
 
             self.lbl_today.configure(
-                text=self.txt["stats_progress_today"].format(done=t_don, total=t_tot, prog=p_day_perc))
+                text=self.txt["stats_progress_today"].format(done=final_today_done, total=final_today_total,
+                                                             prog=p_day_perc))
 
             if p_day_perc == 100:
                 self.lbl_today.configure(text_color="#00b800")
@@ -610,18 +706,13 @@ class GUI:
             self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
             self.bar_today.set(0)
 
-        # C. Najbliższy egzamin
-        # 1. Sprawdzamy ustawienia godziny
+        # C. Najbliższy egzamin (Bez zmian)
         switch_hour = self.data["settings"].get("next_exam_switch_hour", 24)
         now_hour = datetime.now().hour
 
-        # 2. Decyzja: czy "dzisiaj" już minęło?
-        # Jeśli aktualna godzina >= ustawionej (i nie jest to północ 24), to szukamy od JUTRA
         if switch_hour < 24 and now_hour >= switch_hour:
-            # Szukamy egzaminów TYLKO w przyszłości (> today)
             future_exams = [e for e in self.data["exams"] if date_format(e["date"]) > today]
         else:
-            # Standardowo: szukamy od dzisiaj włącznie (>= today)
             future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
 
         future_exams.sort(key=lambda x: x["date"])

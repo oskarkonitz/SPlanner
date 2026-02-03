@@ -331,5 +331,14 @@
 
     "menu_switch_time": "Pokaż nast. egzamin po...",
     "switch_midnight": "Północy (Domyślnie)",
-    "switch_hour_suffix": ":00"
+    "switch_hour_suffix": ":00",
+
+    "tab_plan": "Plan Nauki",
+    "tab_todo": "Zadania",
+    "todo_placeholder": "Wpisz zadanie...",
+    "col_task": "Zadanie",
+    "lbl_no_date": "Bez daty",
+    "win_date_picker": "Wybierz datę",
+    "win_color_picker_task": "Kolor zadania",
+    "msg_confirm_del_task": "Usunąć to zadanie?"
 }

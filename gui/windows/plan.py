@@ -254,7 +254,7 @@ class ToolsDrawer(ctk.CTkFrame):
 
 # --- GŁÓWNA KLASA OKNA PLANU ---
 class PlanWindow:
-    def __init__(self, parent, txt, data, btn_style, dashboard_callback, selection_callback):
+    def __init__(self, parent, txt, data, btn_style, dashboard_callback, selection_callback, drawer_parent=None):
         self.parent = parent
         self.txt = txt
         self.data = data
@@ -263,11 +263,13 @@ class PlanWindow:
         self.selection_callback = selection_callback
         self.win = parent
 
+        draw_target = drawer_parent if drawer_parent else self.win
+
         self.dragged_item = None
         self.drag_tooltip = None
 
         self.table_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        self.table_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.table_frame.pack(fill="both", expand=True, padx=0, pady=8)
 
         columns = ("data", "przedmiot", "temat")
         self.tree = ttk.Treeview(self.table_frame, columns=columns, show="headings", selectmode="browse")
@@ -312,7 +314,7 @@ class PlanWindow:
         self.tree.bind("<B1-Motion>", self.on_drag_motion)
         self.tree.bind("<ButtonRelease-1>", self.on_drag_drop)
 
-        self.drawer = NoteDrawer(self.win, self.txt, self.btn_style, self.save_data_from_drawer)
+        self.drawer = NoteDrawer(draw_target, self.txt, self.btn_style, self.save_data_from_drawer)
 
         self.refresh_table()
 

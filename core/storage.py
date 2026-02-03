@@ -35,10 +35,20 @@ DEFAULT_DATA = {
         "max_same_subject_per_day": 1,
         "lang": "en",
         "theme": "dark",
+        "next_exam_switch_hour": 24
+    },
+    "global_stats": {
+        "topics_done": 0,
+        "notes_added": 0,
+        "exams_added": 0,
+        "days_off": 0,
+        "pomodoro_sessions": 0,
+        "activity_started": False
     },
     "blocked_dates": [],
     "exams": [],
-    "topics": []
+    "topics": [],
+    "daily_tasks": []  # <--- NOWE POLE
 }
 
 #   FUNKCJA WCZYTUJACA BAZE DANYCH PROGRAMU

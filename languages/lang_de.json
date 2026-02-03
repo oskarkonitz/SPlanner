@@ -331,5 +331,14 @@
 
     "menu_switch_time": "Nächste Prüfung anzeigen ab...",
     "switch_midnight": "Mitternacht (Standard)",
-    "switch_hour_suffix": ":00"
+    "switch_hour_suffix": ":00",
+
+    "tab_plan": "Lernplan",
+    "tab_todo": "Aufgaben",
+    "todo_placeholder": "Aufgabe eingeben...",
+    "col_task": "Aufgabe",
+    "lbl_no_date": "Kein Datum",
+    "win_date_picker": "Datum wählen",
+    "win_color_picker_task": "Aufgabenfarbe",
+    "msg_confirm_del_task": "Diese Aufgabe löschen?"
 }

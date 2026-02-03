@@ -331,5 +331,14 @@
 
     "menu_switch_time": "Show next exam after...",
     "switch_midnight": "Midnight (Default)",
-    "switch_hour_suffix": ":00"
+    "switch_hour_suffix": ":00",
+
+    "tab_plan": "Study Plan",
+    "tab_todo": "Daily Tasks",
+    "todo_placeholder": "Enter task...",
+    "col_task": "Task",
+    "lbl_no_date": "No Date",
+    "win_date_picker": "Select Date",
+    "win_color_picker_task": "Task Color",
+    "msg_confirm_del_task": "Delete this task?"
 }

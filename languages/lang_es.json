@@ -331,5 +331,14 @@
 
     "menu_switch_time": "Mostrar sig. examen después de...",
     "switch_midnight": "Medianoche (Por defecto)",
-    "switch_hour_suffix": ":00"
+    "switch_hour_suffix": ":00",
+
+    "tab_plan": "Plan de Estudio",
+    "tab_todo": "Tareas Diarias",
+    "todo_placeholder": "Escribe una tarea...",
+    "col_task": "Tarea",
+    "lbl_no_date": "Sin fecha",
+    "win_date_picker": "Seleccionar fecha",
+    "win_color_picker_task": "Color de tarea",
+    "msg_confirm_del_task": "¿Eliminar esta tarea?"
 }
