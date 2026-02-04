@@ -977,7 +977,20 @@ class GUI:
             self.lbl_next_exam.configure(text=self.txt["stats_no_upcoming"], text_color="green")
 
         if hasattr(self, 'ach_manager'):
-            self.ach_manager.check_all(silent=False)
+            # Sprawdzamy czy okno timera jest fizycznie otwarte
+            timer_window_open = False
+            if self.timer_window is not None and self.timer_window.winfo_exists():
+                timer_window_open = True
+
+            # Jeśli okno jest otwarte (nawet jak stoi w miejscu) -> tryb cichy (silent=True)
+            # Jeśli okno zamknięte -> tryb głośny (silent=False)
+            is_silent = timer_window_open
+
+            self.ach_manager.check_all(silent=is_silent)
+
+            # Wypuszczamy kolejkę TYLKO gdy okno jest już zamknięte
+            if not is_silent:
+                self.ach_manager.flush_deferred()
 
         self.update_badges_logic()
 

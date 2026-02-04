@@ -42,6 +42,7 @@ class AchievementManager:
         self.txt = txt
         self.data = data
         self.notification_queue = []
+        self.deferred_queue = []
         self.is_showing_popup = False
 
         if "achievements" not in self.data:
@@ -147,7 +148,9 @@ class AchievementManager:
 
         if new_unlocks:
             save(self.data)
-            if not silent:
+            if silent:
+                self.deferred_queue.extend(new_unlocks)
+            else:
                 self.notification_queue.extend(new_unlocks)
                 self.process_queue()
 
@@ -158,6 +161,12 @@ class AchievementManager:
         self.is_showing_popup = True
         icon, title_key, desc_key = self.notification_queue.pop(0)
         UnlockPopup(self.parent, self.txt, icon, title_key, desc_key, on_close=self.on_popup_closed)
+
+    def flush_deferred(self):
+        if self.deferred_queue:
+            self.notification_queue.extend(self.deferred_queue)
+            self.deferred_queue.clear()
+            self.process_queue()
 
     def on_popup_closed(self):
         self.is_showing_popup = False

@@ -335,9 +335,16 @@ class TimerWindow:
         self.win.attributes("-topmost", True)
 
     def on_close(self):
+        # 1. Zatrzymujemy timer (to zapisuje statystyki i wywoła pierwszy refresh - jeszcze w trybie cichym)
         self.stop_timer()
+
+        # 2. Niszczymy okno
         self.win.destroy()
-        if self.session_completed and self.callback:
+
+        # 3. ZAWSZE wywołujemy callback po zniszczeniu okna.
+        # Dzięki temu main.py zobaczy, że okna już nie ma (timer_window_open = False)
+        # i wypuści kolejkę powiadomień (flush_deferred).
+        if self.callback:
             self.callback()
 
     def winfo_exists(self):
