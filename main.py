@@ -174,6 +174,38 @@ class GUI:
 
         settings_menu.add_cascade(label=self.txt.get("menu_colors", "Colors"), menu=colors_menu)
 
+        badges_menu = tk.Menu(settings_menu, tearoff=0)
+
+        # Pobieramy ustawienie (domyślnie "default")
+        current_badge_mode = self.data["settings"].get("badge_mode", "default")
+        self.badge_mode_var = tk.StringVar(value=current_badge_mode)
+
+        # Opcja 1: Domyślne (Liczba)
+        badges_menu.add_radiobutton(
+            label=self.txt.get("badge_default", "Default (Count)"),
+            value="default",
+            variable=self.badge_mode_var,
+            command=lambda: self.set_badge_mode("default")
+        )
+
+        # Opcja 2: Kropka (Dot)
+        badges_menu.add_radiobutton(
+            label=self.txt.get("badge_dot", "Compact (Dot)"),
+            value="dot",
+            variable=self.badge_mode_var,
+            command=lambda: self.set_badge_mode("dot")
+        )
+
+        # Opcja 3: Wyłączone
+        badges_menu.add_radiobutton(
+            label=self.txt.get("badge_off", "Disabled"),
+            value="off",
+            variable=self.badge_mode_var,
+            command=lambda: self.set_badge_mode("off")
+        )
+
+        settings_menu.add_cascade(label=self.txt.get("menu_badges", "Badges"), menu=badges_menu)
+
         settings_menu.add_separator()
         settings_menu.add_command(
             label=self.txt.get("menu_check_updates", "Check for updates"),
@@ -348,6 +380,7 @@ class GUI:
         threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.bind("<Configure>", self.on_window_resize)
 
     def create_badges(self):
         badge_font = ("Arial", 10, "bold")
@@ -402,6 +435,12 @@ class GUI:
 
     def menu_refresh(self):
         self.plan_view.refresh_table()
+
+    def set_badge_mode(self, mode):
+        self.data["settings"]["badge_mode"] = mode
+        save(self.data)
+        # Odświeżamy widok natychmiast
+        self.update_badges_logic()
 
     def on_tab_change(self):
         # 1. Odznacz wszystko w Planie
@@ -648,30 +687,65 @@ class GUI:
 
         _step(0)
 
+    def on_window_resize(self, event):
+        # Sprawdzamy, czy zdarzenie dotyczy głównego okna (self.root).
+        # Zdarzenie <Configure> jest wysyłane dla każdego widgetu, więc musimy filtrować,
+        # żeby kod nie wykonywał się 100 razy na sekundę dla każdego przycisku.
+        if event.widget == self.root:
+            # Ponieważ okno zmieniło rozmiar, pasek zakładek też mógł się przesunąć.
+            # Przeliczamy pozycję ikonek.
+            self.update_badges_logic()
+
     def update_badges_logic(self):
-        # Wymuszamy na systemie przeliczenie pikseli okna
-        self.root.update_idletasks()
+        # 1. Sprawdź tryb wyświetlania
+        mode = self.data["settings"].get("badge_mode", "default")
 
-        # Pobieramy fizyczny pasek z przyciskami
-        seg_btn = self.tabview._segmented_button
-        seg_x = seg_btn.winfo_x()  # Pozycja X lewej krawędzi paska
-        seg_y = seg_btn.winfo_y()  # Pozycja Y górnej krawędzi paska
-        seg_w = seg_btn.winfo_width()  # Całkowita szerokość paska
+        # Jeśli wyłączone -> ukryj i wyjdź
+        if mode == "off":
+            self.badge_plan.place_forget()
+            self.badge_todo.place_forget()
+            return
 
-        # Obliczamy punkty styku (prawy górny róg każdego przycisku)
-        # Zakładamy, że przyciski dzielą pasek po połowie
-        plan_x_px = seg_x + (seg_w / 2) - 10
-        todo_x_px = seg_x + seg_w - 10
-        badge_y_px = seg_y - 12  # Lekko nad paskiem
+        # 2. Konfiguracja wyglądu w zależności od trybu
+        if mode == "dot":
+            size = 10  # Nieco mniejsza kropka (było 12)
+            font_size = 1
+            offset_y = 0  # Było -5. Zmieniamy na 0, żeby kropka zeszła niżej (bliżej środka w pionie)
+            offset_x = -20  # KLUCZOWA ZMIANA: Było 5. Dajemy -20, żeby cofnąć kropkę w lewo na przycisk
+        else:  # default
+            size = 20
+            font_size = 10
+            offset_y = -12
+            offset_x = -10
+
+        # Aktualizacja rozmiaru widgetów (musimy to zrobić tu, bo rozmiar się zmienia)
+        self.badge_plan.configure(width=size, height=size, font=("Arial", font_size, "bold"))
+        self.badge_todo.configure(width=size, height=size, font=("Arial", font_size, "bold"))
+
+        # 3. Pobranie pozycji paska
+        try:
+            seg_btn = self.tabview._segmented_button
+            seg_x = seg_btn.winfo_x()
+            seg_y = seg_btn.winfo_y()
+            seg_w = seg_btn.winfo_width()
+        except AttributeError:
+            return  # Zabezpieczenie przed błędem przy starcie
+
+        # Obliczanie pozycji (z uwzględnieniem offsetów dla trybu dot/default)
+        # Zakładamy podział 50/50 paska
+        plan_x_px = seg_x + (seg_w / 2) + offset_x
+        todo_x_px = seg_x + seg_w + offset_x
+        badge_y_px = seg_y + offset_y
 
         today = date.today()
         today_str = str(today)
 
-        # --- LOGIKA LICZNIKA PLANU ---
+        # --- OBLICZENIA (bez zmian) ---
         active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
         p_overdue = 0
         p_today_todo = 0
         p_today_done = 0
+
         for t in self.data["topics"]:
             if t["exam_id"] not in active_exams_ids: continue
             t_date = t.get("scheduled_date")
@@ -687,17 +761,25 @@ class GUI:
 
         total_p = p_overdue + p_today_todo
 
-        # --- RYSUJEMY ODZNAKĘ PLANU ---
-        if total_p > 0 or p_today_done > 0:
+        # --- RYSOWANIE PLAN BADGE ---
+        should_show_plan = total_p > 0 or p_today_done > 0
+        if should_show_plan:
+            # Ustalanie koloru
             color = "#e74c3c" if p_overdue > 0 else ("#e67e22" if p_today_todo > 0 else "#2ecc71")
-            text = str(total_p) if total_p > 0 else "✓"
+
+            # Ustalanie tekstu: Liczba, Ptaszek lub Pusty (dla kropki)
+            if mode == "dot":
+                text = ""  # Pusta kropka
+            else:
+                text = str(total_p) if total_p > 0 else "✓"
+
             self.badge_plan.configure(fg_color=color, text=text)
             self.badge_plan.place(x=plan_x_px, y=badge_y_px)
             self.badge_plan.lift()
         else:
             self.badge_plan.place_forget()
 
-        # --- LOGIKA LICZNIKA TODO ---
+        # --- OBLICZENIA TODO (bez zmian) ---
         t_overdue = sum(1 for t in self.data.get("daily_tasks", [])
                         if t.get("date", "") < today_str and t["status"] == "todo")
         t_today_todo = sum(1 for t in self.data.get("daily_tasks", [])
@@ -707,19 +789,21 @@ class GUI:
 
         total_t = t_overdue + t_today_todo
 
-        # --- RYSUJEMY ODZNAKĘ TODO ---
-        if total_t > 0 or t_today_done > 0:
+        # --- RYSOWANIE TODO BADGE ---
+        should_show_todo = total_t > 0 or t_today_done > 0
+        if should_show_todo:
             color = "#e74c3c" if t_overdue > 0 else ("#e67e22" if t_today_todo > 0 else "#2ecc71")
-            text = str(total_t) if total_t > 0 else "✓"
+
+            if mode == "dot":
+                text = ""
+            else:
+                text = str(total_t) if total_t > 0 else "✓"
+
             self.badge_todo.configure(fg_color=color, text=text)
             self.badge_todo.place(x=todo_x_px, y=badge_y_px)
             self.badge_todo.lift()
         else:
             self.badge_todo.place_forget()
-
-        # Zawsze wyciągamy na wierzch po umiejscowieniu
-        self.badge_plan.lift()
-        self.badge_todo.lift()
 
     def refresh_dashboard(self):
         today = date.today()
@@ -835,12 +919,23 @@ class GUI:
 
         # 4. CZAS DZIENNY (Obliczanie i wyświetlanie)
         daily_sec = self.data["global_stats"].get("daily_study_time", 0)
-        mins, secs = divmod(daily_sec, 60)
-        hours, mins = divmod(mins, 60)
-        time_str = f"{hours:02d}:{mins:02d}"
 
-        lbl_prefix = self.txt.get("lbl_daily_focus", "Daily Focus")
-        self.lbl_daily_time.configure(text=f"{lbl_prefix}: {time_str}")
+        if daily_sec > 0:
+            # Obliczanie czasu
+            mins, secs = divmod(daily_sec, 60)
+            hours, mins = divmod(mins, 60)
+            time_str = f"{hours:02d}:{mins:02d}"
+
+            # Pobranie tekstu i ustawienie labela
+            lbl_prefix = self.txt.get("lbl_daily_focus", "Today's Focus")
+            self.lbl_daily_time.configure(text=f"{lbl_prefix}: {time_str}")
+
+            # Przywracamy widoczność (parametry takie jak w __init__)
+            # Ponieważ ten element był na samym dole stats_frame, pack() doda go na koniec.
+            self.lbl_daily_time.pack(pady=(5, 0))
+        else:
+            # Jeśli 0, ukrywamy element
+            self.lbl_daily_time.pack_forget()
 
         # C. Najbliższy egzamin (Bez zmian)
         switch_hour = self.data["settings"].get("next_exam_switch_hour", 24)

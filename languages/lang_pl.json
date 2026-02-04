@@ -345,7 +345,7 @@
     "msg_empty_plan": "Brak egzaminów.\nKliknij 'Dodaj Egzamin', aby rozpocząć!",
     "msg_empty_todo": "Brak zadań.\nWpisz zadanie powyżej i kliknij '+', aby dodać!",
 
-    "lbl_daily_focus": "Czas Dziś",
+    "lbl_daily_focus": "Dzisiejsze skupienie",
     "timer_tab_pomo": "Pomodoro",
     "timer_tab_stopwatch": "Stoper",
 
@@ -371,5 +371,10 @@
     "ach_desc_hours_total_4": "Osiągnij 200 godzin całkowitego czasu nauki.",
 
     "ach_record_breaker": "Rekordzista",
-    "ach_desc_record_breaker": "Pobij swój dzienny rekord czasu nauki!"
+    "ach_desc_record_breaker": "Pobij swój dzienny rekord czasu nauki!",
+
+    "menu_badges": "Odznaki",
+    "badge_default": "Domyślne (Licznik)",
+    "badge_dot": "Kompaktowe (Kropka)",
+    "badge_off": "Wyłączone"
 }

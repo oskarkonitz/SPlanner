@@ -345,7 +345,7 @@
     "msg_empty_plan": "Keine Prüfungen.\nKlicken Sie auf 'Prüfung hinzufügen', um zu beginnen!",
     "msg_empty_todo": "Keine Aufgaben.\nGeben Sie oben eine Aufgabe ein und klicken Sie auf '+'!",
 
-    "lbl_daily_focus": "Fokus Heute",
+    "lbl_daily_focus": "Heutiger Fokus",
     "timer_tab_pomo": "Pomodoro",
     "timer_tab_stopwatch": "Stoppuhr",
 
@@ -371,5 +371,10 @@
     "ach_desc_hours_total_4": "Erreiche 200 Stunden Gesamtzeit.",
 
     "ach_record_breaker": "Rekordbrecher",
-    "ach_desc_record_breaker": "Schlage deinen täglichen Lernzeitrekord!"
+    "ach_desc_record_breaker": "Schlage deinen täglichen Lernzeitrekord!",
+
+    "menu_badges": "Hinweismarken",
+    "badge_default": "Standard (Zähler)",
+    "badge_dot": "Kompakt (Punkt)",
+    "badge_off": "Deaktiviert"
 }

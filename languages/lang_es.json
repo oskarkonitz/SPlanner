@@ -345,7 +345,7 @@
     "msg_empty_plan": "Sin exámenes.\n¡Haz clic en 'Añadir Examen' para comenzar!",
     "msg_empty_todo": "Sin tareas.\n¡Escribe una tarea arriba y haz clic en '+'!",
 
-    "lbl_daily_focus": "Foco Diario",
+    "lbl_daily_focus": "Enfoque de hoy",
     "timer_tab_pomo": "Pomodoro",
     "timer_tab_stopwatch": "Cronómetro",
 
@@ -371,5 +371,10 @@
     "ach_desc_hours_total_4": "Alcanza 200 horas de tiempo total.",
 
     "ach_record_breaker": "Romperécords",
-    "ach_desc_record_breaker": "¡Supera tu récord diario de tiempo de estudio!"
+    "ach_desc_record_breaker": "¡Supera tu récord diario de tiempo de estudio!",
+
+    "menu_badges": "Insignias",
+    "badge_default": "Por defecto (Contador)",
+    "badge_dot": "Compacto (Punto)",
+    "badge_off": "Desactivado"
 }

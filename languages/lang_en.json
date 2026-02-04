@@ -345,7 +345,7 @@
     "msg_empty_plan": "No exams added.\nClick 'Add Exam' to start planning!",
     "msg_empty_todo": "No tasks yet.\nType a task above and click '+' to add one!",
 
-    "lbl_daily_focus": "Daily Focus",
+    "lbl_daily_focus": "Today's Focus",
     "timer_tab_pomo": "Pomodoro",
     "timer_tab_stopwatch": "Stopwatch",
 
@@ -371,5 +371,10 @@
     "ach_desc_hours_total_4": "Reach 200 hours of total study time.",
 
     "ach_record_breaker": "Record Breaker",
-    "ach_desc_record_breaker": "Beat your daily study time record!"
+    "ach_desc_record_breaker": "Beat your daily study time record!",
+
+    "menu_badges": "Badges",
+    "badge_default": "Default (Count)",
+    "badge_dot": "Compact (Dot)",
+    "badge_off": "Disabled"
 }
