@@ -2,7 +2,6 @@ import customtkinter as ctk
 import tkinter as tk
 from datetime import date
 from core.planner import date_format
-from core.storage import save
 import random
 import math
 
@@ -37,23 +36,13 @@ class Particle:
 
 # --- MANAGER Z KOLEJKĄ POWIADOMIEŃ ---
 class AchievementManager:
-    def __init__(self, parent_window, txt, data):
+    def __init__(self, parent_window, txt, storage=None):
         self.parent = parent_window
         self.txt = txt
-        self.data = data
+        self.storage = storage
         self.notification_queue = []
         self.deferred_queue = []
         self.is_showing_popup = False
-
-        if "achievements" not in self.data:
-            self.data["achievements"] = []
-        if "global_stats" not in self.data:
-            self.data["global_stats"] = {
-                "topics_done": 0, "notes_added": 0, "exams_added": 0,
-                "days_off": 0, "pomodoro_sessions": 0, "activity_started": False,
-                "had_overdue": False, "daily_study_time": 0, "total_study_time": 0,
-                "all_time_best_time": 0
-            }
 
         self.definitions = [
             ("first_step", "👶", "ach_first_step", "ach_desc_first_step", self._check_first_step, 1),
@@ -135,19 +124,25 @@ class AchievementManager:
         ]
 
     def check_all(self, silent=False):
+        if not self.storage:
+            return
+
+        # Pobieramy listę odblokowanych osiągnięć z bazy SQL
+        unlocked_ids = self.storage.get_achievements()
         new_unlocks = []
+
         for ach_id, icon, title_key, desc_key, check_func, threshold in self.definitions:
-            if ach_id in self.data["achievements"]:
+            if ach_id in unlocked_ids:
                 continue
 
             is_unlocked = check_func(threshold) if threshold is not None else check_func()
 
             if is_unlocked:
-                self.data["achievements"].append(ach_id)
+                # Zapisujemy nowe osiągnięcie w bazie SQL
+                self.storage.add_achievement(ach_id)
                 new_unlocks.append((icon, title_key, desc_key))
 
         if new_unlocks:
-            save(self.data)
             if silent:
                 self.deferred_queue.extend(new_unlocks)
             else:
@@ -173,28 +168,32 @@ class AchievementManager:
         self.parent.after(200, self.process_queue)
 
     def get_current_metric(self, check_func):
+        if not self.storage:
+            return 0
+
+        stats = self.storage.get_global_stats()
+
         if check_func == self._check_first_step:
-            return self.data["global_stats"].get("topics_done", 0)
+            return stats.get("topics_done", 0)
         elif check_func == self._check_balance:
-            return self.data["global_stats"].get("days_off", 0)
+            return stats.get("days_off", 0)
         elif check_func == self._check_scribe:
-            return self.data["global_stats"].get("notes_added", 0)
+            return stats.get("notes_added", 0)
         elif check_func == self._check_encyclopedia:
-            return self.data["global_stats"].get("topics_done", 0)
+            return stats.get("topics_done", 0)
         elif check_func == self._check_time_lord:
-            return self.data["global_stats"].get("pomodoro_sessions", 0)
+            return stats.get("pomodoro_sessions", 0)
         elif check_func == self._check_polyglot:
-            return self.data["global_stats"].get("exams_added", 0)
+            return stats.get("exams_added", 0)
         elif check_func == self._check_session_master:
             return self._get_session_master_count()
         elif check_func == self._check_strategist:
             return self._get_max_strategy_days()
         elif check_func == self._check_daily_hours:
-            # Zwracamy w godzinach
-            sec = self.data["global_stats"].get("daily_study_time", 0)
+            sec = stats.get("daily_study_time", 0)
             return round(sec / 3600, 1)
         elif check_func == self._check_total_hours:
-            sec = self.data["global_stats"].get("total_study_time", 0)
+            sec = stats.get("total_study_time", 0)
             return int(sec / 3600)
         elif check_func == self._check_new_record:
             return 1 if self._check_new_record() else 0
@@ -202,45 +201,57 @@ class AchievementManager:
             return 0
 
     def _check_first_step(self, threshold):
-        return self.data["global_stats"].get("topics_done", 0) >= threshold
+        stats = self.storage.get_global_stats()
+        return stats.get("topics_done", 0) >= threshold
 
     def _check_clean_sheet(self):
         today = date.today()
-        from core.planner import date_format
-        active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
+        # Pobieramy dane z SQL
+        exams = self.storage.get_exams()
+        topics = self.storage.get_topics()
+        stats = self.storage.get_global_stats()
+
+        active_exams_ids = {e["id"] for e in exams if date_format(e["date"]) >= today}
         overdue_count = 0
-        for t in self.data["topics"]:
+
+        for t in topics:
             if t.get("scheduled_date") and date_format(t["scheduled_date"]) < today:
                 if t["status"] == "todo" and t["exam_id"] in active_exams_ids:
                     overdue_count += 1
 
-        had_overdue = self.data["global_stats"].get("had_overdue", False)
+        had_overdue = stats.get("had_overdue", False)
         if overdue_count > 0:
             if not had_overdue:
-                self.data["global_stats"]["had_overdue"] = True
-                save(self.data)
+                # Aktualizujemy flagę w SQL
+                self.storage.update_global_stat("had_overdue", True)
             return False
         else:
             return had_overdue
 
     def _check_balance(self, threshold):
-        return self.data["global_stats"].get("days_off", 0) >= threshold
+        stats = self.storage.get_global_stats()
+        return stats.get("days_off", 0) >= threshold
 
     def _check_scribe(self, threshold):
-        return self.data["global_stats"].get("notes_added", 0) >= threshold
+        stats = self.storage.get_global_stats()
+        return stats.get("notes_added", 0) >= threshold
 
     def _check_encyclopedia(self, threshold):
-        return self.data["global_stats"].get("topics_done", 0) >= threshold
+        stats = self.storage.get_global_stats()
+        return stats.get("topics_done", 0) >= threshold
 
     def _check_time_lord(self, threshold):
-        return self.data["global_stats"].get("pomodoro_sessions", 0) >= threshold
+        stats = self.storage.get_global_stats()
+        return stats.get("pomodoro_sessions", 0) >= threshold
 
     def _check_polyglot(self, threshold):
-        return self.data["global_stats"].get("exams_added", 0) >= threshold
+        stats = self.storage.get_global_stats()
+        return stats.get("exams_added", 0) >= threshold
 
     def _get_session_master_count(self):
+        topics = self.storage.get_topics()
         exam_counts = {}
-        for t in self.data["topics"]:
+        for t in topics:
             eid = t["exam_id"]
             if eid not in exam_counts: exam_counts[eid] = [0, 0]
             exam_counts[eid][0] += 1
@@ -255,9 +266,9 @@ class AchievementManager:
 
     def _get_max_strategy_days(self):
         today = date.today()
-        from core.planner import date_format
+        exams = self.storage.get_exams()
         max_days = 0
-        for e in self.data["exams"]:
+        for e in exams:
             diff = (date_format(e["date"]) - today).days
             if diff > max_days: max_days = diff
         return max_days
@@ -266,22 +277,23 @@ class AchievementManager:
         return self._get_max_strategy_days() >= threshold
 
     def _check_daily_hours(self, threshold_hours):
-        seconds = self.data["global_stats"].get("daily_study_time", 0)
+        stats = self.storage.get_global_stats()
+        seconds = stats.get("daily_study_time", 0)
         return (seconds / 3600) >= threshold_hours
 
     def _check_total_hours(self, threshold_hours):
-        seconds = self.data["global_stats"].get("total_study_time", 0)
+        stats = self.storage.get_global_stats()
+        seconds = stats.get("total_study_time", 0)
         return (seconds / 3600) >= threshold_hours
 
     def _check_new_record(self, threshold=None):
-        current = self.data["global_stats"].get("daily_study_time", 0)
-        best = self.data["global_stats"].get("all_time_best_time", 0)
+        stats = self.storage.get_global_stats()
+        current = stats.get("daily_study_time", 0)
+        best = stats.get("all_time_best_time", 0)
 
-        # --- ZMIANA: Zabezpieczenie przed rekordem 0 (pierwsze użycie) ---
         if best == 0:
             return False
 
-        # Rekord pobity, jeśli czas > best ORAZ minęło co najmniej 60 sekund
         return current > best and current > 60
 
 
@@ -468,10 +480,11 @@ class AccordionItem(ctk.CTkFrame):
 
 
 class AchievementsWindow:
-    def __init__(self, parent, txt, data, btn_style):
+    def __init__(self, parent, txt, storage, btn_style):
         self.txt = txt
-        self.data = data
-        self.manager = AchievementManager(parent, txt, data)
+        self.storage = storage
+        # Inicjalizacja Managera ze storage
+        self.manager = AchievementManager(parent, txt, storage)
         self.win = ctk.CTkToplevel(parent)
         self.win.title(self.txt.get("win_achievements", "Achievements"))
         self.win.geometry("500x650")
@@ -490,7 +503,9 @@ class AchievementsWindow:
                       ).pack(pady=10)
 
     def build_list(self):
-        unlocked_ids = self.data.get("achievements", [])
+        # Pobieramy ID odblokowanych z bazy SQL
+        unlocked_ids = self.storage.get_achievements() if self.storage else []
+
         families = {}
         order = ["first_step", "clean_sheet", "record_breaker", "hours_daily", "hours_total",
                  "balance", "scribe", "encyclopedia", "time_lord", "session_master", "polyglot", "strategist"]

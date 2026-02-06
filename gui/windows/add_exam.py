@@ -4,15 +4,15 @@ import customtkinter as ctk
 from tkcalendar import DateEntry
 from datetime import datetime, timedelta
 import uuid
-from core.storage import save
 from gui.windows.color_picker import ColorPickerWindow
 
 class AddExamWindow:
-    def __init__(self, parent, txt, data, btn_style, callback=None):
+    def __init__(self, parent, txt, data, btn_style, callback=None, storage=None):
         self.txt = txt
         self.data = data
         self.btn_style = btn_style
         self.callback = callback
+        self.storage = storage  # Przechowujemy instancję StorageManagera
 
         #   TWORZENIE NOWEGO OKNA
         self.win = ctk.CTkToplevel(parent)
@@ -101,33 +101,43 @@ class AddExamWindow:
         topics_list = [t.strip() for t in topics.split("\n") if t.strip()]
         exam_id = f"exam_{uuid.uuid4().hex[:8]}"
 
+        # Przygotowanie obiektu egzaminu
         new_exam = {
             "id": exam_id,
             "subject": subject,
             "title": title,
             "date": date_str,
-            "ignore_barrier": self.var_ignore_barrier.get(),
-            "color": self.selected_color  # <--- DODANO TO POLE
+            "ignore_barrier": self.var_ignore_barrier.get(), # StorageManager przekonwertuje bool na int
+            "color": self.selected_color
         }
-        self.data["exams"].append(new_exam)
 
-        # --- AKTUALIZACJA GLOBALNYCH STATYSTYK (Egzaminy) ---
-        if "global_stats" not in self.data: self.data["global_stats"] = {}
-        curr_exams = self.data["global_stats"].get("exams_added", 0)
-        self.data["global_stats"]["exams_added"] = curr_exams + 1
-        # ----------------------------------------------------
+        # Zapis egzaminu przez StorageManager
+        if self.storage:
+            self.storage.add_exam(new_exam)
 
-        for topic in topics_list:
-            self.data["topics"].append({
-                "id": f"topic_{uuid.uuid4().hex[:8]}",
-                "exam_id": exam_id,
-                "name": topic,
-                "status": "todo",
-                "scheduled_date": None,
-                "locked": False
-            })
+            # --- AKTUALIZACJA GLOBALNYCH STATYSTYK (Egzaminy) ---
+            # Pobieramy aktualne statystyki z bazy, inkrementujemy i zapisujemy
+            global_stats = self.storage.get_global_stats()
+            curr_exams = global_stats.get("exams_added", 0)
+            self.storage.update_global_stat("exams_added", curr_exams + 1)
+            # ----------------------------------------------------
 
-        save(self.data)
+            # Zapis tematów przez StorageManager
+            for topic in topics_list:
+                new_topic = {
+                    "id": f"topic_{uuid.uuid4().hex[:8]}",
+                    "exam_id": exam_id,
+                    "name": topic,
+                    "status": "todo",
+                    "scheduled_date": None,
+                    "locked": False,
+                    "note": ""
+                }
+                self.storage.add_topic(new_topic)
+        else:
+            # Fallback (gdyby storage nie został przekazany - dla bezpieczeństwa, choć nie powinno wystąpić)
+            print("[AddExamWindow] CRITICAL: StorageManager not provided!")
+            return
 
         self.win.destroy()
         messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))

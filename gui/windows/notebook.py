@@ -1,16 +1,26 @@
 import customtkinter as ctk
 import tkinter as tk
-from core.storage import save
 
 
 class NotebookWindow:
-    def __init__(self, parent, txt, data, btn_style, exam_data):
+    def __init__(self, parent, txt, btn_style, exam_data, storage=None):
         self.txt = txt
-        self.data = data
         self.btn_style = btn_style
-        self.exam_data = exam_data
+        self.storage = storage
 
-        self.topics = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
+        # 1. Konwersja exam_data na dict, aby umożliwić lokalną modyfikację (notatki)
+        # i zachować zgodność ze strukturą zwracaną przez sqlite3.Row
+        self.exam_data = dict(exam_data)
+
+        # 2. Pobranie tematów bezpośrednio z bazy danych (zamiast z self.data)
+        if self.storage:
+            raw_topics = self.storage.get_topics(exam_id=self.exam_data["id"])
+            # Konwersja sqlite3.Row -> dict dla mutowalności
+            self.topics = [dict(t) for t in raw_topics]
+        else:
+            self.topics = []
+
+        # Sortowanie tematów po dacie
         self.topics.sort(key=lambda x: str(x.get("scheduled_date") or "9999-99-99"))
 
         self.current_item = None
@@ -47,11 +57,12 @@ class NotebookWindow:
         btn_close.pack(side="bottom", anchor="e", padx=20, pady=20)
 
         self.populate_list()
+
+        # Domyślnie ładujemy notatkę główną egzaminu
         self.load_item(self.exam_data, btn_id="exam")
 
     def populate_list(self):
         # 1. Przycisk Egzaminu (Główny)
-        # Usunąłem emotkę folderu, zostawiłem czysty tekst
         btn_exam = ctk.CTkButton(self.left_frame,
                                  text=self.txt.get('notebook_exam_general', 'Ogólne (Egzamin)'),
                                  fg_color="transparent", text_color=("gray10", "gray90"), anchor="w",
@@ -65,9 +76,8 @@ class NotebookWindow:
 
         # 2. Lista Tematów
         for i, topic in enumerate(self.topics):
-            # --- ZMIANA IKON ---
+            # --- Weryfikacja czy istnieje notatka (dla ikony) ---
             has_note = bool(topic.get("note", "").strip())
-            # Używamy ołówka ✎ zamiast emotki, i spacji jeśli brak notatki (bez ikonki kartki)
             prefix = "✎ " if has_note else "   "
 
             # Skrócona nazwa
@@ -84,35 +94,51 @@ class NotebookWindow:
             self.buttons_map[btn_id] = btn
 
     def switch_to(self, new_item, new_btn_id):
+        """Przełącza widok na inny element, zapisując poprzedni."""
         self.save_current_note()
         self.load_item(new_item, new_btn_id)
 
     def load_item(self, item, btn_id):
+        """Ładuje treść notatki do edytora."""
         self.current_item = item
 
+        # Aktualizacja stylu przycisków (aktywny vs nieaktywny)
         for bid, btn in self.buttons_map.items():
             if bid == btn_id:
                 btn.configure(fg_color=("gray80", "gray30"))
             else:
                 btn.configure(fg_color="transparent")
 
-        if item == self.exam_data:
+        # Ustawienie tytułu
+        if item is self.exam_data:
             title = f"{item['subject']} - {self.txt.get('notebook_exam_general', 'Notatki ogólne')}"
         else:
             title = item["name"]
 
         self.lbl_current_title.configure(text=title)
 
+        # Wstawienie treści notatki
         content = item.get("note", "")
         self.text_area.delete("0.0", "end")
         self.text_area.insert("0.0", content)
 
     def save_current_note(self):
-        if self.current_item is not None:
+        """Zapisuje aktualną notatkę do bazy danych przez StorageManager."""
+        if self.current_item is not None and self.storage:
+            # Pobranie tekstu z widgetu (bez dodatkowego entera na końcu)
             new_text = self.text_area.get("0.0", "end-1c")
+
+            # Aktualizacja lokalnego słownika (aby GUI pamiętało zmianę do momentu przeładowania)
             self.current_item["note"] = new_text
-            save(self.data)
+
+            # Zapis do SQL w zależności od typu obiektu
+            # Sprawdzamy tożsamość obiektu, aby rozróżnić Egzamin od Tematu
+            if self.current_item is self.exam_data:
+                self.storage.update_exam(self.current_item)
+            else:
+                self.storage.update_topic(self.current_item)
 
     def on_close(self):
+        """Zapisuje notatkę przy zamknięciu okna."""
         self.save_current_note()
         self.win.destroy()

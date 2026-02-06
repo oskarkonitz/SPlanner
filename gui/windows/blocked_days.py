@@ -1,24 +1,26 @@
 import customtkinter as ctk
 import calendar
 from datetime import date, datetime
-from core.storage import save
 
+
+# Removed 'from core.storage import save' as operations are now handled via storage instance
 
 class BlockedDaysWindow:
-    # Dodałem argument refresh_callback=None
-    def __init__(self, parent, txt, data, btn_style, callback=None, refresh_callback=None):
+    # Updated signature to accept storage
+    def __init__(self, parent, txt, data, btn_style, callback=None, refresh_callback=None, storage=None):
         self.txt = txt
-        self.data = data
+        self.data = data  # Kept for compatibility, but logic uses storage
         self.btn_style = btn_style
-        self.callback = callback  # To jest do generowania planu (Save & Generate)
-        self.refresh_callback = refresh_callback  # To jest do samego odświeżania dashboardu/osiągnięć (Save)
+        self.callback = callback  # Save & Generate
+        self.refresh_callback = refresh_callback  # Save & Refresh Dashboard
+        self.storage = storage  # New StorageManager instance
 
-        # Inicjalizacja listy w danych
-        if "blocked_dates" not in self.data:
-            self.data["blocked_dates"] = []
-
-        # Kopia lokalna do edycji
-        self.local_blocked_dates = self.data["blocked_dates"].copy()
+        # Inicjalizacja listy - pobieranie z StorageManager
+        if self.storage:
+            self.local_blocked_dates = self.storage.get_blocked_dates()
+        else:
+            # Fallback (gdyby storage nie zostal przekazany, choc nie powinno to miec miejsca)
+            self.local_blocked_dates = self.data.get("blocked_dates", []).copy()
 
         self.current_date = date.today()
         self.year = self.current_date.year
@@ -176,26 +178,50 @@ class BlockedDaysWindow:
         self.draw_calendar()
 
     def _update_stats_and_save(self):
-        # Obliczamy różnicę (ile nowych dni zostało zablokowanych)
-        old_set = set(self.data.get("blocked_dates", []))
-        new_set = set(self.local_blocked_dates)
+        if not self.storage:
+            return
 
-        added_days = new_set - old_set
-        count_added = len(added_days)
+        # 1. Synchronizacja listy zablokowanych dat
+        # Pobieramy stan aktualny z bazy, aby wiedzieć co dodać, a co usunąć
+        current_db_dates = set(self.storage.get_blocked_dates())
+        new_local_dates = set(self.local_blocked_dates)
+
+        days_to_add = new_local_dates - current_db_dates
+        days_to_remove = current_db_dates - new_local_dates
+
+        # Usuwamy odznaczone
+        for d in days_to_remove:
+            self.storage.remove_blocked_date(d)
+
+        # Dodajemy nowe
+        for d in days_to_add:
+            self.storage.add_blocked_date(d)
+
+        # 2. Aktualizacja statystyk (Global Stats - days_off)
+        count_added = len(days_to_add)
 
         if count_added > 0:
-            if "global_stats" not in self.data:
-                self.data["global_stats"] = {}
-            current_count = self.data["global_stats"].get("days_off", 0)
-            self.data["global_stats"]["days_off"] = current_count + count_added
+            stats = self.storage.get_global_stats()
+            current_count = stats.get("days_off", 0)
 
-        self.data["blocked_dates"] = self.local_blocked_dates
-        save(self.data)
+            # Upewniamy się, że wartość jest intem (zabezpieczenie)
+            if isinstance(current_count, str):
+                try:
+                    current_count = int(current_count)
+                except ValueError:
+                    current_count = 0
+
+            new_count = current_count + count_added
+            self.storage.update_global_stat("days_off", new_count)
+
+            # Aktualizujemy lokalny słownik data dla spójności w tej sesji (jeśli main go używa)
+            if "global_stats" in self.data:
+                self.data["global_stats"]["days_off"] = new_count
 
     def action_save_only(self):
         self._update_stats_and_save()
         self.win.destroy()
-        # TUTAJ zmiana: wywołujemy odświeżanie dashboardu po zapisie
+        # Wywołujemy odświeżanie dashboardu po zapisie
         if self.refresh_callback:
             self.refresh_callback()
 

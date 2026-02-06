@@ -1,14 +1,14 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from core.storage import save
 
 
 class TimerWindow:
-    def __init__(self, parent, txt, btn_style, data, callback=None):
+    def __init__(self, parent, txt, btn_style, data, storage=None, callback=None):
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
         self.data = data
+        self.storage = storage  # Przechowujemy instancję StorageManager
         self.callback = callback
 
         self.session_completed = False
@@ -210,14 +210,26 @@ class TimerWindow:
         hours, mins = divmod(mins, 60)
         self.lbl_daily_sum.configure(text=f"Total Today: {hours:02d}:{mins:02d}")
 
-    # --- LOGIKA CZASU (BEZ ZMIAN) ---
+    # --- LOGIKA CZASU I STORAGE ---
+
     def increment_daily_stats(self):
         if "global_stats" not in self.data: return
+
+        # 1. Aktualizacja w pamięci (dla płynności UI i wyświetlania w labelu)
         self.data["global_stats"]["daily_study_time"] = self.data["global_stats"].get("daily_study_time", 0) + 1
         self.data["global_stats"]["total_study_time"] = self.data["global_stats"].get("total_study_time", 0) + 1
 
-        if self.data["global_stats"]["daily_study_time"] % 60 == 0:
-            save(self.data)
+        # 2. Zapis do SQL (Persistence) - tylko co 60 sekund
+        # Korzystamy z daily_study_time jako licznika interwału
+        current_daily = self.data["global_stats"]["daily_study_time"]
+        current_total = self.data["global_stats"]["total_study_time"]
+
+        if current_daily % 60 == 0:
+            if self.storage:
+                self.storage.update_global_stat("daily_study_time", current_daily)
+                self.storage.update_global_stat("total_study_time", current_total)
+
+            # Callback dla odświeżenia głównego okna
             if self.callback: self.callback()
 
     def toggle_timer(self):
@@ -243,7 +255,15 @@ class TimerWindow:
             self.btn_start.configure(text=self.txt.get("timer_start", "START"), fg_color="#1f6aa5",
                                      hover_color="#144870")
             if self.timer_id: self.win.after_cancel(self.timer_id)
-            save(self.data)
+
+            # --- FORCE SAVE NA STOP ---
+            # Zapisujemy aktualny stan liczników do SQL, aby nie stracić sekund
+            # z ostatniej niepełnej minuty w przypadku zamknięcia aplikacji.
+            if self.storage and "global_stats" in self.data:
+                stats = self.data["global_stats"]
+                self.storage.update_global_stat("daily_study_time", stats.get("daily_study_time", 0))
+                self.storage.update_global_stat("total_study_time", stats.get("total_study_time", 0))
+
             if self.callback: self.callback()
 
     def reset_timer(self):
@@ -322,28 +342,34 @@ class TimerWindow:
         dialog.bind('<Return>', on_confirm)
 
     def finish_pomo(self):
-        self.stop_timer()
+        self.stop_timer()  # To wywoła zapis czasu (daily/total)
         self.win.bell()
         self.lbl_time.configure(text="00:00", text_color="green")
+
         mins = self.total_time_for_progress / 60
         if mins >= 20:
             earned = max(1, int(mins / 25))
-            self.data["global_stats"]["pomodoro_sessions"] = self.data["global_stats"].get("pomodoro_sessions",
-                                                                                           0) + earned
-            save(self.data)
+
+            # Update memory
+            current_sessions = self.data["global_stats"].get("pomodoro_sessions", 0)
+            new_sessions = current_sessions + earned
+            self.data["global_stats"]["pomodoro_sessions"] = new_sessions
+
+            # Update Storage (SQL)
+            if self.storage:
+                self.storage.update_global_stat("pomodoro_sessions", new_sessions)
+
             self.session_completed = True
         self.win.attributes("-topmost", True)
 
     def on_close(self):
-        # 1. Zatrzymujemy timer (to zapisuje statystyki i wywoła pierwszy refresh - jeszcze w trybie cichym)
+        # 1. Zatrzymujemy timer (to zapisuje statystyki i wywoła refresh)
         self.stop_timer()
 
         # 2. Niszczymy okno
         self.win.destroy()
 
         # 3. ZAWSZE wywołujemy callback po zniszczeniu okna.
-        # Dzięki temu main.py zobaczy, że okna już nie ma (timer_window_open = False)
-        # i wypuści kolejkę powiadomień (flush_deferred).
         if self.callback:
             self.callback()
 
@@ -364,6 +390,7 @@ class TimerWindow:
                 obj = getattr(self, attr)
                 if obj and hasattr(obj, 'lift'):
                     try:
-                        obj.lift(); return
+                        obj.lift();
+                        return
                     except:
                         pass

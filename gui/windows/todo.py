@@ -5,17 +5,20 @@ import customtkinter as ctk
 from datetime import date, timedelta, datetime
 import uuid
 from tkcalendar import Calendar
-from core.storage import save
+
+
+# from core.storage import save  <-- Usunięto, ponieważ używamy teraz self.storage
 
 
 class TodoWindow:
-    # ZMIANA: Dodano argument dashboard_callback
-    def __init__(self, parent, txt, data, btn_style, dashboard_callback):
+    # ZMIANA: Dodano argument storage=None w __init__
+    def __init__(self, parent, txt, data, btn_style, dashboard_callback, storage=None):
         self.parent = parent
         self.txt = txt
         self.data = data
         self.btn_style = btn_style
-        self.dashboard_callback = dashboard_callback  # Zapisujemy callback
+        self.dashboard_callback = dashboard_callback
+        self.storage = storage  # Przypisanie managera
 
         if "daily_tasks" not in self.data:
             self.data["daily_tasks"] = []
@@ -152,14 +155,20 @@ class TodoWindow:
         if not content: return
 
         if self.selected_task_id:
+            # Edycja istniejącego zadania
             for t in self.data["daily_tasks"]:
                 if t["id"] == self.selected_task_id:
                     t["content"] = content
                     t["date"] = date_val
                     t["color"] = self.current_color
+
+                    # Zapis przez managera (UPDATE)
+                    if self.storage:
+                        self.storage.update_daily_task(t)
                     break
             self.deselect_all()
         else:
+            # Tworzenie nowego zadania
             new_task = {
                 "id": str(uuid.uuid4()),
                 "content": content,
@@ -168,14 +177,17 @@ class TodoWindow:
                 "date": date_val,
                 "color": self.current_color
             }
-            self.data["daily_tasks"].append(new_task)
+
+            # Zapis przez managera (ADD)
+            if self.storage:
+                self.storage.add_daily_task(new_task)
+
             self.entry_task.delete(0, "end")
             self.current_color = None
             self.btn_color.configure(fg_color="transparent")
 
-        save(self.data)
+        # USUNIĘTO: save(self.data) - zastąpione metodami storage
         self.refresh_table()
-        # ZMIANA: Wywołanie odświeżania statystyk
         if self.dashboard_callback: self.dashboard_callback()
 
     def on_select(self, event):
@@ -218,6 +230,11 @@ class TodoWindow:
             self.deselect_all()
 
     def refresh_table(self):
+        # [FIX] Pobierz zawsze świeże dane z DB przed rysowaniem
+        if self.storage:
+            # Pobieramy i konwertujemy Row -> dict
+            self.data["daily_tasks"] = [dict(t) for t in self.storage.get_daily_tasks()]
+
         sel_id = self.selected_task_id
 
         for item in self.tree.get_children():
@@ -227,9 +244,7 @@ class TodoWindow:
 
         tasks = self.data.get("daily_tasks", [])
 
-        # Nawet jeśli tasks nie jest puste, musimy sprawdzić, czy coś się WYŚWIETLI
         if not tasks:
-            # Baza pusta
             self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
             self.lbl_empty.lift()
             return
@@ -249,7 +264,7 @@ class TodoWindow:
                 overdue_tasks.append(t)
             elif t_date >= today_str or t["status"] == "done":
                 if t["status"] == "done" and t_date < today_str:
-                    continue  # Ukrywamy stare zrobione
+                    continue
                 upcoming_tasks.append(t)
 
         # --- RYSOWANIE TABELI ---
@@ -282,8 +297,6 @@ class TodoWindow:
         if sel_id and self.tree.exists(sel_id):
             self.tree.selection_set(sel_id)
 
-        # --- LOGIKA PUSTEGO STANU (ZMODYFIKOWANA) ---
-        # Jeśli nie ma nic zaległego I nic nadchodzącego (czyli są same stare zrobione) -> Pusto
         if not overdue_tasks and not upcoming_tasks:
             self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
             self.lbl_empty.lift()
@@ -319,9 +332,12 @@ class TodoWindow:
         tomorrow = date.today() + timedelta(days=1)
         task["date"] = str(tomorrow)
 
-        save(self.data)
+        # Zapis przez managera (UPDATE)
+        if self.storage:
+            self.storage.update_daily_task(task)
+
+        # USUNIĘTO: save(self.data)
         self.refresh_table()
-        # ZMIANA: Wywołanie odświeżania statystyk
         if self.dashboard_callback: self.dashboard_callback()
 
     def toggle_status(self, event=None):
@@ -335,11 +351,14 @@ class TodoWindow:
         for t in self.data["daily_tasks"]:
             if t["id"] == item_id:
                 t["status"] = "done" if t["status"] == "todo" else "todo"
+
+                # Zapis przez managera (UPDATE)
+                if self.storage:
+                    self.storage.update_daily_task(t)
                 break
 
-        save(self.data)
+        # USUNIĘTO: save(self.data)
         self.refresh_table()
-        # ZMIANA: Wywołanie odświeżania statystyk
         if self.dashboard_callback: self.dashboard_callback()
 
     def delete_task(self, event=None):
@@ -353,11 +372,13 @@ class TodoWindow:
         msg = self.txt.get("msg_confirm_del_task", "Delete this task?")
 
         if messagebox.askyesno(title, msg):
-            self.data["daily_tasks"] = [t for t in self.data["daily_tasks"] if t["id"] != item_id]
-            save(self.data)
+            # Zapis przez managera (DELETE)
+            if self.storage:
+                self.storage.delete_daily_task(item_id)
+
+            # USUNIĘTO: save(self.data)
             self.deselect_all()
             self.refresh_table()
-            # ZMIANA: Wywołanie odświeżania statystyk
             if self.dashboard_callback: self.dashboard_callback()
 
     def show_context_menu(self, event):

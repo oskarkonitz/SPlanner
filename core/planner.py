@@ -10,12 +10,14 @@ def date_format(text):
 
 
 #   FUNKCJA TWORZACA PUSTA TABLICE KALENDARZA
-def callendar_create(data, tday):
+def callendar_create(storage, tday):
     callendar = {}
+    exams = storage.get_exams()
 
     # Tworzymy zakres dat od dziś do najdalszego egzaminu
     max_date = tday
-    for exam in data["exams"]:
+    for exam in exams:
+        # sqlite3.Row pozwala na dostęp jak do słownika
         exam_date = date_format(exam["date"])
         if exam_date > max_date:
             max_date = exam_date
@@ -27,9 +29,10 @@ def callendar_create(data, tday):
         curr -= timedelta(days=1)
 
     # Wstawiamy znaczniki egzaminów "E"
-    for exam in data["exams"]:
+    for exam in exams:
         # Sprawdzamy czy egzamin ma być ignorowany jako bariera
-        if exam.get("ignore_barrier", False):
+        # W bazie int 0/1, python traktuje 0 jako False, co zachowuje logikę
+        if exam["ignore_barrier"]:
             continue  # Nie wstawiamy "E", algorytm nie zobaczy tu ściany
 
         exam_date = date_format(exam["date"])
@@ -40,13 +43,15 @@ def callendar_create(data, tday):
 
 
 #   FUNKCJA TWORZACA LISTE TEMATOW DO WSTAWIENIA W KALENDARZ
-def topics_list_create(data, e_id, only_unscheduled=False):
+def topics_list_create(storage, e_id, only_unscheduled=False):
     topics_list = []
     today = date.today()
+    exams = storage.get_exams()
+    all_topics = storage.get_topics()
 
     # Znajdź datę egzaminu
     exam_date = None
-    for exam in data["exams"]:
+    for exam in exams:
         if exam["id"] == e_id:
             exam_date = date_format(exam["date"])
             break
@@ -55,16 +60,17 @@ def topics_list_create(data, e_id, only_unscheduled=False):
         return topics_list
 
     # Zbierz tematy
-    for topic in data["topics"]:
-        # Sprawdzamy standardowe warunki
+    for topic in all_topics:
+        # Sprawdzamy standardowe warunki (Row obsługuje dostęp przez klucz)
+        # topic['locked'] to int 0/1, co działa poprawnie z 'not' (not 0 -> True)
         is_valid = (topic["exam_id"] == e_id and
                     topic["status"] == "todo" and
-                    not topic.get("locked", False))
+                    not topic["locked"])
 
         if is_valid:
             # Filtracja dla trybu "Doplanuj"
             if only_unscheduled:
-                if not topic.get("scheduled_date"):
+                if not topic["scheduled_date"]:
                     topics_list.append(topic["id"])
             else:
                 topics_list.append(topic["id"])
@@ -73,15 +79,17 @@ def topics_list_create(data, e_id, only_unscheduled=False):
 
 
 #   GLOWNA FUNKCJA PLANUJACA
-def plan(data, only_unscheduled=False):
+def plan(storage, only_unscheduled=False):
     today = date.today()
-    blocked_set = set(data.get("blocked_dates", []))
+    # Pobieramy blocked_dates z DB
+    blocked_set = set(storage.get_blocked_dates())
+    exams = storage.get_exams()
 
     # Tworzymy strukturę kalendarza
-    callendar = callendar_create(data, today)
+    callendar = callendar_create(storage, today)
 
     # Iterujemy po egzaminach
-    for exam in data["exams"]:
+    for exam in exams:
         exam_date = date_format(exam["date"])
         if exam_date <= today:
             continue
@@ -97,8 +105,8 @@ def plan(data, only_unscheduled=False):
 
         start_study_date = scan_date
 
-        # Pobieramy tematy
-        t_list = topics_list_create(data, exam["id"], only_unscheduled)
+        # Pobieramy tematy (przekazujemy storage zamiast data)
+        t_list = topics_list_create(storage, exam["id"], only_unscheduled)
 
         if not t_list:
             continue
@@ -170,15 +178,25 @@ def plan(data, only_unscheduled=False):
                         callendar[current_day].append(task_id)
 
     # 5. Zapisanie wyników do bazy danych
+    # Musimy pobrać tematy jako słowniki, aby móc je edytować i odesłać do update_topic
+    all_topics = [dict(t) for t in storage.get_topics()]
+    topics_map = {t["id"]: t for t in all_topics}
+
     if not only_unscheduled:
-        for topic in data["topics"]:
-            if topic["status"] == "todo" and not topic.get("locked", False):
+        for topic in all_topics:
+            if topic["status"] == "todo" and not topic["locked"]:
                 topic["scheduled_date"] = None
 
     for date_key, items in callendar.items():
         for item_id in items:
             if item_id == "E": continue
 
-            for topic in data["topics"]:
-                if topic["id"] == item_id:
-                    topic["scheduled_date"] = date_key
+            if item_id in topics_map:
+                # Konwersja daty na string dla bazy SQL (TEXT)
+                topics_map[item_id]["scheduled_date"] = str(date_key)
+
+    # Commit zmian do StorageManager
+    # Przechodzimy przez wszystkie tematy, bo potencjalnie zresetowaliśmy daty w wielu z nich
+    # (nawet tych, które nie trafiły do callendar w tej iteracji)
+    for topic in all_topics:
+        storage.update_topic(topic)

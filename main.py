@@ -5,7 +5,7 @@ from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date, datetime
 from datetime import date
-from core.storage import load, save, load_language
+from core.storage import StorageManager, DB_PATH, load_language
 from core.planner import date_format
 from gui.windows.plan import PlanWindow
 from gui.windows.manual import ManualWindow
@@ -19,7 +19,8 @@ from core.updater import check_for_updates
 from gui.windows.plan import ToolsDrawer
 from gui.windows.todo import TodoWindow
 
-VERSION = "1.1.2"
+VERSION = "2.0.0"
+
 
 class GUI:
     def __init__(self, root):
@@ -27,8 +28,13 @@ class GUI:
 
         self.timer_window = None
 
-        #  Ładowanie danych
-        self.data = load()
+        # --- INICJALIZACJA STORAGE MANAGER ---
+        self.storage = StorageManager(DB_PATH)
+
+        #  Ładowanie danych (Legacy mirror)
+        #  Tworzymy lokalną kopię danych, aby GUI mogło działać "po staremu"
+        #  do czasu pełnej refaktoryzacji widoków.
+        self.data = self._load_all_legacy()
 
         # --- MIGRACJA DANYCH DO SYSTEMU GLOBALNEGO (PERSISTENT STATS) ---
         if "global_stats" not in self.data:
@@ -36,11 +42,23 @@ class GUI:
 
         # --- ZAPEWNIENIE NOWYCH PÓL TIMERA ---
         gs = self.data["global_stats"]
-        if "daily_study_time" not in gs: gs["daily_study_time"] = 0
-        if "last_study_date" not in gs: gs["last_study_date"] = ""
-        if "all_time_best_time" not in gs: gs["all_time_best_time"] = 0
-        if "total_study_time" not in gs: gs["total_study_time"] = 0
-        save(self.data)
+        updated_stats = False
+        if "daily_study_time" not in gs:
+            gs["daily_study_time"] = 0
+            self.storage.update_global_stat("daily_study_time", 0)
+            updated_stats = True
+        if "last_study_date" not in gs:
+            gs["last_study_date"] = ""
+            self.storage.update_global_stat("last_study_date", "")
+            updated_stats = True
+        if "all_time_best_time" not in gs:
+            gs["all_time_best_time"] = 0
+            self.storage.update_global_stat("all_time_best_time", 0)
+            updated_stats = True
+        if "total_study_time" not in gs:
+            gs["total_study_time"] = 0
+            self.storage.update_global_stat("total_study_time", 0)
+            updated_stats = True
 
         # --- LOGIKA NOWEGO DNIA (RESET LICZNIKA) ---
         today_str = str(date.today())
@@ -56,16 +74,21 @@ class GUI:
             # Sprawdź czy był rekord przed resetem
             if daily > best:
                 gs["all_time_best_time"] = daily
+                self.storage.update_global_stat("all_time_best_time", daily)
                 # FIX: Jeśli to nie pierwszy dzień (best > 0) i nie ma jeszcze osiągnięcia -> ZAPISZ DO POWIADOMIENIA
                 if best > 0 and "record_breaker" not in self.data["achievements"]:
                     self.data["achievements"].append("record_breaker")
+                    self.storage.add_achievement("record_breaker")
                     # Dodajemy do kolejki: (ikona, klucz_tytuł, klucz_opis)
                     self.pending_unlocks.append(("🚀", "ach_record_breaker", "ach_desc_record_breaker"))
 
             # Reset na nowy dzień
             gs["daily_study_time"] = 0
             gs["last_study_date"] = today_str
-            save(self.data)
+
+            # Aktualizacja w bazie
+            self.storage.update_global_stat("daily_study_time", 0)
+            self.storage.update_global_stat("last_study_date", today_str)
         # ---------------------------------------------------------------
 
         self.status_btn_mode = "default"
@@ -74,7 +97,7 @@ class GUI:
         self.current_lang = self.data["settings"].get("lang", "en")
         self.txt = load_language(self.current_lang)
 
-        self.ach_manager = AchievementManager(self.root, self.txt, self.data)
+        self.ach_manager = AchievementManager(self.root, self.txt, storage=self.storage)
 
         # --- FIX: Wyświetlenie zaległych powiadomień po resecie dnia ---
         if hasattr(self, 'pending_unlocks') and self.pending_unlocks:
@@ -327,6 +350,7 @@ class GUI:
         self.plan_view = PlanWindow(parent=self.tab_plan,
                                     txt=self.txt,
                                     data=self.data,
+                                    storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
                                     selection_callback=self.update_sidebar_buttons,
@@ -337,6 +361,7 @@ class GUI:
         self.todo_view = TodoWindow(parent=self.tab_todo,
                                     txt=self.txt,
                                     data=self.data,
+                                    storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard)
 
@@ -382,6 +407,45 @@ class GUI:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.bind("<Configure>", self.on_window_resize)
 
+    def _load_all_legacy(self):
+        """
+        Rekonstruuje słownik self.data pobierając dane z self.storage.
+        Działa analogicznie do funkcji load() z storage.py, ale przez instancję.
+        """
+        data = {}
+
+        # 1. Settings & Stats
+        data["settings"] = self.storage.get_settings()
+        data["global_stats"] = self.storage.get_global_stats()
+        data["stats"] = self.storage.get_other_stats()
+        if not data["stats"]:
+            data["stats"] = {"pomodoro_count": 0}
+
+        # 2. Exams - konwersja booleana dla GUI
+        raw_exams = self.storage.get_exams()
+        data["exams"] = []
+        for r in raw_exams:
+            d = dict(r)
+            d["ignore_barrier"] = bool(d["ignore_barrier"])
+            data["exams"].append(d)
+
+        # 3. Topics - konwersja booleana dla GUI
+        raw_topics = self.storage.get_topics()
+        data["topics"] = []
+        for r in raw_topics:
+            d = dict(r)
+            d["locked"] = bool(d["locked"])
+            data["topics"].append(d)
+
+        # 4. Tasks
+        data["daily_tasks"] = [dict(r) for r in self.storage.get_daily_tasks()]
+
+        # 5. Simple Lists
+        data["blocked_dates"] = self.storage.get_blocked_dates()
+        data["achievements"] = self.storage.get_achievements()
+
+        return data
+
     def create_badges(self):
         badge_font = ("Arial", 10, "bold")
 
@@ -397,7 +461,7 @@ class GUI:
         )
 
     def _migrate_stats(self):
-        # Stara logika migracji (zachowana dla kompatybilności)
+        # Migracja struktury do słownika (Legacy) oraz aktualizacja Storage
         existing_notes = sum(1 for t in self.data.get("topics", []) if t.get("note", "").strip())
         existing_notes += sum(1 for e in self.data.get("exams", []) if e.get("note", "").strip())
         existing_done = sum(1 for t in self.data.get("topics", []) if t["status"] == "done")
@@ -405,7 +469,7 @@ class GUI:
         existing_blocked = len(self.data.get("blocked_dates", []))
         existing_pomodoro = self.data.get("stats", {}).get("pomodoro_count", 0)
 
-        self.data["global_stats"] = {
+        new_stats = {
             "topics_done": existing_done,
             "notes_added": existing_notes,
             "exams_added": existing_exams,
@@ -413,7 +477,12 @@ class GUI:
             "pomodoro_sessions": existing_pomodoro,
             "activity_started": existing_done > 0
         }
-        save(self.data)
+
+        self.data["global_stats"] = new_stats
+
+        # Zapis do Storage
+        for k, v in new_stats.items():
+            self.storage.update_global_stat(k, v)
 
     def sidebar_add(self):
         self.plan_view.open_add_window()
@@ -438,7 +507,7 @@ class GUI:
 
     def set_badge_mode(self, mode):
         self.data["settings"]["badge_mode"] = mode
-        save(self.data)
+        self.storage.update_setting("badge_mode", mode)
         # Odświeżamy widok natychmiast
         self.update_badges_logic()
 
@@ -456,16 +525,37 @@ class GUI:
 
     def menu_clear_data(self):
         # Pobieramy potwierdzenie od użytkownika
-        if messagebox.askyesno(self.txt.get("msg_confirm", "Confirm"), self.txt.get("msg_clear_confirm", "Clear all data?")):
-            # 1. Resetowanie głównych danych planera
+        if messagebox.askyesno(self.txt.get("msg_confirm", "Confirm"),
+                               self.txt.get("msg_clear_confirm", "Clear all data?")):
+            # 1. Resetowanie głównych danych w GUI Mirror
             self.data["exams"] = []
             self.data["topics"] = []
-            self.data["notes"] = {}
+            self.data["notes"] = {}  # Legacy leftovers
             self.data["blocked_dates"] = []
+            self.data["daily_tasks"] = []
 
-            # 2. Resetowanie Osiągnięć i Statystyk globalnych
+            # 2. Usuwanie danych z Bazy Danych przez StorageManager
+            # Egzaminy (Topics usuną się kaskadowo w bazie, ale dla pewności usuwamy logiką managera jeśli dostępna)
+            # Manager w storage.py nie ma metody clear_all, więc iterujemy:
+
+            # Pobierz aktualne listy z DB, żeby wiedzieć co usunąć
+            existing_exams = self.storage.get_exams()
+            for ex in existing_exams:
+                self.storage.delete_exam(ex['id'])
+
+            existing_tasks = self.storage.get_daily_tasks()
+            for t in existing_tasks:
+                self.storage.delete_daily_task(t['id'])
+
+            existing_blocked = self.storage.get_blocked_dates()
+            for d in existing_blocked:
+                self.storage.remove_blocked_date(d)
+
+            # 3. Resetowanie Osiągnięć i Statystyk globalnych
             self.data["achievements"] = []
-            self.data["global_stats"] = {
+
+            # Statystyki - reset wartości
+            reset_stats = {
                 "topics_done": 0,
                 "notes_added": 0,
                 "exams_added": 0,
@@ -474,18 +564,19 @@ class GUI:
                 "activity_started": False,
                 "had_overdue": False
             }
+            self.data["global_stats"] = reset_stats
 
-            # 3. Zapisanie pustych struktur do pliku
-            save(self.data)
+            for k, v in reset_stats.items():
+                self.storage.update_global_stat(k, v)
 
             # 4. Synchronizacja i odświeżenie widoków
-            self.plan_view.data = self.data  # Ważne: aktualizacja słownika w PlanWindow
+            self.plan_view.data = self.data
             self.plan_view.refresh_table()
             self.refresh_dashboard()
 
             # 5. Reset managera osiągnięć (żeby wyczyścić jego wewnętrzną kolejkę)
             from gui.windows.achievements import AchievementManager
-            self.ach_manager = AchievementManager(self.root, self.txt, self.data)
+            self.ach_manager = AchievementManager(self.root, self.txt, self.data, storage=self.storage)
 
             messagebox.showinfo(self.txt.get("msg_info", "Info"), self.txt.get("msg_data_cleared", "Data cleared!"))
 
@@ -493,7 +584,8 @@ class GUI:
         if new_code == self.data["settings"].get("lang", "en"):
             return
         self.data["settings"]["lang"] = new_code
-        save(self.data)
+        self.storage.update_setting("lang", new_code)
+
         restart = messagebox.askyesno(self.txt["msg_info"], self.txt["msg_lang_changed"])
         if restart:
             self.root.destroy()
@@ -501,13 +593,13 @@ class GUI:
 
     def set_switch_hour(self, hour):
         self.data["settings"]["next_exam_switch_hour"] = hour
-        save(self.data)
+        self.storage.update_setting("next_exam_switch_hour", hour)
         # Odśwież dashboard natychmiast, żeby zobaczyć efekt
         self.refresh_dashboard()
 
     def change_theme(self, theme_name):
         self.data["settings"]["theme"] = theme_name
-        save(self.data)
+        self.storage.update_setting("theme", theme_name)
         self.current_theme = theme_name
         apply_theme(self, theme_name)
 
@@ -519,7 +611,8 @@ class GUI:
             self.data,
             self.btn_style,
             callback=self.menu_gen_plan,
-            refresh_callback=self.refresh_dashboard # <--- TO NAPRAWIA PROBLEM
+            refresh_callback=self.refresh_dashboard,  # <--- TO NAPRAWIA PROBLEM
+            storage=self.storage
         )
 
     def update_sidebar_buttons(self, s1, s2, s3):
@@ -655,13 +748,14 @@ class GUI:
 
     def open_achievements(self):
         from gui.windows.achievements import AchievementsWindow
-        AchievementsWindow(self.root, self.txt, self.data, self.btn_style)
+        AchievementsWindow(self.root, self.txt, self.storage, self.btn_style)
 
     def open_timer(self):
         # Sprawdzamy czy okno już istnieje
         if self.timer_window is None or not self.timer_window.winfo_exists():
             # Przypisujemy instancję do zmiennej self.timer_window
-            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style, self.data, callback=self.refresh_dashboard)
+            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style, self.data,
+                                            callback=self.refresh_dashboard, storage=self.storage)
         else:
             self.timer_window.lift()  # Jeśli istnieje, wyciągamy na wierzch
 
@@ -1001,7 +1095,8 @@ class GUI:
         ManualWindow(self.root, self.txt, self.btn_style)
 
     def open_plan_window(self):
-        PlanWindow(self.root, self.txt, self.data, self.btn_style, dashboard_callback=self.refresh_dashboard)
+        PlanWindow(self.root, self.txt, self.data, self.btn_style,
+                   dashboard_callback=self.refresh_dashboard, storage=self.storage)
 
     def on_close(self):
         # 1. Sprawdzamy czy okno timera istnieje I czy timer odlicza

@@ -1,0 +1,1446 @@
+{
+  "settings": {
+    "max_per_day": 2,
+    "max_same_subject_per_day": 1,
+    "lang": "en",
+    "theme": "dark",
+    "next_exam_switch_hour": 14,
+    "badge_mode": "default"
+  },
+  "exams": [
+    {
+      "id": "exam_2e49b530",
+      "subject": "Matematyka Dyskretna",
+      "title": "Egzamin",
+      "date": "2026-02-06",
+      "note": "49,7% juz jest zdobyte przez cwiczenia\n\nbrakuje 0,3% / 1,3%",
+      "ignore_barrier": false,
+      "color": "#f38a49"
+    },
+    {
+      "id": "exam_d42cfd91",
+      "subject": "Matematyka Elementarna",
+      "title": "Egzamin",
+      "date": "2026-02-03",
+      "note": "godzina 10:00\nsala 1.15\n\n\nZabrac:\n    - Dlugopisy\n    - Legitymacje",
+      "ignore_barrier": false,
+      "color": null
+    },
+    {
+      "id": "exam_2302d5a8",
+      "subject": "Warsztat Programisty",
+      "title": "Kolokwium",
+      "date": "2026-01-28"
+    },
+    {
+      "id": "exam_ed10d4b2",
+      "subject": "Wstęp do Programowania",
+      "title": "Projekt",
+      "date": "2026-02-02",
+      "ignore_barrier": true,
+      "note": "[X] Obliczyc na ktora dokladnie sie zjawic\n\n\t^\n\tBede 2 w kolejce\n\tPrzyjsc na 10:30",
+      "color": "#04f8ee"
+    },
+    {
+      "id": "exam_82fb9671",
+      "subject": "Warsztat Programisty",
+      "title": "Poprawka",
+      "date": "2026-01-23"
+    },
+    {
+      "id": "exam_e3263249",
+      "subject": "Matematyka Dyskretna",
+      "title": "Kolokwium",
+      "date": "2026-01-21"
+    },
+    {
+      "id": "exam_06c8278f",
+      "subject": "Wstęp do Programowania",
+      "title": "Kolokwium",
+      "date": "2026-01-19"
+    },
+    {
+      "id": "exam_e52fd44f",
+      "subject": "Warsztat Programisty",
+      "title": "Sprawdzian",
+      "date": "2026-01-09"
+    },
+    {
+      "id": "exam_1fca41d7",
+      "subject": "Matematyka Elementarna",
+      "title": "Kolokwium",
+      "date": "2026-01-21"
+    },
+    {
+      "id": "exam_94ff9b31",
+      "subject": "Angielski",
+      "title": "Essay",
+      "date": "2025-12-22"
+    },
+    {
+      "id": "exam_4810fee5",
+      "subject": "Warsztat Programisty",
+      "title": "Sprawdzian",
+      "date": "2025-12-19"
+    },
+    {
+      "id": "exam_a3af8c9f",
+      "subject": "Angielski",
+      "title": "Job interview",
+      "date": "2026-01-22"
+    },
+    {
+      "id": "exam_2a7fa4a7",
+      "subject": "Matematyka Elementarna",
+      "title": "Kolokwium",
+      "date": "2025-12-03"
+    },
+    {
+      "id": "exam_065d9118",
+      "subject": "Kolokwium",
+      "title": "Wstęp do Technologii Web",
+      "date": "2025-12-10"
+    },
+    {
+      "id": "exam_aae9631d",
+      "subject": "Wstęp do Technologii Web",
+      "title": "Poprawka",
+      "date": "2026-01-22"
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic_d7bec37c",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Przygotować prezentacje",
+      "status": "done",
+      "scheduled_date": "2026-01-23",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_1f6684a7",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Dodać komentarze w kod",
+      "status": "done",
+      "scheduled_date": "2026-01-23",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_e9d53358",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Źródła w README.md",
+      "status": "done",
+      "scheduled_date": "2026-01-23",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_52bde6c7",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Automatyczne odświeżanie",
+      "status": "done",
+      "scheduled_date": "2026-01-11",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_cfed8dfa",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Dodać przyciski z menu do planu",
+      "status": "done",
+      "scheduled_date": "2026-01-11",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_f79b41b4",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Zrobić żeby ręcznie zmienione daty zostawały niezmienione",
+      "status": "done",
+      "scheduled_date": "2026-01-11",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_ce60fe6c",
+      "exam_id": "exam_82fb9671",
+      "name": "grep",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": false
+    },
+    {
+      "id": "topic_6953434f",
+      "exam_id": "exam_82fb9671",
+      "name": "konflikty git",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": true
+    },
+    {
+      "id": "topic_d761e395",
+      "exam_id": "exam_e3263249",
+      "name": "Stosy",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": false
+    },
+    {
+      "id": "topic_a6f552f4",
+      "exam_id": "exam_e3263249",
+      "name": "Kolejki",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": false
+    },
+    {
+      "id": "topic_2dfb0f7f",
+      "exam_id": "exam_e3263249",
+      "name": "stosy, kolejki, drzewa - wzory i algorytmy",
+      "status": "done",
+      "scheduled_date": "2026-01-20",
+      "locked": true
+    },
+    {
+      "id": "topic_7f834f71",
+      "exam_id": "exam_e3263249",
+      "name": "Teoria grafów - wzory i algorytmy",
+      "status": "done",
+      "scheduled_date": "2026-01-20",
+      "locked": true
+    },
+    {
+      "id": "topic_a852af6f",
+      "exam_id": "exam_e3263249",
+      "name": "Teoria grafów 2",
+      "status": "done",
+      "scheduled_date": "2026-01-20",
+      "locked": false
+    },
+    {
+      "id": "topic_93c7a8a2",
+      "exam_id": "exam_06c8278f",
+      "name": "Instrukcje warunkowe",
+      "status": "done",
+      "scheduled_date": "2026-01-14",
+      "locked": true
+    },
+    {
+      "id": "topic_230b0cee",
+      "exam_id": "exam_06c8278f",
+      "name": "Operatory logiczne",
+      "status": "done",
+      "scheduled_date": "2026-01-14",
+      "locked": true
+    },
+    {
+      "id": "topic_24c8f3be",
+      "exam_id": "exam_06c8278f",
+      "name": "For statement",
+      "status": "done",
+      "scheduled_date": "2026-01-14",
+      "locked": true
+    },
+    {
+      "id": "topic_323121db",
+      "exam_id": "exam_06c8278f",
+      "name": "Listy",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_ee36e563",
+      "exam_id": "exam_06c8278f",
+      "name": "Krotki",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_7f62ca34",
+      "exam_id": "exam_06c8278f",
+      "name": "Dict, Set",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_2e7be9c9",
+      "exam_id": "exam_06c8278f",
+      "name": "Funkcje",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_15d4c6cd",
+      "exam_id": "exam_06c8278f",
+      "name": "Funkcje - struktury danych",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_1ab375ca",
+      "exam_id": "exam_06c8278f",
+      "name": "CRUDS",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_a0011988",
+      "exam_id": "exam_e52fd44f",
+      "name": "git branches",
+      "status": "done",
+      "scheduled_date": "2026-01-08",
+      "locked": false
+    },
+    {
+      "id": "topic_5f517569",
+      "exam_id": "exam_e52fd44f",
+      "name": "git reset",
+      "status": "done",
+      "scheduled_date": "2026-01-08",
+      "locked": false
+    },
+    {
+      "id": "topic_c96e8508",
+      "exam_id": "exam_e52fd44f",
+      "name": "git rebase",
+      "status": "done",
+      "scheduled_date": "2026-01-08",
+      "locked": false
+    },
+    {
+      "id": "topic_c870b9f6",
+      "exam_id": "exam_e52fd44f",
+      "name": "git merge",
+      "status": "done",
+      "scheduled_date": "2026-01-08",
+      "locked": false
+    },
+    {
+      "id": "topic_40b02e47",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Poprawić algorytm planujący",
+      "status": "done",
+      "scheduled_date": "2026-01-12",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_e67c070c",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Przetestować na windowsie",
+      "status": "done",
+      "scheduled_date": "2026-01-12",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_535e39ce",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Zaktualizować instrukcje",
+      "status": "done",
+      "scheduled_date": "2026-01-23",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_5bf34847",
+      "exam_id": "exam_06c8278f",
+      "name": "TESTOWANIE",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": true
+    },
+    {
+      "id": "topic_4573170b",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Wrzucić na szkolne repo",
+      "status": "done",
+      "scheduled_date": "2026-01-16",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_2a910866",
+      "exam_id": "exam_e3263249",
+      "name": "stosy",
+      "status": "done",
+      "scheduled_date": "2026-01-15",
+      "locked": true
+    },
+    {
+      "id": "topic_99e94eea",
+      "exam_id": "exam_e3263249",
+      "name": "kolejki",
+      "status": "done",
+      "scheduled_date": "2026-01-15",
+      "locked": true
+    },
+    {
+      "id": "topic_32839ef8",
+      "exam_id": "exam_e3263249",
+      "name": "drzewa",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": true
+    },
+    {
+      "id": "topic_dea0abf6",
+      "exam_id": "exam_e3263249",
+      "name": "teoria grafów 1",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": true
+    },
+    {
+      "id": "topic_c86e11df",
+      "exam_id": "exam_4810fee5",
+      "name": "case",
+      "status": "done",
+      "scheduled_date": "2025-12-18",
+      "locked": true
+    },
+    {
+      "id": "topic_f7117676",
+      "exam_id": "exam_4810fee5",
+      "name": "przekierowywanie plikow",
+      "status": "done",
+      "scheduled_date": "2025-12-18",
+      "locked": true
+    },
+    {
+      "id": "topic_b16371b0",
+      "exam_id": "exam_4810fee5",
+      "name": "tworzenie plikow",
+      "status": "done",
+      "scheduled_date": "2025-12-18",
+      "locked": true
+    },
+    {
+      "id": "topic_b597f19a",
+      "exam_id": "exam_4810fee5",
+      "name": "porownywanie liczb",
+      "status": "done",
+      "scheduled_date": "2025-12-18",
+      "locked": true
+    },
+    {
+      "id": "topic_af50ae08",
+      "exam_id": "exam_4810fee5",
+      "name": "tablice",
+      "status": "done",
+      "scheduled_date": "2025-12-18",
+      "locked": true
+    },
+    {
+      "id": "topic_5c2cbcfd",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Dodać opcję zmiany języków",
+      "status": "done",
+      "scheduled_date": "2026-01-15",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_fa0f8a61",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Dodać obsługe zapisu w folderach systemowych",
+      "status": "done",
+      "scheduled_date": "2026-01-16",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_1d71f105",
+      "exam_id": "exam_2a7fa4a7",
+      "name": "Logika",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_bb65c99f",
+      "exam_id": "exam_2a7fa4a7",
+      "name": "Kwantyfikatory",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_fa2efaf8",
+      "exam_id": "exam_2a7fa4a7",
+      "name": "Funkcje",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_69914194",
+      "exam_id": "exam_2a7fa4a7",
+      "name": "Relacje",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_bce3c4b9",
+      "exam_id": "exam_2a7fa4a7",
+      "name": "Porządki",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_65db3402",
+      "exam_id": "exam_065d9118",
+      "name": "html",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_5b790321",
+      "exam_id": "exam_065d9118",
+      "name": "css",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_1174ae3e",
+      "exam_id": "exam_065d9118",
+      "name": "scss",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_1b47438a",
+      "exam_id": "exam_065d9118",
+      "name": "grid",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_b526e636",
+      "exam_id": "exam_065d9118",
+      "name": "flex",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_c6e89022",
+      "exam_id": "exam_065d9118",
+      "name": "position",
+      "status": "done",
+      "scheduled_date": null,
+      "locked": false
+    },
+    {
+      "id": "topic_932d7214",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Podzielić do końca program na części",
+      "status": "done",
+      "scheduled_date": "2026-01-15",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_b48a182d",
+      "exam_id": "exam_a3af8c9f",
+      "name": "questions from the list",
+      "status": "done",
+      "scheduled_date": "2026-01-21",
+      "locked": false
+    },
+    {
+      "id": "topic_c5c4a8ac",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Wyeksportować 1. build programnu",
+      "status": "done",
+      "scheduled_date": "2026-01-16",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_bf3d99ea",
+      "exam_id": "exam_1fca41d7",
+      "name": "pochodne",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": false
+    },
+    {
+      "id": "topic_72687c88",
+      "exam_id": "exam_1fca41d7",
+      "name": "pochodne wielu zmiennych",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": false
+    },
+    {
+      "id": "topic_0af5a556",
+      "exam_id": "exam_1fca41d7",
+      "name": "asymptoty",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": false
+    },
+    {
+      "id": "topic_7c82688b",
+      "exam_id": "exam_1fca41d7",
+      "name": "całki",
+      "status": "done",
+      "scheduled_date": "2026-01-20",
+      "locked": true
+    },
+    {
+      "id": "topic_fd11452e",
+      "exam_id": "exam_1fca41d7",
+      "name": "pole zaznaczonego obszaru",
+      "status": "done",
+      "scheduled_date": "2026-01-20",
+      "locked": false
+    },
+    {
+      "id": "topic_40ae765e",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Zmienic nazwe aplikacji w instrukcji",
+      "status": "done",
+      "scheduled_date": "2026-01-16",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_9f306908",
+      "exam_id": "exam_1fca41d7",
+      "name": "wygenerowac pliki powtorkowe",
+      "status": "done",
+      "scheduled_date": "2026-01-16",
+      "locked": true
+    },
+    {
+      "id": "topic_7093efcf",
+      "exam_id": "exam_06c8278f",
+      "name": "Obsluga plikow",
+      "status": "done",
+      "scheduled_date": "2026-01-18",
+      "locked": false
+    },
+    {
+      "id": "topic_7d5d1556",
+      "exam_id": "exam_06c8278f",
+      "name": "przejrzenie zadań",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": true
+    },
+    {
+      "id": "topic_b572b49e",
+      "exam_id": "exam_06c8278f",
+      "name": "rozpisanie algorytmów na kartki",
+      "status": "done",
+      "scheduled_date": "2026-01-19",
+      "locked": true
+    },
+    {
+      "id": "topic_1a7426b8",
+      "exam_id": "exam_e3263249",
+      "name": "Drzewa",
+      "status": "done",
+      "scheduled_date": "2026-01-15",
+      "locked": true
+    },
+    {
+      "id": "topic_9cead527",
+      "exam_id": "exam_aae9631d",
+      "name": "html",
+      "status": "done",
+      "scheduled_date": "2026-01-21",
+      "locked": false
+    },
+    {
+      "id": "topic_15aa5f1d",
+      "exam_id": "exam_aae9631d",
+      "name": "scss",
+      "status": "done",
+      "scheduled_date": "2026-01-21",
+      "locked": false
+    },
+    {
+      "id": "topic_e42d7286",
+      "exam_id": "exam_aae9631d",
+      "name": "grid",
+      "status": "done",
+      "scheduled_date": "2026-01-21",
+      "locked": false
+    },
+    {
+      "id": "topic_36fc0578",
+      "exam_id": "exam_aae9631d",
+      "name": "flex",
+      "status": "done",
+      "scheduled_date": "2026-01-21",
+      "locked": false
+    },
+    {
+      "id": "topic_3abecce7",
+      "exam_id": "exam_82fb9671",
+      "name": "cut",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": false
+    },
+    {
+      "id": "topic_d1f62735",
+      "exam_id": "exam_82fb9671",
+      "name": "cat",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": false
+    },
+    {
+      "id": "topic_d784254f",
+      "exam_id": "exam_82fb9671",
+      "name": "sort",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": false
+    },
+    {
+      "id": "topic_e5b52ce5",
+      "exam_id": "exam_82fb9671",
+      "name": "uniq",
+      "status": "done",
+      "scheduled_date": "2026-01-22",
+      "locked": false
+    },
+    {
+      "id": "topic_38bc930a",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab01 - polecenia",
+      "status": "done",
+      "scheduled_date": "2026-01-25",
+      "locked": true
+    },
+    {
+      "id": "topic_3bf565d3",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab02 - git, skrypty",
+      "status": "done",
+      "scheduled_date": "2026-01-25",
+      "locked": true
+    },
+    {
+      "id": "topic_2037918b",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab03 - konflikty",
+      "status": "done",
+      "scheduled_date": "2026-01-25",
+      "locked": true
+    },
+    {
+      "id": "topic_f5dfa21a",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab04 - praca z tekstem",
+      "status": "done",
+      "scheduled_date": "2026-01-25",
+      "locked": true
+    },
+    {
+      "id": "topic_b2032d39",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab05 - grep",
+      "status": "done",
+      "scheduled_date": "2026-01-25",
+      "locked": true
+    },
+    {
+      "id": "topic_d3f22579",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab07 - bash",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": true
+    },
+    {
+      "id": "topic_30adddec",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab08 - petle i tablice",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": true
+    },
+    {
+      "id": "topic_728badca",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab09 - funkcje, rekurencja",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": true
+    },
+    {
+      "id": "topic_0e8ac398",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab10 - git branch",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": true
+    },
+    {
+      "id": "topic_5172f237",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab11 - git historia",
+      "status": "done",
+      "scheduled_date": "2026-01-27",
+      "locked": true
+    },
+    {
+      "id": "topic_19653331",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab12 - .gitignore, markdown",
+      "status": "done",
+      "scheduled_date": "2026-01-27",
+      "locked": true
+    },
+    {
+      "id": "topic_492c5b32",
+      "exam_id": "exam_2302d5a8",
+      "name": "lab13 - LaTeX",
+      "status": "done",
+      "scheduled_date": "2026-01-27",
+      "locked": true
+    },
+    {
+      "id": "topic_08d1b285",
+      "exam_id": "exam_2302d5a8",
+      "name": "test 01-05 1/3",
+      "status": "done",
+      "scheduled_date": "2026-01-25",
+      "locked": true
+    },
+    {
+      "id": "topic_d509636b",
+      "exam_id": "exam_2302d5a8",
+      "name": "test 07-10 1/3",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": true
+    },
+    {
+      "id": "topic_1d07ab27",
+      "exam_id": "exam_2302d5a8",
+      "name": "test 11-13 1/3",
+      "status": "done",
+      "scheduled_date": "2026-01-27",
+      "locked": true
+    },
+    {
+      "id": "topic_3bf55497",
+      "exam_id": "exam_2302d5a8",
+      "name": "test całość",
+      "status": "done",
+      "scheduled_date": "2026-01-27",
+      "locked": true
+    },
+    {
+      "id": "topic_01ecb9c3",
+      "exam_id": "exam_2302d5a8",
+      "name": "test 01-10 2/3",
+      "status": "done",
+      "scheduled_date": "2026-01-26",
+      "locked": true
+    },
+    {
+      "id": "topic_92db9971",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Przygotować sie do prezentacji",
+      "status": "done",
+      "scheduled_date": "2026-02-01",
+      "locked": true,
+      "note": "[  ] Dokladnie sie dowiedziec jak dzialaja klasy i wszystko w programie w razie pytan\n\n[  ] Przesledzic caly kod programu\n\n[X] Sprawdzic czy w prezentacji wszystko sie zgadza\n\n[X] Dokladnie przeanalizowac jak dziala slownik jezykowy i funkcja .format() dodajaca wartosci do fraz"
+    },
+    {
+      "id": "topic_28553175",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Ostatnie poprawki",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": false,
+      "note": "[X] sprawdzic README.md\n\n[X] sprawdzic czy planner.py robi x/y < w gore | NIE ROBI ALE DZIALA NA 5 i 13 TEAMTOW NA 7 DNI\n\n[X] moze zmienic kolory napisow aby dobrze wygladaly na bialym tle podczas ew prezentacji\n\n[X] zmienic kolory, zeby dobrze wygladaly na windowsie"
+    },
+    {
+      "id": "topic_b4d70845",
+      "exam_id": "exam_ed10d4b2",
+      "name": "[!PROJEKT] redesign UI",
+      "status": "done",
+      "scheduled_date": "2026-01-28",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_646f0659",
+      "exam_id": "exam_ed10d4b2",
+      "name": "[GIT] upewnic sie ze odpowiedni branch jest na odpowiednim repo",
+      "status": "done",
+      "scheduled_date": "2026-01-30",
+      "locked": false,
+      "note": ""
+    },
+    {
+      "id": "topic_8e1e50ba",
+      "exam_id": "exam_2e49b530",
+      "name": "Teoria grafów - Definicje i klasy",
+      "status": "done",
+      "scheduled_date": "2026-02-04",
+      "locked": true
+    },
+    {
+      "id": "topic_898ac7f9",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - Definicje podstawowe",
+      "status": "done",
+      "scheduled_date": "2026-02-04",
+      "locked": true
+    },
+    {
+      "id": "topic_bc7026ff",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - Klasy grafów",
+      "status": "done",
+      "scheduled_date": "2026-02-04",
+      "locked": false
+    },
+    {
+      "id": "topic_7aa887ee",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - Zbior niezalezny, klika",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": true
+    },
+    {
+      "id": "topic_f73af92d",
+      "exam_id": "exam_2e49b530",
+      "name": "Teoria grafów - Twierdzenia i parametry",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": true
+    },
+    {
+      "id": "topic_561dde4b",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - oszacowania",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": true
+    },
+    {
+      "id": "topic_4a7f3cc2",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - cykle",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": true
+    },
+    {
+      "id": "topic_68920858",
+      "exam_id": "exam_2e49b530",
+      "name": "Teoria grafów - Pytania kontrolne",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": true
+    },
+    {
+      "id": "topic_a95e836f",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - (a - f)",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_96f364d6",
+      "exam_id": "exam_2e49b530",
+      "name": "TG - (g - m)",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_fc3ca011",
+      "exam_id": "exam_2e49b530",
+      "name": "Prawdopodobieństwo",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_406dd86f",
+      "exam_id": "exam_2e49b530",
+      "name": "P - Teoria i wzory",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_778f91d9",
+      "exam_id": "exam_2e49b530",
+      "name": "P - Własności / Dowody",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_f541a58a",
+      "exam_id": "exam_2e49b530",
+      "name": "P - zadania praktyczne",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_f874d7a4",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P1",
+      "status": "done",
+      "scheduled_date": "2026-01-29",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_78b6bba0",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P2",
+      "status": "done",
+      "scheduled_date": "2026-01-29",
+      "locked": true
+    },
+    {
+      "id": "topic_9be5d37a",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P3",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_6a69a57e",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P4",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_9b252488",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P5",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_949bc6d2",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P6",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_d48b8ee3",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P7",
+      "status": "done",
+      "scheduled_date": "2026-02-04",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_e54aff60",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P8",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_f5cd9a4b",
+      "exam_id": "exam_2e49b530",
+      "name": "Kombinatoryka P9",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    },
+    {
+      "id": "topic_c642b54a",
+      "exam_id": "exam_d42cfd91",
+      "name": "Logika",
+      "status": "done",
+      "scheduled_date": "2026-01-30",
+      "locked": false,
+      "note": ""
+    },
+    {
+      "id": "topic_9d4c63c1",
+      "exam_id": "exam_d42cfd91",
+      "name": "Kwantyfikatory",
+      "status": "done",
+      "scheduled_date": "2026-01-30",
+      "locked": false,
+      "note": ""
+    },
+    {
+      "id": "topic_1abfcd29",
+      "exam_id": "exam_d42cfd91",
+      "name": "Test 1 / 5",
+      "status": "done",
+      "scheduled_date": "2026-02-01",
+      "locked": true,
+      "note": "zadania na poziomie lekko wiekszym niz ten z prezentacji"
+    },
+    {
+      "id": "topic_6781e9cc",
+      "exam_id": "exam_d42cfd91",
+      "name": "Funkcje",
+      "status": "done",
+      "scheduled_date": "2026-01-30",
+      "locked": false,
+      "note": ""
+    },
+    {
+      "id": "topic_2b3be333",
+      "exam_id": "exam_d42cfd91",
+      "name": "Relacje",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": false,
+      "note": "zrobic kartke z podzialem jaki to porzadek i jakie sa zaleznosci"
+    },
+    {
+      "id": "topic_94207ff6",
+      "exam_id": "exam_d42cfd91",
+      "name": "Test 2 / 5",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_ed8e430e",
+      "exam_id": "exam_d42cfd91",
+      "name": "Porządki",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": false,
+      "note": ""
+    },
+    {
+      "id": "topic_42be7581",
+      "exam_id": "exam_d42cfd91",
+      "name": "Pochodne",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": false,
+      "note": "wypisac na sciadze najwazniejsze wzory\n\nekstrema"
+    },
+    {
+      "id": "topic_665d3732",
+      "exam_id": "exam_d42cfd91",
+      "name": "Test 3 / 5",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_c0440a54",
+      "exam_id": "exam_d42cfd91",
+      "name": "Całki 1",
+      "status": "done",
+      "scheduled_date": "2026-02-01",
+      "locked": true,
+      "note": "wypisac na sciadze najwazniejsze wzory\n\nPowtorzyc:\n    [X] calki nieoznaczone\n    [X] calki oznaczone\n    [X] calki niewlasciwe\n    [X] pole pod wykresem\n    [X] pole ograniczone krzywymi"
+    },
+    {
+      "id": "topic_24b0f4f6",
+      "exam_id": "exam_d42cfd91",
+      "name": "Pochodne cząstkowe, ekstrema",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": true
+    },
+    {
+      "id": "topic_f03d8b18",
+      "exam_id": "exam_d42cfd91",
+      "name": "Test 4 / 5",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": true
+    },
+    {
+      "id": "topic_4bc9213d",
+      "exam_id": "exam_d42cfd91",
+      "name": "Hasjany",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": true
+    },
+    {
+      "id": "topic_6980f0fd",
+      "exam_id": "exam_d42cfd91",
+      "name": "Test Całość",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": false
+    },
+    {
+      "id": "topic_e4d28c72",
+      "exam_id": "exam_d42cfd91",
+      "name": "Wypisać: Logika, Kwantyfikatory, Funkcje",
+      "status": "done",
+      "scheduled_date": "2026-01-30",
+      "locked": false
+    },
+    {
+      "id": "topic_4916d506",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Napisac maila aby zobaczyc kolokwium na prezentacji",
+      "status": "done",
+      "scheduled_date": "2026-01-30",
+      "locked": false
+    },
+    {
+      "id": "topic_91c4eb4e",
+      "exam_id": "exam_d42cfd91",
+      "name": "Wypisać: Relacje, Porządki, Pochodne",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": false,
+      "note": "te 3 sciagi najlepiej na jednej kartce\n\ndla pochodnych te najwazniejsze wzory\n\n[X] Relacje\n[X] Porzadki\n[X] Pochodne\n[X] Ekstrema"
+    },
+    {
+      "id": "topic_c1071abd",
+      "exam_id": "exam_d42cfd91",
+      "name": "Wypisać: Całki",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": true,
+      "note": ""
+    },
+    {
+      "id": "topic_26b38078",
+      "exam_id": "exam_d42cfd91",
+      "name": "Wypisać: Hasjany",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": false
+    },
+    {
+      "id": "topic_4aac2826",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Upewnic sie ze na gicie jest wszystko OK",
+      "status": "done",
+      "scheduled_date": "2026-01-31",
+      "locked": false,
+      "note": "i czy jest to najnowsza wersja programu z przeznaczeniem projektowym\n\ni czy branche sie zgadzaja"
+    },
+    {
+      "id": "topic_2bec45f8",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Posprzatac repozytoria [wszystkie]",
+      "status": "done",
+      "scheduled_date": "2026-02-01",
+      "locked": true,
+      "note": "[X] usunac projektowe pliki z nieprojektowych repozytoriow\n\n[X] posprzatac repo szkolne"
+    },
+    {
+      "id": "topic_1d2a9ad7",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Przygotować przykladowe dane do prezentacji",
+      "status": "done",
+      "scheduled_date": "2026-02-01",
+      "locked": false
+    },
+    {
+      "id": "topic_0cf7b5e7",
+      "exam_id": "exam_ed10d4b2",
+      "name": "Animacja w prezentacji",
+      "status": "done",
+      "scheduled_date": "2026-02-01",
+      "locked": false
+    },
+    {
+      "id": "topic_8bd028f6",
+      "exam_id": "exam_d42cfd91",
+      "name": "Całki 2",
+      "status": "done",
+      "scheduled_date": "2026-02-02",
+      "locked": false,
+      "note": "Powtorzyc:\n    [X] calki nieoznaczone\n    [X] calki oznaczone\n    [X] calki niewlasciwe\n    [X] pole pod wykresem\n    [X] pole ograniczone krzywymi"
+    },
+    {
+      "id": "topic_85a5200e",
+      "exam_id": "exam_2e49b530",
+      "name": "Wypisać izomorfizm",
+      "status": "done",
+      "scheduled_date": "2026-02-05",
+      "locked": false
+    }
+  ],
+  "blocked_dates": [],
+  "achievements": [
+    "first_step",
+    "encyclopedia_1",
+    "encyclopedia_2",
+    "encyclopedia_3",
+    "session_master_1",
+    "session_master_2",
+    "session_master_3",
+    "polyglot_1",
+    "polyglot_2",
+    "polyglot_3",
+    "strategist_1",
+    "strategist_2",
+    "encyclopedia_4",
+    "scribe_1",
+    "session_master_4",
+    "polyglot_4",
+    "clean_sheet",
+    "scribe_2",
+    "time_lord_1",
+    "time_lord_2",
+    "hours_daily_1",
+    "record_breaker",
+    "hours_daily_2",
+    "hours_daily_3"
+  ],
+  "stats": {
+    "pomodoro_count": 3
+  },
+  "global_stats": {
+    "topics_done": 182,
+    "notes_added": 19,
+    "exams_added": 17,
+    "pomodoro_sessions": 18,
+    "days_off": 0,
+    "activity_started": true,
+    "had_overdue": true,
+    "daily_study_time": 0,
+    "last_study_date": "2026-02-06",
+    "all_time_best_time": 15142,
+    "total_study_time": 20005
+  },
+  "daily_tasks": [
+    {
+      "id": "5b0e6939-be6f-4386-91d4-eb31ea6028b9",
+      "content": "Przejechać się bąkiem / naładować akumulator",
+      "status": "done",
+      "created_at": "2026-02-03",
+      "date": "2026-02-03",
+      "color": "#ff6d00"
+    },
+    {
+      "id": "f36ddc5f-d918-461b-8e1c-0036e0483dd2",
+      "content": "Umówić się do Pani Iwonki",
+      "status": "done",
+      "created_at": "2026-02-03",
+      "date": "2026-02-05",
+      "color": "#ff7a00"
+    },
+    {
+      "id": "1f74d80d-d87c-4cec-8cc6-69b081a7ef36",
+      "content": "Wpisac w plan II semestr w kalendarz",
+      "status": "done",
+      "created_at": "2026-02-03",
+      "date": "2026-02-03",
+      "color": null
+    },
+    {
+      "id": "629eaf1f-60a4-4f5e-ab98-ebd94186b27e",
+      "content": "Wypuscic aktualizacje Splannera",
+      "status": "done",
+      "created_at": "2026-02-03",
+      "date": "2026-02-03",
+      "color": null
+    },
+    {
+      "id": "19e4bd59-0222-4683-b731-8188f7316570",
+      "content": "Posprzatac pokoj",
+      "status": "done",
+      "created_at": "2026-02-03",
+      "date": "2026-02-04",
+      "color": null
+    },
+    {
+      "id": "54fed569-0f3c-41ff-b140-62bee6a40bfc",
+      "content": "Posprzatac dokladnie bąka (wyniesc smieci, zebrac butelki i puszki zwrotne)",
+      "status": "todo",
+      "created_at": "2026-02-03",
+      "date": "2026-02-06",
+      "color": "#00ffc6"
+    },
+    {
+      "id": "7f7c601d-6e83-4323-be06-9dd6b612b62d",
+      "content": "Migracja do SQL",
+      "status": "todo",
+      "created_at": "2026-02-03",
+      "date": "2026-02-07",
+      "color": "#ff4c00"
+    },
+    {
+      "id": "bcaa690f-4523-45c3-8496-5e1281671f5e",
+      "content": "Napisac maila o wgląd do kolokwium z WDP",
+      "status": "done",
+      "created_at": "2026-02-03",
+      "date": "2026-02-04",
+      "color": null
+    },
+    {
+      "id": "1a4e6825-af84-4388-b900-494afba2232d",
+      "content": "Dodanie dziennika ocen",
+      "status": "todo",
+      "created_at": "2026-02-03",
+      "date": "2026-02-08",
+      "color": null
+    },
+    {
+      "id": "92405703-5219-4bb2-87ed-8932a0c842de",
+      "content": "Przygotowanie bazy danych pod dziennik ocen",
+      "status": "todo",
+      "created_at": "2026-02-03",
+      "date": "2026-02-07",
+      "color": null
+    },
+    {
+      "id": "9c451f60-5493-4d05-ab6a-bb8e0ae0ae25",
+      "content": "Poprawki ikonek + menu w ustawieniach do ich usuniecia",
+      "status": "done",
+      "created_at": "2026-02-04",
+      "date": "2026-02-04",
+      "color": null
+    },
+    {
+      "id": "01a0f651-67a3-4bdb-9142-45069b5982da",
+      "content": "Rozbic bąka z lodu",
+      "status": "todo",
+      "created_at": "2026-02-05",
+      "date": "2026-02-06",
+      "color": null
+    }
+  ]
+}
