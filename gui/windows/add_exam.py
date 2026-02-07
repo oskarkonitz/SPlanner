@@ -8,9 +8,8 @@ from gui.windows.color_picker import ColorPickerWindow
 
 
 class AddExamWindow:
-    def __init__(self, parent, txt, data, btn_style, callback=None, storage=None):
+    def __init__(self, parent, txt, btn_style, callback=None, storage=None):
         self.txt = txt
-        # self.data ignorowane w trybie Pure SQL
         self.btn_style = btn_style
         self.callback = callback
         self.storage = storage  # Przechowujemy instancję StorageManagera

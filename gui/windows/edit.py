@@ -7,7 +7,7 @@ from gui.windows.color_picker import ColorPickerWindow
 
 
 # funkcja sprawdzajaca czy zaznaczony element jest egzaminem czy tematem
-def select_edit_item(parent, data, txt, tree, btn_style, callback=None, storage=None):
+def select_edit_item(parent, txt, tree, btn_style, callback=None, storage=None):
     selected_item = tree.selection()
     if not selected_item:
         messagebox.showinfo(txt["msg_info"], txt["msg_select_edit"])
@@ -19,29 +19,20 @@ def select_edit_item(parent, data, txt, tree, btn_style, callback=None, storage=
         messagebox.showerror(txt["msg_error"], "StorageManager is missing!")
         return
 
-    # Sprawdzenie czy to egzamin (Pure SQL)
-    # Pobieramy listę egzaminów i szukamy ID
-    all_exams = storage.get_exams()
-    target_exam = next((dict(e) for e in all_exams if str(e["id"]) == str(item_id)), None)
+    # Sprawdzenie czy to egzamin (Szybki SQL)
+    target_exam = storage.get_exam(item_id)
 
     if target_exam:
-        # Konwersja booleana dla GUI (jeśli baza zwraca 0/1)
-        if "ignore_barrier" in target_exam:
-            target_exam["ignore_barrier"] = bool(target_exam["ignore_barrier"])
-
-        EditExamWindow(parent, txt, {}, btn_style, target_exam, callback, storage)
+        # Typy boolean są już naprawione w get_exam()
+        EditExamWindow(parent, txt, btn_style, target_exam, callback, storage)
         return
 
-    # Sprawdzenie czy to temat (Pure SQL)
-    all_topics = storage.get_topics()
-    target_topic = next((dict(t) for t in all_topics if str(t["id"]) == str(item_id)), None)
+    # Sprawdzenie czy to temat (Szybki SQL)
+    target_topic = storage.get_topic(item_id)
 
     if target_topic:
-        # Konwersja booleana
-        if "locked" in target_topic:
-            target_topic["locked"] = bool(target_topic["locked"])
-
-        EditTopicWindow(parent, txt, {}, btn_style, target_topic, callback, storage)
+        # Typy boolean są już naprawione w get_topic()
+        EditTopicWindow(parent, txt, btn_style, target_topic, callback, storage)
         return
 
     # Jeśli nie znaleziono
@@ -50,9 +41,8 @@ def select_edit_item(parent, data, txt, tree, btn_style, callback=None, storage=
 
 # edycja egzaminow
 class EditExamWindow:
-    def __init__(self, parent, txt, data, btn_style, exam_data, callback=None, storage=None):
+    def __init__(self, parent, txt, btn_style, exam_data, callback=None, storage=None):
         self.txt = txt
-        self.data = data  # Ignorowane (Pure SQL)
         self.btn_style = btn_style
         self.exam_data = exam_data
         self.callback = callback
@@ -160,8 +150,8 @@ class EditExamWindow:
         new_names_lines = [line.strip() for line in self.txt_topics.get("1.0", tk.END).split("\n") if line.strip()]
 
         # Pobieramy aktualne tematy z bazy (jako źródło prawdy)
-        current_db_topics = [dict(t) for t in self.storage.get_topics(self.exam_data["id"])]
-        existing_map = {t["name"]: t for t in current_db_topics}
+        current_db_topics = self.storage.get_topics(self.exam_data["id"])
+        existing_map = {t["name"]: dict(t) for t in current_db_topics}
 
         # Lista ID, które mają zostać (żeby wiedzieć co usunąć)
         kept_ids = []
@@ -212,9 +202,8 @@ class EditExamWindow:
 
 
 class EditTopicWindow:
-    def __init__(self, parent, txt, data, btn_style, topic_data, callback=None, storage=None):
+    def __init__(self, parent, txt, btn_style, topic_data, callback=None, storage=None):
         self.txt = txt
-        self.data = data  # Ignorowane
         self.btn_style = btn_style
         self.topic_data = topic_data
         self.callback = callback

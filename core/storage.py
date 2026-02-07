@@ -278,6 +278,17 @@ class StorageManager:
 
     # --- API (EXAMS) ---
 
+    def get_exam(self, exam_id):
+        """Pobiera pojedynczy egzamin po ID."""
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM exams WHERE id=?", (exam_id,)).fetchone()
+            if row:
+                data = dict(row)
+                # Opcjonalnie: od razu naprawiamy typ boolean, żeby nie robić tego w GUI
+                data["ignore_barrier"] = bool(data["ignore_barrier"])
+                return data
+            return None
+
     def get_exams(self):
         """Zwraca listę wszystkich egzaminów (sqlite3.Row)."""
         with self._get_conn() as conn:
@@ -320,6 +331,17 @@ class StorageManager:
             conn.commit()
 
     # --- API (TOPICS) ---
+
+    def get_topic(self, topic_id):
+        """Pobiera pojedynczy temat po ID."""
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM topics WHERE id=?", (topic_id,)).fetchone()
+            if row:
+                data = dict(row)
+                # Opcjonalnie: od razu naprawiamy typ boolean
+                data["locked"] = bool(data["locked"])
+                return data
+            return None
 
     def get_topics(self, exam_id=None):
         """Zwraca listę tematów dla danego egzaminu lub wszystkie."""
@@ -366,6 +388,12 @@ class StorageManager:
             conn.commit()
 
     # --- API (DAILY TASKS) ---
+
+    def get_daily_task(self, task_id):
+        """Pobiera pojedyncze zadanie dzienne po ID."""
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM daily_tasks WHERE id=?", (task_id,)).fetchone()
+            return dict(row) if row else None
 
     def get_daily_tasks(self):
         """Zwraca listę zadań dziennych."""

@@ -8,10 +8,9 @@ from tkcalendar import Calendar
 
 
 class TodoWindow:
-    def __init__(self, parent, txt, data, btn_style, dashboard_callback, storage=None):
+    def __init__(self, parent, txt, btn_style, dashboard_callback, storage=None):
         self.parent = parent
         self.txt = txt
-        # self.data jest ignorowane w trybie Pure SQL
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
         self.storage = storage  # Źródło prawdy
@@ -148,9 +147,8 @@ class TodoWindow:
         if not content: return
 
         if self.selected_task_id:
-            # EDYCJA: Pobieramy aktualne zadanie z bazy, by zachować status i created_at
-            tasks = [dict(t) for t in self.storage.get_daily_tasks()]
-            target_task = next((t for t in tasks if t["id"] == self.selected_task_id), None)
+            # EDYCJA: Pobieramy aktualne zadanie z bazy (Szybki SQL)
+            target_task = self.storage.get_daily_task(self.selected_task_id)
 
             if target_task:
                 target_task["content"] = content
@@ -187,9 +185,8 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobranie on-demand
-        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
-        task = next((t for t in tasks if t["id"] == item_id), None)
+        # Pobranie on-demand (Szybki SQL)
+        task = self.storage.get_daily_task(item_id)
 
         if task:
             self.selected_task_id = item_id
@@ -229,6 +226,7 @@ class TodoWindow:
             return
 
         # POBIERANIE DANYCH ON-DEMAND (Pure SQL)
+        # FIX: Rzutujemy na dict, aby działała metoda .get(), której używasz później
         tasks = [dict(t) for t in self.storage.get_daily_tasks()]
 
         sel_id = self.selected_task_id
@@ -321,9 +319,8 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobieranie on-demand
-        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
-        task = next((t for t in tasks if t["id"] == item_id), None)
+        # Pobieranie on-demand (Szybki SQL)
+        task = self.storage.get_daily_task(item_id)
 
         if not task: return
 
@@ -341,11 +338,8 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobieranie on-demand
-        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
-
-        # Szukanie zadania
-        target_task = next((t for t in tasks if t["id"] == item_id), None)
+        # Pobieranie on-demand (Szybki SQL)
+        target_task = self.storage.get_daily_task(item_id)
 
         if target_task:
             target_task["status"] = "done" if target_task["status"] == "todo" else "todo"
@@ -361,9 +355,8 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Sprawdzenie czy zadanie istnieje w bazie (on-demand)
-        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
-        if not any(t["id"] == item_id for t in tasks): return
+        # Sprawdzenie czy zadanie istnieje w bazie (Szybki SQL)
+        if not self.storage.get_daily_task(item_id): return
 
         title = self.txt.get("btn_delete", "Delete")
         msg = self.txt.get("msg_confirm_del_task", "Delete this task?")

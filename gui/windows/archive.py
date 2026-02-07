@@ -7,10 +7,8 @@ from gui.windows.notebook import NotebookWindow
 
 
 class ArchiveWindow:
-    def __init__(self, parent, txt, data, btn_style, edit_exam_func, edit_topic_func, dashboard_callback=None,
-                 storage=None):
+    def __init__(self, parent, txt, btn_style, edit_exam_func, edit_topic_func, dashboard_callback=None, storage=None):
         self.txt = txt
-        # self.data ignorowane w trybie Pure SQL (zachowane dla kompatybilności sygnatury)
         self.storage = storage
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
@@ -149,9 +147,8 @@ class ArchiveWindow:
 
         exam_id = selection[0]
 
-        # Pobranie danych on-demand do potwierdzenia
-        all_exams = self.storage.get_exams()
-        target_exam = next((e for e in all_exams if e["id"] == exam_id), None)
+        # Pobranie danych on-demand do potwierdzenia (Szybki SQL)
+        target_exam = self.storage.get_exam(exam_id)
 
         name = "ten egzamin"
         type_of_exam = "element"
@@ -198,9 +195,8 @@ class ArchiveWindow:
 
         exam_id = selection[0]
 
-        # Pobranie egzaminu on-demand
-        all_exams = self.storage.get_exams()
-        selected_exam_row = next((e for e in all_exams if e["id"] == exam_id), None)
+        # Pobranie egzaminu on-demand (Szybki SQL)
+        selected_exam_row = self.storage.get_exam(exam_id)
 
         if selected_exam_row:
             self.open_details_window(dict(selected_exam_row))
@@ -301,9 +297,8 @@ class ArchiveWindow:
 
             topic_id = selected[0]
 
-            # Pobranie tematu on-demand
-            topics_rows = self.storage.get_topics(exam_data["id"])
-            topic_row = next((t for t in topics_rows if t["id"] == topic_id), None)
+            # Pobranie tematu on-demand (Szybki SQL)
+            topic_row = self.storage.get_topic(topic_id)
 
             if topic_row:
                 topic = dict(topic_row)
@@ -332,8 +327,8 @@ class ArchiveWindow:
 
             topic_id = selected[0]
 
-            topics_rows = self.storage.get_topics(exam_data["id"])
-            topic_row = next((t for t in topics_rows if t["id"] == topic_id), None)
+            # Szybki SQL
+            topic_row = self.storage.get_topic(topic_id)
 
             if topic_row:
                 self.edit_topic_func(dict(topic_row), callback=refresh_details)

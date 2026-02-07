@@ -253,11 +253,10 @@ class ToolsDrawer(ctk.CTkFrame):
 
 # --- GŁÓWNA KLASA OKNA PLANU ---
 class PlanWindow:
-    def __init__(self, parent, txt, data, btn_style, dashboard_callback, selection_callback, drawer_parent=None,
+    def __init__(self, parent, txt, btn_style, dashboard_callback, selection_callback, drawer_parent=None,
                  storage=None):
         self.parent = parent
         self.txt = txt
-        # self.data jest ignorowane w trybie Pure SQL
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
         self.selection_callback = selection_callback
@@ -373,13 +372,10 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Sprawdzamy czy to egzamin
-        # Pobieramy on-demand
-        all_exams = self.storage.get_exams()
-        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+        # Sprawdzamy czy to egzamin (szybki SQL)
+        target_exam = self.storage.get_exam(item_id)
 
-        if target_exam_row:
-            target_exam = dict(target_exam_row)
+        if target_exam:
             if messagebox.askyesno(self.txt["msg_warning"],
                                    self.txt["msg_confirm_del_exam"].format(subject=target_exam["subject"])):
                 self.storage.delete_exam(target_exam["id"])
@@ -387,13 +383,10 @@ class PlanWindow:
                 if self.dashboard_callback: self.dashboard_callback()
             return
 
-        # Sprawdzamy czy to temat
-        # Pobieramy on-demand (wszystkie, bo szukamy po ID globalnie)
-        all_topics = self.storage.get_topics()
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        # Sprawdzamy czy to temat (szybki SQL)
+        target_topic = self.storage.get_topic(item_id)
 
-        if target_topic_row:
-            target_topic = dict(target_topic_row)
+        if target_topic:
             if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_topic"]):
                 self.storage.delete_topic(target_topic["id"])
                 self.refresh_table()
@@ -408,12 +401,10 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobieramy on-demand
-        all_topics = self.storage.get_topics()
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        # Szybkie pobranie tematu
+        target_topic = self.storage.get_topic(item_id)
 
-        if target_topic_row:
-            target_topic = dict(target_topic_row)
+        if target_topic:
             target_topic["scheduled_date"] = str(date.today())
             target_topic["locked"] = True  # Blokujemy, żeby algorytm nie zabrał
 
@@ -427,14 +418,11 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_topics = self.storage.get_topics()
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        target_topic = self.storage.get_topic(item_id)
 
-        if target_topic_row:
-            target_topic = dict(target_topic_row)
-            # Pobieramy egzamin dla nazwy
-            all_exams = self.storage.get_exams()
-            exam_row = next((e for e in all_exams if e["id"] == target_topic["exam_id"]), None)
+        if target_topic:
+            # Pobieramy egzamin dla nazwy (szybki SQL)
+            exam_row = self.storage.get_exam(target_topic["exam_id"])
             subject_name = exam_row["subject"] if exam_row else "???"
 
             drawer_title = f"{subject_name}: {target_topic['name']}"
@@ -445,11 +433,9 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_exams = self.storage.get_exams()
-        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+        target_exam = self.storage.get_exam(item_id)
 
-        if target_exam_row:
-            target_exam = dict(target_exam_row)
+        if target_exam:
             prefix = self.txt.get("lbl_exam_prefix", "Egzamin")
             drawer_title = f"{prefix}: {target_exam['subject']}"
             self.drawer.load_note(target_exam, drawer_title)
@@ -630,18 +616,12 @@ class PlanWindow:
 
         item_id = selected[0]
 
-        # Pobieranie danych on-demand do sprawdzenia stanu
-        # Pobieramy wszystko, by znaleźć po ID (StorageManager API limitation for now)
-        all_topics = self.storage.get_topics()
-        all_exams = self.storage.get_exams()
+        # Pobieranie danych on-demand (szybki SQL)
+        target_topic = self.storage.get_topic(item_id)
+        target_exam = self.storage.get_exam(item_id)
         blocked_dates = self.storage.get_blocked_dates()
 
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
-        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
         is_date = str(item_id).startswith("date_")
-
-        target_topic = dict(target_topic_row) if target_topic_row else None
-        target_exam = dict(target_exam_row) if target_exam_row else None
 
         # --- LOGIKA PRZYCISKÓW ---
         state_1 = "disabled"
@@ -707,15 +687,10 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_topics = self.storage.get_topics()
-        all_exams = self.storage.get_exams()
-
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
-        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
-
-        item_to_edit = None
-        if target_topic_row: item_to_edit = dict(target_topic_row)
-        if target_exam_row: item_to_edit = dict(target_exam_row)
+        # Próbujemy pobrać temat, jak nie ma to egzamin
+        item_to_edit = self.storage.get_topic(item_id)
+        if not item_to_edit:
+            item_to_edit = self.storage.get_exam(item_id)
 
         if item_to_edit:
             name = item_to_edit.get("name") or item_to_edit.get("subject")
@@ -736,10 +711,8 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobieramy on-demand
-        all_topics = self.storage.get_topics()
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
-        target_topic = dict(target_topic_row) if target_topic_row else None
+        # Pobieramy on-demand (szybki SQL)
+        target_topic = self.storage.get_topic(item_id)
 
         # --- ZMIANA STATUSU TEMATU ---
         if target_topic:
@@ -797,25 +770,24 @@ class PlanWindow:
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
-        # Przekazujemy pusty dict jako data (kompatybilność)
-        AddExamWindow(self.win, self.txt, {}, self.btn_style, callback=on_add, storage=self.storage)
+        AddExamWindow(self.win, self.txt, self.btn_style, callback=on_add, storage=self.storage)
 
     def open_edit(self):
         def on_edit():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
-        select_edit_item(self.win, {}, self.txt, self.tree, self.btn_style, callback=on_edit,
+        select_edit_item(self.win, self.txt, self.tree, self.btn_style, callback=on_edit,
                          storage=self.storage)
 
     def open_archive(self):
         def edit_exam_wrapper(exam_data, callback):
-            EditExamWindow(self.win, self.txt, {}, self.btn_style, exam_data, callback, storage=self.storage)
+            EditExamWindow(self.win, self.txt, self.btn_style, exam_data, callback, storage=self.storage)
 
         def edit_topic_wrapper(topic_data, callback):
-            EditTopicWindow(self.win, self.txt, {}, self.btn_style, topic_data, callback, storage=self.storage)
+            EditTopicWindow(self.win, self.txt, self.btn_style, topic_data, callback, storage=self.storage)
 
-        ArchiveWindow(self.win, self.txt, {}, self.btn_style, edit_exam_func=edit_exam_wrapper,
+        ArchiveWindow(self.win, self.txt, self.btn_style, edit_exam_func=edit_exam_wrapper,
                       edit_topic_func=edit_topic_wrapper, dashboard_callback=self.dashboard_callback,
                       storage=self.storage)
 
@@ -824,11 +796,9 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_topics = self.storage.get_topics()
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        target_topic = self.storage.get_topic(item_id)
 
-        if target_topic_row:
-            target_topic = dict(target_topic_row)
+        if target_topic:
             target_topic["locked"] = not target_topic.get("locked", False)
             self.storage.update_topic(target_topic)
             self.refresh_table(preserve_selection=True)
@@ -838,11 +808,9 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_exams = self.storage.get_exams()
-        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+        target_exam = self.storage.get_exam(item_id)
 
-        if target_exam_row:
-            target_exam = dict(target_exam_row)
+        if target_exam:
             target_exam["ignore_barrier"] = not target_exam.get("ignore_barrier", False)
             self.storage.update_exam(target_exam)
             self.refresh_table(preserve_selection=True)
@@ -853,11 +821,9 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_topics = self.storage.get_topics()
-        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        target_topic = self.storage.get_topic(item_id)
 
-        if target_topic_row:
-            target_topic = dict(target_topic_row)
+        if target_topic:
             if target_topic.get("locked", False):
                 messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
                 return
@@ -872,17 +838,14 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        all_exams = self.storage.get_exams()
-        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+        target_exam = self.storage.get_exam(item_id)
 
-        if target_exam_row:
-            target_exam = dict(target_exam_row)
-
+        if target_exam:
             def on_save():
                 self.refresh_table()
                 if self.dashboard_callback: self.dashboard_callback()
 
-            EditExamWindow(self.win, self.txt, {}, self.btn_style, target_exam, on_save, storage=self.storage)
+            EditExamWindow(self.win, self.txt, self.btn_style, target_exam, on_save, storage=self.storage)
 
     def show_context_menu(self, event):
         item_id = self.tree.identify_row(event.y)
@@ -908,15 +871,12 @@ class PlanWindow:
             return
 
         is_topic = False
-        target_topic_data = None
 
-        # Pobieramy dane on-demand
-        all_topics = self.storage.get_topics()
-        topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        # Szybki SQL
+        topic_data = self.storage.get_topic(item_id)
 
-        if topic_row:
+        if topic_data:
             is_topic = True
-            target_topic_data = dict(topic_row)
 
         if is_topic:
             self.dragged_item = item_id
@@ -955,12 +915,11 @@ class PlanWindow:
             self.dragged_item = None
             return
 
-        all_topics = self.storage.get_topics()
-        topic_row = next((t for t in all_topics if str(t["id"]) == str(self.dragged_item)), None)
+        # Szybkie pobranie tematu
+        topic = self.storage.get_topic(self.dragged_item)
 
         topic_found = False
-        if topic_row:
-            topic = dict(topic_row)
+        if topic:
             if topic.get("locked", False):
                 messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
                 self.dragged_item = None

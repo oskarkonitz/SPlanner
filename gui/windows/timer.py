@@ -3,11 +3,10 @@ from tkinter import messagebox
 
 
 class TimerWindow:
-    def __init__(self, parent, txt, btn_style, data, storage=None, callback=None):
+    def __init__(self, parent, txt, btn_style, storage=None, callback=None):
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
-        self.data = data  # Ignorowane, zachowane dla kompatybilności sygnatury
         self.storage = storage  # Instancja StorageManager
         self.callback = callback
 

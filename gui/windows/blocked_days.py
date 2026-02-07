@@ -4,9 +4,8 @@ from datetime import date, datetime
 from tkinter import messagebox
 
 class BlockedDaysWindow:
-    def __init__(self, parent, txt, data, btn_style, callback=None, refresh_callback=None, storage=None):
+    def __init__(self, parent, txt, btn_style, callback=None, refresh_callback=None, storage=None):
         self.txt = txt
-        # self.data jest ignorowane (zachowane dla kompatybilności sygnatury)
         self.btn_style = btn_style
         self.callback = callback  # Callback dla "Save & Generate"
         self.refresh_callback = refresh_callback  # Callback dla "Save" (odświeżenie dashboardu)

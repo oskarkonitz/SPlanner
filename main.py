@@ -289,7 +289,6 @@ class GUI:
         # dopóki ten plik również nie zostanie zrefaktoryzowany. Główna logika nie korzysta już z self.data w main.py.
         self.plan_view = PlanWindow(parent=self.tab_plan,
                                     txt=self.txt,
-                                    data={},  # Placeholder dla kompatybilności wstecznej
                                     storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
@@ -299,7 +298,6 @@ class GUI:
         # --- ZAKŁADKA 2: TODO LIST ---
         self.todo_view = TodoWindow(parent=self.tab_todo,
                                     txt=self.txt,
-                                    data={},  # Placeholder
                                     storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard)
@@ -456,9 +454,6 @@ class GUI:
                 self.storage.update_global_stat(k, v)
 
             # 3. Odświeżenie widoków (pobiorą puste dane z SQL)
-            # Przekazujemy pusty słownik, bo widoki jeszcze nie są w pełni Pure SQL,
-            # ale tutaj najważniejsze że main nie trzyma stanu.
-            self.plan_view.data = {}
             self.plan_view.refresh_table()
             self.refresh_dashboard()
 
@@ -491,7 +486,6 @@ class GUI:
         BlockedDaysWindow(
             self.root,
             self.txt,
-            {},  # Placeholder data
             self.btn_style,
             callback=self.menu_gen_plan,
             refresh_callback=self.refresh_dashboard,
@@ -616,7 +610,7 @@ class GUI:
 
     def open_timer(self):
         if self.timer_window is None or not self.timer_window.winfo_exists():
-            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style, {},
+            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style,
                                             callback=self.refresh_dashboard, storage=self.storage)
         else:
             self.timer_window.lift()
@@ -648,7 +642,6 @@ class GUI:
             self.update_badges_logic()
 
     def update_badges_logic(self):
-        # Pobieramy dane On-Demand i konwertujemy na dict, by używać metod .get()
         settings = self.storage.get_settings()
         exams = [dict(x) for x in self.storage.get_exams()]
         topics = [dict(x) for x in self.storage.get_topics()]
@@ -741,7 +734,6 @@ class GUI:
 
     def refresh_dashboard(self):
         # --- PURE SQL: POBIERANIE DANYCH ON-DEMAND ---
-        # FIX: Rzutowanie na dict, aby sqlite3.Row nie powodował błędu AttributeError przy .get()
         exams = [dict(r) for r in self.storage.get_exams()]
         topics = [dict(r) for r in self.storage.get_topics()]
         daily_tasks = [dict(r) for r in self.storage.get_daily_tasks()]
@@ -912,7 +904,7 @@ class GUI:
 
     def open_plan_window(self):
         # Placeholder data
-        PlanWindow(self.root, self.txt, {}, self.btn_style,
+        PlanWindow(self.root, self.txt, self.btn_style,
                    dashboard_callback=self.refresh_dashboard, storage=self.storage)
 
     def on_close(self):
