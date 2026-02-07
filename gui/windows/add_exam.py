@@ -4,7 +4,7 @@ import customtkinter as ctk
 from tkcalendar import DateEntry
 from datetime import datetime, timedelta
 import uuid
-from gui.windows.color_picker import ColorPickerWindow
+import random
 
 
 class AddExamWindow:
@@ -14,15 +14,41 @@ class AddExamWindow:
         self.callback = callback
         self.storage = storage  # Przechowujemy instancję StorageManagera
 
+        # Pobieramy listę przedmiotów z bazy do listy rozwijanej
+        self.db_subjects = []
+        self.subject_names = []
+        self.semesters = []
+
+        if self.storage:
+            self.db_subjects = [dict(s) for s in self.storage.get_subjects()]
+            self.subject_names = [s["name"] for s in self.db_subjects]
+            self.semesters = [dict(s) for s in self.storage.get_semesters()]
+
         #   TWORZENIE NOWEGO OKNA
         self.win = ctk.CTkToplevel(parent)
         self.win.resizable(False, False)
         self.win.title(self.txt["win_add_title"])
 
-        # WPROWADZENIE NAZWY PRZEDMIOTU
+        # WPROWADZENIE NAZWY PRZEDMIOTU (Zmieniono na ComboBox + Przycisk Filtra)
         tk.Label(self.win, text=self.txt["form_subject"]).grid(row=0, column=0, pady=10, padx=10, sticky="e")
-        self.entry_subject = tk.Entry(self.win, width=30)
-        self.entry_subject.grid(row=0, column=1, padx=10, pady=10)
+
+        # Kontener na combobox i przycisk, aby były obok siebie
+        subj_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        subj_frame.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+
+        self.combo_subject = ctk.CTkComboBox(subj_frame, width=200, values=self.subject_names,
+                                             command=self.on_subject_change)
+        self.combo_subject.pack(side="left")
+
+        # Puste pole na start
+        self.combo_subject.set("")
+
+        # Przycisk filtrowania semestru
+        self.btn_sem_filter = ctk.CTkButton(subj_frame, text="📅", width=30, height=28,
+                                            fg_color="transparent", border_width=1, border_color="gray",
+                                            text_color=("gray10", "gray90"),
+                                            command=self.open_semester_menu)
+        self.btn_sem_filter.pack(side="left", padx=(5, 0))
 
         # WPROWADZENIE TYPU EGZAMINU
         tk.Label(self.win, text=self.txt["form_type"]).grid(row=1, column=0, pady=10, padx=10, sticky="e")
@@ -41,24 +67,11 @@ class AddExamWindow:
                                          onvalue=True, offvalue=False)
         self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=(10, 5))
 
-        # Wizualizacja koloru przycisku
-
+        # USUNIĘTO SEKCJĘ KOLORU (Color Preview) ZGODNIE Z PROŚBĄ
         self.selected_color = None
 
-        mode = ctk.get_appearance_mode()
-        btn_visual_color = "#000000" if mode == "Light" else "#ffffff"
-
-        color_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        color_frame.grid(row=4, column=0, columnspan=2, pady=(5, 15))
-
-        tk.Label(color_frame, text=self.txt.get("lbl_color", "Color:")).pack(side="left", padx=5)
-        self.btn_color = ctk.CTkButton(color_frame, text="", width=30, height=30,
-                                       fg_color=btn_visual_color,
-                                       command=self.open_color_picker)
-        self.btn_color.pack(side="left", padx=5)
-
         # WPROWADZENIE TEMATÓW
-        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=5, column=0, pady=(0 ,5), columnspan=2)
+        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=5, column=0, pady=(0, 5), columnspan=2)
         self.text_topics = tk.Text(self.win, width=40, height=10)
         self.text_topics.grid(row=6, column=0, columnspan=2, padx=10, pady=(0, 10))
 
@@ -73,67 +86,163 @@ class AddExamWindow:
         btn_cancel.pack(side="left", padx=5)
         btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
 
-    def open_color_picker(self):
-        def on_color_picked(color):
-            self.selected_color = color
-            self.btn_color.configure(fg_color=color)
+    def open_semester_menu(self):
+        """Wyświetla menu wyboru semestru obok przycisku."""
+        menu = tk.Menu(self.win, tearoff=0)
 
-        ColorPickerWindow(self.win, self.txt, self.selected_color, on_color_picked)
+        # Opcja "Wszystkie"
+        menu.add_command(label=self.txt.get("val_all", "All"),
+                         command=lambda: self.filter_subjects_by_semester(None))
+        menu.add_separator()
+
+        # Sortowanie semestrów (Aktualny pierwszy)
+        sorted_semesters = sorted(self.semesters, key=lambda x: (not x["is_current"], x["start_date"]), reverse=True)
+
+        for sem in sorted_semesters:
+            label_text = sem["name"]
+            if sem["is_current"]:
+                label_text += f" ({self.txt.get('tag_current', 'Current')})"
+
+            menu.add_command(label=label_text,
+                             command=lambda s_id=sem["id"]: self.filter_subjects_by_semester(s_id))
+
+        # Wyświetlenie menu w miejscu przycisku
+        try:
+            x = self.btn_sem_filter.winfo_rootx()
+            y = self.btn_sem_filter.winfo_rooty() + self.btn_sem_filter.winfo_height()
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def filter_subjects_by_semester(self, semester_id):
+        """Aktualizuje listę przedmiotów w ComboBox na podstawie wybranego semestru."""
+        if semester_id is None:
+            # Pokaż wszystkie
+            filtered_names = [s["name"] for s in self.db_subjects]
+        else:
+            # Filtruj po ID
+            filtered_names = [s["name"] for s in self.db_subjects if s["semester_id"] == semester_id]
+
+        if not filtered_names:
+            filtered_names = [""]
+
+        self.combo_subject.configure(values=filtered_names)
+        self.combo_subject.set("")  # Reset wyboru po zmianie filtra
+
+    def on_subject_change(self, choice):
+        """Aktualizuje kolor w zmiennej na podstawie wybranego przedmiotu (bez wizualizacji)."""
+        found = False
+        for sub in self.db_subjects:
+            if sub["name"] == choice:
+                self.selected_color = sub["color"]
+                found = True
+                break
+
+        if not found:
+            # Jeśli wpisano nową nazwę, kolor pozostaje None (zostanie wylosowany przy zapisie)
+            self.selected_color = None
 
     def save_exam(self):
-        subject = self.entry_subject.get()
-        title = self.entry_title.get()
+        subject_name = self.combo_subject.get().strip()
+        title = self.entry_title.get().strip()
         date_val = self.entry_date.get()
         topics_raw = self.text_topics.get("1.0", tk.END).strip()
 
-        if not subject or not title or not date_val:
+        if not subject_name or not title or not date_val:
             messagebox.showwarning(self.txt["msg_error"], self.txt["msg_fill_fields"])
             return
 
-        # Generowanie ID
-        exam_id = f"exam_{uuid.uuid4().hex[:8]}"
+        if not self.storage:
+            print("[AddExamWindow] CRITICAL: StorageManager not provided!")
+            return
 
-        # Parsowanie tematów
-        topics_list = [t.strip() for t in topics_raw.split('\n') if t.strip()]
+        # --- LOGIKA PRZEDMIOTU (Subject) ---
+        subject_id = None
+        subject_color = self.selected_color
+
+        # 1. Sprawdź czy przedmiot już istnieje
+        for sub in self.db_subjects:
+            if sub["name"] == subject_name:
+                subject_id = sub["id"]
+                # Używamy koloru z bazy, chyba że self.selected_color został już ustawiony
+                if not subject_color:
+                    subject_color = sub["color"]
+                break
+
+        # 2. Jeśli nie istnieje -> Utwórz nowy przedmiot
+        if not subject_id:
+            # Losujemy kolor dla nowego przedmiotu, bo to nowy wpis
+            random_colors = ["#e74c3c", "#8e44ad", "#3498db", "#1abc9c", "#f1c40f", "#e67e22", "#2ecc71"]
+            subject_color = random.choice(random_colors)
+
+            # Pobieramy ID semestru (bierzemy pierwszy dostępny lub tworzymy domyślny)
+            semesters = self.storage.get_semesters()
+            semester_id = None
+            if semesters:
+                # Preferuj aktualny
+                curr = [s for s in semesters if s["is_current"]]
+                if curr:
+                    semester_id = curr[0]["id"]
+                else:
+                    semester_id = semesters[0]["id"]
+            else:
+                # Tworzenie semestru awaryjnie
+                semester_id = f"sem_{uuid.uuid4().hex[:8]}"
+                self.storage.add_semester({
+                    "id": semester_id,
+                    "name": "Default Semester",
+                    "start_date": str(datetime.now().date()),
+                    "end_date": str((datetime.now() + timedelta(days=180)).date()),
+                    "is_current": 1
+                })
+
+            subject_id = f"sub_{uuid.uuid4().hex[:8]}"
+            short_name = subject_name[:3].upper()
+
+            self.storage.add_subject({
+                "id": subject_id,
+                "semester_id": semester_id,
+                "name": subject_name,
+                "short_name": short_name,
+                "color": subject_color,
+                "weight": 1.0
+            })
+
+        # --- TWORZENIE EGZAMINU ---
+        exam_id = f"exam_{uuid.uuid4().hex[:8]}"
 
         # Przygotowanie obiektu egzaminu
         new_exam = {
             "id": exam_id,
-            "subject": subject,
+            "subject_id": subject_id,  # Klucz relacji
+            "subject": subject_name,  # Legacy
             "title": title,
             "date": date_val,
             "note": "",
-            "ignore_barrier": self.var_ignore_barrier.get(),  # StorageManager przekonwertuje bool na int
-            "color": self.selected_color
+            "ignore_barrier": self.var_ignore_barrier.get(),
+            "color": subject_color  # Legacy/Cache
         }
 
-        # Zapis egzaminu przez StorageManager
-        if self.storage:
-            self.storage.add_exam(new_exam)
+        self.storage.add_exam(new_exam)
 
-            # --- AKTUALIZACJA GLOBALNYCH STATYSTYK (Egzaminy) ---
-            # Pobieramy aktualne statystyki z bazy, inkrementujemy i zapisujemy
-            global_stats = self.storage.get_global_stats()
-            curr_exams = global_stats.get("exams_added", 0)
-            self.storage.update_global_stat("exams_added", curr_exams + 1)
-            # ----------------------------------------------------
+        # --- AKTUALIZACJA GLOBALNYCH STATYSTYK ---
+        global_stats = self.storage.get_global_stats()
+        curr_exams = global_stats.get("exams_added", 0)
+        self.storage.update_global_stat("exams_added", curr_exams + 1)
 
-            # Zapis tematów przez StorageManager
-            for topic in topics_list:
-                new_topic = {
-                    "id": f"topic_{uuid.uuid4().hex[:8]}",
-                    "exam_id": exam_id,
-                    "name": topic,
-                    "status": "todo",
-                    "scheduled_date": None,
-                    "locked": False,
-                    "note": ""
-                }
-                self.storage.add_topic(new_topic)
-        else:
-            # Fallback (gdyby storage nie został przekazany - dla bezpieczeństwa, choć nie powinno wystąpić)
-            print("[AddExamWindow] CRITICAL: StorageManager not provided!")
-            return
+        # --- ZAPIS TEMATÓW ---
+        topics_list = [t.strip() for t in topics_raw.split('\n') if t.strip()]
+        for topic in topics_list:
+            new_topic = {
+                "id": f"topic_{uuid.uuid4().hex[:8]}",
+                "exam_id": exam_id,
+                "name": topic,
+                "status": "todo",
+                "scheduled_date": None,
+                "locked": False,
+                "note": ""
+            }
+            self.storage.add_topic(new_topic)
 
         self.win.destroy()
         messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_added"].format(count=len(topics_list)))

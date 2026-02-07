@@ -193,6 +193,8 @@ class ToolsDrawer(ctk.CTkFrame):
         add_btn("menu_timer", self.callbacks["timer"], "#e6b800")
         add_btn("win_achievements", self.callbacks["achievements"], "violet")
         add_btn("menu_days_off", self.callbacks["days_off"], "#5dade2")
+        add_btn("menu_subjects", self.callbacks["subjects"], "#e67e22")
+        add_btn("menu_grades", self.callbacks["grades"], "#9b59b6")
 
         ctk.CTkFrame(content_frame, height=2, fg_color="gray80").pack(fill="x", pady=10)
 

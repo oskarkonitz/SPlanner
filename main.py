@@ -17,6 +17,10 @@ import threading
 from core.updater import check_for_updates
 from gui.windows.plan import ToolsDrawer
 from gui.windows.todo import TodoWindow
+from gui.windows.subjects_manager import SubjectsManagerWindow
+from gui.windows.schedule import SchedulePanel
+from gui.windows.grades import GradesWindow
+from gui.windows.settings import SettingsWindow
 
 VERSION = "2.0.0"
 
@@ -174,6 +178,10 @@ class GUI:
             command=lambda: check_for_updates(self.txt, silent=False)
         )
 
+        settings_menu.add_separator()
+        settings_menu.add_command(label=self.txt.get("btn_open_settings", "Open Full Settings..."),
+                                  command=self.open_settings_window)
+
         self.menubar.add_cascade(label=self.txt.get("menu_settings", "Settings"), menu=settings_menu)
 
         # menu pomoc
@@ -276,6 +284,7 @@ class GUI:
 
         self.tab_plan = self.tabview.add(self.txt.get("tab_plan", "Study Plan"))
         self.tab_todo = self.tabview.add(self.txt.get("tab_todo", "Daily Tasks"))
+        self.tab_schedule = self.tabview.add(self.txt.get("lbl_schedule", "Schedule"))
 
         self.create_badges()
 
@@ -283,10 +292,10 @@ class GUI:
         self.tab_plan.grid_rowconfigure(0, weight=1)
         self.tab_todo.grid_columnconfigure(0, weight=1)
         self.tab_todo.grid_rowconfigure(0, weight=1)
+        self.tab_schedule.grid_columnconfigure(0, weight=1)
+        self.tab_schedule.grid_rowconfigure(0, weight=1)
 
         # --- ZAKŁADKA 1: PLAN NAUKI ---
-        # UWAGA: Przekazujemy pusty słownik `data={}`, aby zachować zgodność z sygnaturą PlanWindow,
-        # dopóki ten plik również nie zostanie zrefaktoryzowany. Główna logika nie korzysta już z self.data w main.py.
         self.plan_view = PlanWindow(parent=self.tab_plan,
                                     txt=self.txt,
                                     storage=self.storage,
@@ -301,6 +310,13 @@ class GUI:
                                     storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard)
+
+        # --- ZAKLADKA 3: SCHEDULE ---
+        self.schedule_view = SchedulePanel(parent=self.tab_schedule,
+                                           txt=self.txt,
+                                           btn_style=self.btn_style,
+                                           storage=self.storage)
+        self.schedule_view.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Odznaczanie
         self.update_sidebar_buttons("idle", "idle", "idle")
@@ -320,6 +336,8 @@ class GUI:
             "timer": self.open_timer,
             "achievements": self.open_achievements,
             "days_off": self.open_blocked_days,
+            "subjects": self.open_subjects_manager,
+            "grades": self.open_grades_manager,
             "gen_full": self.menu_gen_plan,
             "gen_new": self.menu_gen_plan_new
         }
@@ -492,6 +510,22 @@ class GUI:
             storage=self.storage
         )
 
+    def open_subjects_manager(self):
+        SubjectsManagerWindow(self.root, self.txt, self.btn_style, self.storage)
+
+    def open_grades_manager(self):
+        GradesWindow(self.root, self.txt, self.btn_style, self.storage)
+
+    def open_settings_window(self):
+        def on_settings_saved():
+            new_theme = self.storage.get_settings().get("theme", "light")
+            if new_theme != self.current_theme:
+                self.change_theme(new_theme)
+            self.refresh_dashboard()
+            self.update_badges_logic()
+
+        SettingsWindow(self.root, self.txt, self.btn_style, self.storage, app_version=VERSION, callback_refresh=on_settings_saved)
+
     def update_sidebar_buttons(self, s1, s2, s3):
         # 1. RESET UI
         self.btn_1.pack_forget()
@@ -654,21 +688,23 @@ class GUI:
             self.badge_todo.place_forget()
             return
 
+        # Ustawienia rozmiaru i offsetu
         if mode == "dot":
             size = 10
             font_size = 1
             offset_y = 0
-            offset_x = -20
+            offset_x = -15  # Przesunięcie w lewo od krawędzi taba
         else:
             size = 20
             font_size = 10
-            offset_y = -12
+            offset_y = -8
             offset_x = -10
 
         self.badge_plan.configure(width=size, height=size, font=("Arial", font_size, "bold"))
         self.badge_todo.configure(width=size, height=size, font=("Arial", font_size, "bold"))
 
         try:
+            # Pobieramy geometrię paska zakładek
             seg_btn = self.tabview._segmented_button
             seg_x = seg_btn.winfo_x()
             seg_y = seg_btn.winfo_y()
@@ -676,10 +712,19 @@ class GUI:
         except AttributeError:
             return
 
-        plan_x_px = seg_x + (seg_w / 2) + offset_x
-        todo_x_px = seg_x + seg_w + offset_x
+        # --- FIX: OBLICZANIE POZYCJI DLA 3 ZAKŁADEK ---
+        # Mamy 3 zakładki, więc szerokość jednej to 1/3 całości
+        tab_width = seg_w / 3
+
+        # Tab 1 (Study Plan) kończy się na 1 * tab_width
+        plan_x_px = seg_x + tab_width + offset_x
+
+        # Tab 2 (Daily Tasks) kończy się na 2 * tab_width
+        todo_x_px = seg_x + (2 * tab_width) + offset_x
+
         badge_y_px = seg_y + offset_y
 
+        # --- LOGIKA DANYCH (bez zmian) ---
         today = date.today()
         today_str = str(today)
 

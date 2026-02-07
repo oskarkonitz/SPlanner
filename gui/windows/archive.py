@@ -16,53 +16,83 @@ class ArchiveWindow:
         self.edit_exam_func = edit_exam_func
         self.edit_topic_func = edit_topic_func
 
+        # Cache semestrów (nazwa -> id)
+        self.semester_map = {}
+
         # USTAWIENIE OKNA
         self.win = ctk.CTkToplevel(parent)
         self.win.title(self.txt["win_archive_title"])
-        self.win.geometry("750x500")
+        self.win.geometry("800x600")
 
-        # LABELE
-        ctk.CTkLabel(self.win, text=self.txt["msg_archive_header"], font=("Arial", 16, "bold")).pack(pady=10)
-        ctk.CTkLabel(self.win, text=self.txt["msg_archive_sub"], font=("Arial", 12, "bold")).pack(pady=5)
+        # --- GÓRNY PASEK (FILTR SEMESTRÓW) ---
+        top_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        top_frame.pack(fill="x", padx=10, pady=(10, 5))
 
-        # RAMKA
+        # Etykieta
+        ctk.CTkLabel(top_frame, text=self.txt.get("lbl_semester", "Semester") + ":",
+                     font=("Arial", 12, "bold")).pack(side="left", padx=(5, 10))
+
+        # ComboBox Semestrów
+        self.combo_semester = ctk.CTkComboBox(top_frame, width=200, command=self.on_semester_change)
+        self.combo_semester.pack(side="left")
+
+        # Ładowanie semestrów
+        self.load_semesters()
+
+        # LABELE NAGŁÓWKOWE
+        # 1. Główny tytuł
+        ctk.CTkLabel(self.win, text=self.txt["msg_archive_header"], font=("Arial", 16, "bold")).pack(pady=(10, 0))
+
+        # 2. PRZYWRÓCONY NAPIS "Double click to see details"
+        sub_text = self.txt.get("msg_archive_sub", "Double click to see details")
+        ctk.CTkLabel(self.win, text=sub_text, font=("Arial", 12)).pack(pady=(0, 10))
+
+        # RAMKA TABELI
         frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         # TREE - LISTA Z DANYMI
-        columns = ("data", "przedmiot", "forma", "status", "postep")
-        self.tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
+        columns = ("data", "forma", "status", "postep")
+        self.tree = ttk.Treeview(frame, columns=columns, show="tree headings", selectmode="browse")
 
+        # Konfiguracja głównej kolumny (Drzewo - Przedmiot)
+        self.tree.heading("#0", text=self.txt["col_subject"], anchor="w")
+        self.tree.column("#0", width=250, anchor="w")
+
+        # Konfiguracja pozostałych kolumn
         self.tree.heading("data", text=self.txt["col_date"])
         self.tree.column("data", width=100, anchor="center")
 
-        self.tree.heading("przedmiot", text=self.txt["col_subject"])
-        self.tree.column("przedmiot", width=180, anchor="w")
-
         self.tree.heading("forma", text=self.txt["col_form"])
-        self.tree.column("forma", width=120, anchor="w")
+        self.tree.column("forma", width=150, anchor="w")
 
         self.tree.heading("status", text=self.txt["col_status"])
-        self.tree.column("status", width=150, anchor="center")
+        self.tree.column("status", width=120, anchor="center")
 
-        col_prog_txt = self.txt.get("col_progress", "Postęp")
+        col_prog_txt = self.txt.get("col_progress", "Progress")
         self.tree.heading("postep", text=col_prog_txt)
-        self.tree.column("postep", width=80, anchor="center")
+        self.tree.column("postep", width=100, anchor="center")
 
+        # Tagi stylów - CZCIONKA 12 BOLD
         current_mode = ctk.get_appearance_mode()
         active_color = "#0066cc" if current_mode == "Light" else "lightblue"
 
+        # Styl nagłówka przedmiotu
+        bg_subject = "#e1e1e1" if current_mode == "Light" else "#333333"
+        self.tree.tag_configure("subject_row", font=("Arial", 12, "bold"), background=bg_subject)
+
+        # Styl egzaminów (dzieci)
         self.tree.tag_configure("active", foreground=active_color, font=("Arial", 12, "bold"))
         self.tree.tag_configure("past", foreground="gray", font=("Arial", 12, "bold"))
 
-        # scroll
+        # Scrollbar
         scrollbar = ctk.CTkScrollbar(frame, orientation="vertical", command=self.tree.yview, fg_color="transparent",
                                      bg_color="transparent")
         self.tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y", padx=(2, 0))
         self.tree.pack(side="left", fill="both", expand=True)
 
-        # podwojne klikniecie otwiera szczegoły
+        # Bindings
         self.tree.bind("<Double-1>", self.on_double_click)
 
         # PRZYCISKI
@@ -73,71 +103,109 @@ class ArchiveWindow:
                                     **self.btn_style)
         btn_del_sel.pack(side="left", padx=5)
 
-        btn_del_all = ctk.CTkButton(btn_frame, text=self.txt["btn_clear_archive"], command=self.delete_all_archive,
-                                    **self.btn_style)
-        btn_del_all.configure(fg_color="#e74c3c", hover_color="#c0392b")
-        btn_del_all.pack(side="left", padx=5)
-
         btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=self.win.destroy, **self.btn_style)
         btn_close.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_close.pack(side="left", padx=5)
 
         self.refresh_list()
 
+    def load_semesters(self):
+        if not self.storage: return
+
+        semesters = self.storage.get_semesters()
+        semesters.sort(key=lambda x: (not x["is_current"], x["start_date"]), reverse=True)
+
+        values = [self.txt.get("val_all", "All")]
+        self.semester_map = {self.txt.get("val_all", "All"): None}
+
+        for sem in semesters:
+            name = sem["name"]
+            if sem["is_current"]:
+                name += f" ({self.txt.get('tag_current', 'Current')})"
+            values.append(name)
+            self.semester_map[name] = sem["id"]
+
+        self.combo_semester.configure(values=values)
+        self.combo_semester.set(values[0])
+
+    def on_semester_change(self, choice):
+        self.refresh_list()
+
     def refresh_list(self):
         if not self.storage:
             return
 
+        # Czyścimy drzewo
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         today = date.today()
 
-        # POBIERANIE DANYCH ON-DEMAND (Pure SQL)
+        # Filtrowanie semestrów
+        selected_sem_name = self.combo_semester.get()
+        selected_sem_id = self.semester_map.get(selected_sem_name)
+
+        all_subjects = [dict(s) for s in self.storage.get_subjects()]
+
+        if selected_sem_id:
+            subjects_to_show = [s for s in all_subjects if s["semester_id"] == selected_sem_id]
+        else:
+            subjects_to_show = all_subjects
+
+        subjects_to_show.sort(key=lambda x: x["name"])
         all_exams = [dict(e) for e in self.storage.get_exams()]
 
-        active_exams = []
-        arch_exams = []
+        for subject in subjects_to_show:
+            sub_exams = [e for e in all_exams if e["subject_id"] == subject["id"]]
+            sub_exams.sort(key=lambda x: str(x["date"] or "9999-99-99"))
 
-        for exam in all_exams:
-            if date_format(exam["date"]) >= today:
-                active_exams.append(exam)
-            else:
-                arch_exams.append(exam)
+            # Logika domyślnego otwierania:
+            is_expanded = False
+            for e in sub_exams:
+                if date_format(e["date"]) >= today:
+                    is_expanded = True
+                    break
 
-        active_exams.sort(key=lambda x: x["date"])
-        arch_exams.sort(key=lambda x: x["date"], reverse=True)
+            # Statystyki
+            total_topics = 0
+            done_topics = 0
 
-        display_exams = active_exams + arch_exams
+            # Węzeł RODZICA (Przedmiot)
+            parent_id = self.tree.insert("", "end", text=subject["name"], open=is_expanded, tags=("subject_row",))
 
-        for exam in display_exams:
-            exam_date = date_format(exam["date"])
-            days = (exam_date - today).days
+            for exam in sub_exams:
+                exam_date = date_format(exam["date"])
+                days = (exam_date - today).days
 
-            status_txt = ""
-            tag = "normal"
-
-            if days < 0:
-                status_txt = self.txt["tag_archived"]
-                tag = "past"
-            elif days == 0:
-                status_txt = self.txt["tag_today"]
-                tag = "active"
-            else:
-                status_txt = self.txt["tag_x_days"].format(days=days)
+                status_txt = ""
                 tag = "active"
 
-            # Pobieranie tematów dla konkretnego egzaminu (On-Demand)
-            topics_rows = self.storage.get_topics(exam["id"])
-            topics = [dict(t) for t in topics_rows]
+                if days < 0:
+                    status_txt = self.txt["tag_archived"]
+                    tag = "past"
+                elif days == 0:
+                    status_txt = self.txt["tag_today"]
+                else:
+                    status_txt = self.txt["tag_x_days"].format(days=days)
 
-            total = len(topics)
-            done = len([t for t in topics if t["status"] == "done"])
-            progress_str = f"{done} / {total}"
+                topics_rows = self.storage.get_topics(exam["id"])
+                t_total = len(topics_rows)
+                t_done = len([t for t in topics_rows if t["status"] == "done"])
 
-            self.tree.insert("", "end", iid=exam["id"],
-                             values=(exam["date"], exam["subject"], exam["title"], status_txt, progress_str),
-                             tags=(tag,))
+                total_topics += t_total
+                done_topics += t_done
+
+                progress_str = f"{t_done} / {t_total}"
+
+                # Węzeł DZIECKA (Egzamin)
+                self.tree.insert(parent_id, "end", iid=exam["id"],
+                                 values=(exam["date"], exam["title"], status_txt, progress_str),
+                                 tags=(tag,))
+
+            if total_topics > 0:
+                pct = int((done_topics / total_topics) * 100)
+                summary = f"{done_topics}/{total_topics} ({pct}%)"
+                self.tree.set(parent_id, "postep", summary)
 
     def delete_selected(self):
         selection = self.tree.selection()
@@ -145,63 +213,53 @@ class ArchiveWindow:
             messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_del"])
             return
 
-        exam_id = selection[0]
+        item_id = selection[0]
 
-        # Pobranie danych on-demand do potwierdzenia (Szybki SQL)
-        target_exam = self.storage.get_exam(exam_id)
+        if not str(item_id).startswith("exam_"):
+            messagebox.showwarning(self.txt["msg_warning"],
+                                   self.txt.get("msg_select_exam_node", "Select an exam, not a subject."))
+            return
 
-        name = "ten egzamin"
-        type_of_exam = "element"
-
+        target_exam = self.storage.get_exam(item_id)
         if target_exam:
             name = target_exam["subject"]
             type_of_exam = target_exam["title"]
 
-        confirm = messagebox.askyesno(self.txt["msg_warning"],
-                                      self.txt["msg_confirm_del_perm"].format(type=type_of_exam, name=name))
-        if confirm:
-            if self.storage:
-                self.storage.delete_exam(exam_id)
-
-            self.refresh_list()
-            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archived_del"])
-
-    def delete_all_archive(self):
-        today = date.today()
-
-        # Sprawdzenie on-demand
-        all_exams = self.storage.get_exams()
-        has_past = any(date_format(e["date"]) < today for e in all_exams)
-
-        if not has_past:
-            messagebox.showinfo(self.txt["msg_info"], self.txt["msg_no_archive"])
-            return
-
-        confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_archive"])
-        if confirm:
-            ids_to_remove = [e["id"] for e in all_exams if date_format(e["date"]) < today]
-
-            if self.storage:
-                for eid in ids_to_remove:
-                    self.storage.delete_exam(eid)
-
-            self.refresh_list()
-            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archive_cleared"])
+            confirm = messagebox.askyesno(self.txt["msg_warning"],
+                                          self.txt["msg_confirm_del_perm"].format(type=type_of_exam, name=name))
+            if confirm:
+                if self.storage:
+                    self.storage.delete_exam(item_id)
+                self.refresh_list()
+                messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archived_del"])
 
     def on_double_click(self, event):
+        """Obsługa podwójnego kliknięcia z blokadą propagacji dla nagłówków."""
         selection = self.tree.selection()
         if not selection:
             return
 
-        exam_id = selection[0]
+        item_id = selection[0]
 
-        # Pobranie egzaminu on-demand (Szybki SQL)
-        selected_exam_row = self.storage.get_exam(exam_id)
+        # Sprawdzenie czy to egzamin (ID zaczyna się od "exam_")
+        if str(item_id).startswith("exam_"):
+            # To jest egzamin -> Otwórz szczegóły
+            selected_exam_row = self.storage.get_exam(item_id)
+            if selected_exam_row:
+                self.open_details_window(dict(selected_exam_row))
+        else:
+            # To jest Przedmiot (nagłówek)
+            # Ręcznie przełączamy stan, aby mieć pewność działania
+            if self.tree.item(item_id, "open"):
+                self.tree.item(item_id, open=False)
+            else:
+                self.tree.item(item_id, open=True)
 
-        if selected_exam_row:
-            self.open_details_window(dict(selected_exam_row))
+            # Zwracamy "break", aby zatrzymać domyślne zdarzenie Treeview
+            # (zapobiega to sytuacji, gdzie skrypt otwiera, a Treeview natychmiast zamyka)
+            return "break"
 
-    # --- OKNO SZCZEGÓŁÓW ---
+    # --- OKNO SZCZEGÓŁÓW (Bez zmian logicznych) ---
     def open_details_window(self, exam_data):
         hist_window = tk.Toplevel(self.win)
         hist_window.minsize(600, 450)
@@ -221,11 +279,9 @@ class ArchiveWindow:
 
         refresh_info()
 
-        # --- PASEK AKCJI (Notatnik + Postęp) ---
         action_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
         action_frame.pack(fill="x", padx=20, pady=(0, 5))
 
-        # 1. Przycisk Notatnik
         btn_notebook = ctk.CTkButton(action_frame,
                                      text=self.txt.get('btn_notebook', 'Notatnik'),
                                      height=28, width=100,
@@ -236,10 +292,8 @@ class ArchiveWindow:
                                                                     storage=self.storage))
         btn_notebook.pack(side="left")
 
-        # 2. Label Postępu
         lbl_progress = ctk.CTkLabel(action_frame, text="", font=("Arial", 13, "bold"))
         lbl_progress.pack(side="right")
-        # ---------------------------------------
 
         frame = tk.Frame(hist_window)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -267,18 +321,15 @@ class ArchiveWindow:
             for item in tree.get_children():
                 tree.delete(item)
 
-            # Pobieranie tematów (Pure SQL)
             topics_rows = self.storage.get_topics(exam_data["id"])
             exam_topics = [dict(t) for t in topics_rows]
-
             exam_topics.sort(key=lambda x: str(x.get("scheduled_date") or "9999-99-99"))
 
             total = len(exam_topics)
             done = len([t for t in exam_topics if t["status"] == "done"])
             pct = int((done / total) * 100) if total > 0 else 0
 
-            prog_txt = self.txt.get("col_progress", "Postęp")
-
+            prog_txt = self.txt.get("col_progress", "Progress")
             lbl_progress.configure(text=f"{prog_txt}: {done}/{total} ({pct}%)")
 
             for topic in exam_topics:
@@ -294,28 +345,19 @@ class ArchiveWindow:
             if not selected:
                 messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_topic"])
                 return
-
             topic_id = selected[0]
-
-            # Pobranie tematu on-demand (Szybki SQL)
             topic_row = self.storage.get_topic(topic_id)
-
             if topic_row:
                 topic = dict(topic_row)
                 topic["status"] = "done" if topic["status"] == "todo" else "todo"
-
                 self.storage.update_topic(topic)
-
-                # Aktualizacja statystyk (Consistent with Main App Logic)
                 if topic["status"] == "done":
                     stats = self.storage.get_global_stats()
                     done_count = stats.get("topics_done", 0) + 1
                     self.storage.update_global_stat("topics_done", done_count)
                     self.storage.update_global_stat("activity_started", True)
-
                 refresh_details()
                 self.refresh_list()
-
                 if self.dashboard_callback:
                     self.dashboard_callback()
 
@@ -324,12 +366,8 @@ class ArchiveWindow:
             if not selected:
                 messagebox.showinfo(self.txt["msg_info"], self.txt["msg_select_topic"])
                 return
-
             topic_id = selected[0]
-
-            # Szybki SQL
             topic_row = self.storage.get_topic(topic_id)
-
             if topic_row:
                 self.edit_topic_func(dict(topic_row), callback=refresh_details)
 
@@ -344,19 +382,14 @@ class ArchiveWindow:
         tree.bind("<Double-1>", lambda event: edit_topic_local())
 
         ctk.CTkLabel(hist_window, text=self.txt["msg_double_click_edit"], font=("Arial", 12, "bold")).pack()
-
         btn_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
         btn_frame.pack(pady=10)
 
         btn_status = ctk.CTkButton(btn_frame, text=self.txt["btn_toggle_status"], command=toggle_status_local,
                                    **self.btn_style)
         btn_status.pack(side="left", padx=5)
-
-        btn_edit = ctk.CTkButton(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local,
-                                 **self.btn_style)
+        btn_edit = ctk.CTkButton(btn_frame, text=self.txt["btn_edit_exam"], command=edit_exam_local, **self.btn_style)
         btn_edit.pack(side="left", padx=5)
-
-        btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy,
-                                  **self.btn_style)
+        btn_close = ctk.CTkButton(btn_frame, text=self.txt["btn_close"], command=hist_window.destroy, **self.btn_style)
         btn_close.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         btn_close.pack(side="left", padx=5)

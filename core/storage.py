@@ -1,12 +1,13 @@
 import json
 import sqlite3
 import datetime
+import uuid
 from pathlib import Path
 import platformdirs
 
 # --- KONFIGURACJA ---
 # False: folder projektu/core | True: folder systemowy (AppData/Config)
-USE_SYSTEM_STORAGE = False
+USE_SYSTEM_STORAGE = True
 
 # Nazwy aplikacji
 APP_NAME = "StudyPlanner"
@@ -19,7 +20,7 @@ LOCAL_JSON_PATH = CORE_DIR / "storage.json"  # Potrzebne do migracji
 
 SYSTEM_DIR = Path(platformdirs.user_data_dir(APP_NAME, APP_AUTHOR))
 SYSTEM_DB_PATH = SYSTEM_DIR / "storage.db"
-SYSTEM_JSON_PATH = SYSTEM_DIR / "storage.json" # Potrzebne do migracji
+SYSTEM_JSON_PATH = SYSTEM_DIR / "storage.json"  # Potrzebne do migracji
 
 if USE_SYSTEM_STORAGE:
     SYSTEM_DIR.mkdir(parents=True, exist_ok=True)
@@ -39,7 +40,13 @@ DEFAULT_DATA = {
         "lang": "en",
         "theme": "dark",
         "next_exam_switch_hour": 24,
-        "badge_mode": "default"
+        "badge_mode": "default",
+        # NOWE USTAWIENIA OCEN
+        "grading_system": {
+            "grade_mode": "percentage",   # "numeric" (2-5) lub "percentage" (0-100)
+            "weight_mode": "percentage",  # "numeric" (1-5) lub "percentage" (0-100)
+            "pass_threshold": 50
+        }
     },
     "global_stats": {
         "topics_done": 0,
@@ -66,26 +73,32 @@ class StorageManager:
         """
         self.db_path = db_path
         self._init_db()
-        self._check_and_migrate()
+        self._check_migrations()
 
     def _get_conn(self):
         """Pomocnicza funkcja zwracająca połączenie z row_factory (używać wewnątrz with)."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")  # Włączamy klucze obce
         return conn
 
     def _init_db(self):
         """Tworzy strukturę tabel, jeśli nie istnieją."""
         with self._get_conn() as conn:
+            # --- TABELE PODSTAWOWE (STARY SCHEMAT) ---
+
+            # Tabela EXAMS
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS exams (
                     id TEXT PRIMARY KEY,
-                    subject TEXT,
+                    subject_id TEXT, -- Nowa kolumna (FK)
+                    subject TEXT, -- Stara kolumna (Legacy tekst)
                     title TEXT,
                     date TEXT,
                     note TEXT,
                     ignore_barrier INTEGER DEFAULT 0,
-                    color TEXT
+                    color TEXT,
+                    FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE SET NULL
                 )
             """)
             conn.execute("""
@@ -110,114 +123,226 @@ class StorageManager:
                     created_at TEXT
                 )
             """)
+            conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute("CREATE TABLE IF NOT EXISTS global_stats (key TEXT PRIMARY KEY, value TEXT)")
+            conn.execute("CREATE TABLE IF NOT EXISTS blocked_dates (date TEXT PRIMARY KEY)")
+            conn.execute("CREATE TABLE IF NOT EXISTS achievements (achievement_id TEXT PRIMARY KEY, date_earned TEXT)")
+            conn.execute("CREATE TABLE IF NOT EXISTS stats (key TEXT PRIMARY KEY, value TEXT)")
+
+            # --- NOWE TABELE (RELACYJNE v2) ---
+
+            # 1. SEMESTRY
             conn.execute("""
-                CREATE TABLE IF NOT EXISTS settings (
-                    key TEXT PRIMARY KEY,
-                    value TEXT
-                )
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS global_stats (
-                    key TEXT PRIMARY KEY,
-                    value TEXT
-                )
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS blocked_dates (
-                    date TEXT PRIMARY KEY
-                )
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS achievements (
-                    achievement_id TEXT PRIMARY KEY,
-                    date_earned TEXT
-                )
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS stats (
-                    key TEXT PRIMARY KEY,
-                    value TEXT
+                CREATE TABLE IF NOT EXISTS semesters (
+                    id TEXT PRIMARY KEY,
+                    name TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    is_current INTEGER DEFAULT 0
                 )
             """)
 
-    # --- MIGRACJA (JSON -> SQL) ---
+            # 2. PRZEDMIOTY (SUBJECTS)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS subjects (
+                    id TEXT PRIMARY KEY,
+                    semester_id TEXT,
+                    name TEXT,
+                    short_name TEXT,
+                    color TEXT,
+                    weight REAL DEFAULT 1.0,
+                    start_datetime TEXT,
+                    end_datetime TEXT,
+                    FOREIGN KEY (semester_id) REFERENCES semesters (id) ON DELETE CASCADE
+                )
+            """)
 
-    def _check_and_migrate(self):
-        """Sprawdza czy baza jest pusta i czy istnieje plik JSON do migracji."""
-        should_migrate = False
+            # 3. PLAN ZAJĘĆ (SCHEDULE)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS schedule_entries (
+                    id TEXT PRIMARY KEY,
+                    subject_id TEXT,
+                    day_of_week INTEGER,
+                    start_time TEXT,
+                    end_time TEXT,
+                    room TEXT,
+                    type TEXT,
+                    period_start TEXT,
+                    period_end TEXT,
+                    FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
+                )
+            """)
+
+            # 3b. ODWOŁANE ZAJĘCIA (EXCEPTIONS) - NOWOŚĆ
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS schedule_cancellations (
+                    id TEXT PRIMARY KEY,
+                    entry_id TEXT,
+                    date TEXT, -- Data konkretnego dnia (YYYY-MM-DD), w którym zajęcia są odwołane
+                    FOREIGN KEY (entry_id) REFERENCES schedule_entries (id) ON DELETE CASCADE
+                )
+                         """)
+
+            # 4. OCENY (GRADES)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS grades (
+                    id TEXT PRIMARY KEY,
+                    subject_id TEXT,
+                    value REAL,
+                    weight REAL DEFAULT 1.0,
+                    desc TEXT,
+                    date TEXT,
+                    FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
+                )
+            """)
+
+    # --- MIGRACJE ---
+
+    def _check_migrations(self):
+        """Zarządza migracjami: JSON -> SQL v1 oraz SQL v1 -> SQL v2 (Relacyjne)."""
+
+        # 1. Migracja z JSON (Legacy)
+        should_migrate_json = False
         with self._get_conn() as conn:
             cursor = conn.execute("SELECT count(*) FROM exams")
             if cursor.fetchone()[0] == 0:
                 cursor = conn.execute("SELECT count(*) FROM settings")
                 if cursor.fetchone()[0] == 0:
-                    should_migrate = True
+                    should_migrate_json = True
 
-        if should_migrate and OLD_JSON_PATH.exists():
-            try:
-                print(f"[Storage] Rozpoczynam migrację z {OLD_JSON_PATH}...")
-                data = json.loads(OLD_JSON_PATH.read_text(encoding="utf-8"))
-                self._migrate_data(data)
+        if should_migrate_json and OLD_JSON_PATH.exists():
+            self._migrate_json_to_sql()
 
-                new_name = OLD_JSON_PATH.parent / "storage.json.old"
-                OLD_JSON_PATH.rename(new_name)
-                print(f"[Storage] Migracja zakończona sukcesem. Stary plik: {new_name}")
-            except Exception as e:
-                print(f"[Storage] Błąd migracji: {e}")
+        # 2. Migracja Relacyjna
+        self._migrate_to_relational_schema()
 
-    def _migrate_data(self, data):
-        """Przepisuje dane ze słownika JSON do tabel SQL."""
-        today_str = datetime.date.today().isoformat()
+        # 3. Migracja Przedmiotów (Dodanie kolumn czasowych)
+        self._migrate_subjects_add_dates()
+
+    def _migrate_json_to_sql(self):
+        """Stara migracja z JSON (bez zmian logicznych)."""
+        try:
+            print(f"[Storage] Rozpoczynam migrację z {OLD_JSON_PATH}...")
+            data = json.loads(OLD_JSON_PATH.read_text(encoding="utf-8"))
+            today_str = datetime.date.today().isoformat()
+
+            with self._get_conn() as conn:
+                if "settings" in data:
+                    for k, v in data["settings"].items():
+                        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, json.dumps(v)))
+                if "global_stats" in data:
+                    for k, v in data["global_stats"].items():
+                        conn.execute("INSERT OR REPLACE INTO global_stats (key, value) VALUES (?, ?)",
+                                     (k, json.dumps(v)))
+                if "stats" in data:
+                    for k, v in data["stats"].items():
+                        conn.execute("INSERT OR REPLACE INTO stats (key, value) VALUES (?, ?)", (k, json.dumps(v)))
+                if "exams" in data:
+                    for e in data["exams"]:
+                        conn.execute(
+                            "INSERT INTO exams (id, subject, title, date, note, ignore_barrier, color) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (e.get("id"), e.get("subject"), e.get("title"), e.get("date"), e.get("note", ""),
+                             1 if e.get("ignore_barrier") else 0, e.get("color")))
+                if "topics" in data:
+                    for t in data["topics"]:
+                        conn.execute(
+                            "INSERT INTO topics (id, exam_id, name, status, scheduled_date, locked, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (t.get("id"), t.get("exam_id"), t.get("name"), t.get("status"), t.get("scheduled_date"),
+                             1 if t.get("locked") else 0, t.get("note", "")))
+                if "daily_tasks" in data:
+                    for dt in data["daily_tasks"]:
+                        conn.execute(
+                            "INSERT INTO daily_tasks (id, content, status, date, color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            (dt.get("id"), dt.get("content"), dt.get("status"), dt.get("date"), dt.get("color"),
+                             dt.get("created_at")))
+                if "blocked_dates" in data:
+                    for d in data["blocked_dates"]:
+                        conn.execute("INSERT OR IGNORE INTO blocked_dates (date) VALUES (?)", (d,))
+                if "achievements" in data:
+                    for ach_id in data["achievements"]:
+                        if isinstance(ach_id, str):
+                            conn.execute(
+                                "INSERT OR IGNORE INTO achievements (achievement_id, date_earned) VALUES (?, ?)",
+                                (ach_id, today_str))
+                conn.commit()
+
+            new_name = OLD_JSON_PATH.parent / "storage.json"
+            OLD_JSON_PATH.rename(new_name)
+            print(f"[Storage] Migracja zakończona sukcesem. Stary plik: {new_name}")
+
+        except Exception as e:
+            print(f"[Storage] Błąd migracji JSON: {e}")
+
+    def _migrate_to_relational_schema(self):
         with self._get_conn() as conn:
-            # Settings
-            if "settings" in data:
-                for k, v in data["settings"].items():
-                    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, json.dumps(v)))
+            columns = [row[1] for row in conn.execute("PRAGMA table_info(exams)")]
 
-            # Global Stats
-            if "global_stats" in data:
-                for k, v in data["global_stats"].items():
-                    conn.execute("INSERT OR REPLACE INTO global_stats (key, value) VALUES (?, ?)", (k, json.dumps(v)))
+            if "subject_id" not in columns:
+                try:
+                    conn.execute("ALTER TABLE exams ADD COLUMN subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL")
+                except sqlite3.OperationalError:
+                    pass
 
-            # Stats
-            if "stats" in data:
-                for k, v in data["stats"].items():
-                    conn.execute("INSERT OR REPLACE INTO stats (key, value) VALUES (?, ?)", (k, json.dumps(v)))
+            exams_to_fix = conn.execute("SELECT id, subject FROM exams WHERE subject_id IS NULL AND subject IS NOT NULL").fetchall()
 
-            # Exams
-            if "exams" in data:
-                for e in data["exams"]:
-                    conn.execute("INSERT INTO exams (id, subject, title, date, note, ignore_barrier, color) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                 (e.get("id"), e.get("subject"), e.get("title"), e.get("date"), e.get("note", ""), 1 if e.get("ignore_barrier") else 0, e.get("color")))
+            if not exams_to_fix:
+                return
 
-            # Topics
-            if "topics" in data:
-                for t in data["topics"]:
-                    conn.execute("INSERT INTO topics (id, exam_id, name, status, scheduled_date, locked, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                 (t.get("id"), t.get("exam_id"), t.get("name"), t.get("status"), t.get("scheduled_date"), 1 if t.get("locked") else 0, t.get("note", "")))
+            default_sem_id = f"sem_{uuid.uuid4().hex[:8]}"
+            existing_sem = conn.execute("SELECT id FROM semesters LIMIT 1").fetchone()
 
-            # Daily Tasks
-            if "daily_tasks" in data:
-                for dt in data["daily_tasks"]:
-                    conn.execute("INSERT INTO daily_tasks (id, content, status, date, color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                                 (dt.get("id"), dt.get("content"), dt.get("status"), dt.get("date"), dt.get("color"), dt.get("created_at")))
+            if existing_sem:
+                current_sem_id = existing_sem[0]
+            else:
+                conn.execute("""
+                             INSERT INTO semesters (id, name, start_date, end_date, is_current)
+                             VALUES (?, ?, ?, ?, ?)
+                             """, (default_sem_id, "Domyślny (Migracja)", str(datetime.date.today()),
+                                   str(datetime.date.today().replace(year=datetime.date.today().year + 1)), 1))
+                current_sem_id = default_sem_id
 
-            # Blocked Dates
-            if "blocked_dates" in data:
-                for d in data["blocked_dates"]:
-                    conn.execute("INSERT OR IGNORE INTO blocked_dates (date) VALUES (?)", (d,))
+            unique_subjects = set(e["subject"] for e in exams_to_fix)
+            subject_map = {}
 
-            # Achievements
-            if "achievements" in data:
-                for ach_id in data["achievements"]:
-                    if isinstance(ach_id, str):
-                        conn.execute("INSERT OR IGNORE INTO achievements (achievement_id, date_earned) VALUES (?, ?)", (ach_id, today_str))
+            for name in unique_subjects:
+                existing_subj = conn.execute("SELECT id FROM subjects WHERE name=?", (name,)).fetchone()
+                if existing_subj:
+                    subject_map[name] = existing_subj[0]
+                else:
+                    new_sub_id = f"sub_{uuid.uuid4().hex[:8]}"
+                    short = "".join([word[0].upper() for word in name.split() if word])[:3]
+                    conn.execute("""
+                                 INSERT INTO subjects (id, semester_id, name, short_name, color, weight)
+                                 VALUES (?, ?, ?, ?, ?, ?)
+                                 """, (new_sub_id, current_sem_id, name, short, None, 1.0))
+                    subject_map[name] = new_sub_id
 
+            for exam in exams_to_fix:
+                s_name = exam["subject"]
+                if s_name in subject_map:
+                    new_sid = subject_map[s_name]
+                    conn.execute("UPDATE exams SET subject_id=? WHERE id=?", (new_sid, exam["id"]))
+
+            conn.commit()
+
+    def _migrate_subjects_add_dates(self):
+        with self._get_conn() as conn:
+            columns = [row[1] for row in conn.execute("PRAGMA table_info(subjects)")]
+            if "start_datetime" not in columns:
+                try:
+                    conn.execute("ALTER TABLE subjects ADD COLUMN start_datetime TEXT")
+                except sqlite3.OperationalError:
+                    pass
+            if "end_datetime" not in columns:
+                try:
+                    conn.execute("ALTER TABLE subjects ADD COLUMN end_datetime TEXT")
+                except sqlite3.OperationalError:
+                    pass
             conn.commit()
 
     # --- API (SETTINGS & STATS) ---
 
     def get_settings(self):
-        """Pobiera ustawienia, deserializuje JSON i łączy z domyślnymi."""
         res = {}
         with self._get_conn() as conn:
             rows = conn.execute("SELECT key, value FROM settings")
@@ -226,19 +351,21 @@ class StorageManager:
                     res[r["key"]] = json.loads(r["value"])
                 except (json.JSONDecodeError, TypeError):
                     res[r["key"]] = r["value"]
-
         defaults = DEFAULT_DATA["settings"].copy()
-        defaults.update(res)
+        # Łączenie głębokie dla settings (ważne dla grading_system)
+        for k, v in res.items():
+            if k in defaults and isinstance(defaults[k], dict) and isinstance(v, dict):
+                defaults[k].update(v)
+            else:
+                defaults[k] = v
         return defaults
 
     def update_setting(self, key, value):
-        """Aktualizuje pojedyncze ustawienie (zapisuje jako JSON)."""
         with self._get_conn() as conn:
             conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, json.dumps(value)))
             conn.commit()
 
     def get_global_stats(self):
-        """Pobiera statystyki globalne."""
         res = {}
         with self._get_conn() as conn:
             rows = conn.execute("SELECT key, value FROM global_stats")
@@ -247,19 +374,16 @@ class StorageManager:
                     res[r["key"]] = json.loads(r["value"])
                 except (json.JSONDecodeError, TypeError):
                     res[r["key"]] = r["value"]
-
         defaults = DEFAULT_DATA["global_stats"].copy()
         defaults.update(res)
         return defaults
 
     def update_global_stat(self, key, value):
-        """Aktualizuje pojedynczą statystykę globalną."""
         with self._get_conn() as conn:
             conn.execute("INSERT OR REPLACE INTO global_stats (key, value) VALUES (?, ?)", (key, json.dumps(value)))
             conn.commit()
 
     def get_other_stats(self):
-        """Pobiera dodatkowe statystyki (np. pomodoro_count)."""
         res = {}
         with self._get_conn() as conn:
             rows = conn.execute("SELECT key, value FROM stats")
@@ -271,7 +395,6 @@ class StorageManager:
         return res
 
     def update_other_stat(self, key, value):
-        """Aktualizuje dodatkową statystykę."""
         with self._get_conn() as conn:
             conn.execute("INSERT OR REPLACE INTO stats (key, value) VALUES (?, ?)", (key, json.dumps(value)))
             conn.commit()
@@ -279,53 +402,79 @@ class StorageManager:
     # --- API (EXAMS) ---
 
     def get_exam(self, exam_id):
-        """Pobiera pojedynczy egzamin po ID."""
+        sql = """
+              SELECT e.*, s.name as subject_name, s.color as subject_color
+              FROM exams e
+                       LEFT JOIN subjects s ON e.subject_id = s.id
+              WHERE e.id = ? \
+              """
         with self._get_conn() as conn:
-            row = conn.execute("SELECT * FROM exams WHERE id=?", (exam_id,)).fetchone()
+            row = conn.execute(sql, (exam_id,)).fetchone()
             if row:
                 data = dict(row)
-                # Opcjonalnie: od razu naprawiamy typ boolean, żeby nie robić tego w GUI
                 data["ignore_barrier"] = bool(data["ignore_barrier"])
+                if data.get("subject_name"):
+                    data["subject"] = data["subject_name"]
                 return data
             return None
 
     def get_exams(self):
-        """Zwraca listę wszystkich egzaminów (sqlite3.Row)."""
+        sql = """
+              SELECT e.*, s.name as subject_name, s.color as subject_color
+              FROM exams e
+                       LEFT JOIN subjects s ON e.subject_id = s.id \
+              """
         with self._get_conn() as conn:
-            return conn.execute("SELECT * FROM exams").fetchall()
+            rows = conn.execute(sql).fetchall()
+            results = []
+            for r in rows:
+                d = dict(r)
+                if d.get("subject_name"):
+                    d["subject"] = d["subject_name"]
+                if d.get("subject_color"):
+                    d["color"] = d["subject_color"]
+                results.append(d)
+            return results
 
     def add_exam(self, exam_dict):
-        """Dodaje nowy egzamin do bazy."""
         with self._get_conn() as conn:
+            subj_id = exam_dict.get("subject_id")
+            if not subj_id and exam_dict.get("subject"):
+                row = conn.execute("SELECT id FROM subjects WHERE name=?", (exam_dict["subject"],)).fetchone()
+                if row:
+                    subj_id = row[0]
+                else:
+                    sem = conn.execute("SELECT id FROM semesters LIMIT 1").fetchone()
+                    if sem:
+                        new_sid = f"sub_{uuid.uuid4().hex[:8]}"
+                        conn.execute(
+                            "INSERT INTO subjects (id, semester_id, name, short_name, color) VALUES (?, ?, ?, ?, ?)",
+                            (new_sid, sem[0], exam_dict["subject"], exam_dict["subject"][:3], "#3498db"))
+                        subj_id = new_sid
+
             conn.execute("""
-                INSERT INTO exams (id, subject, title, date, note, ignore_barrier, color)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                exam_dict["id"], exam_dict["subject"], exam_dict["title"], exam_dict["date"],
-                exam_dict.get("note", ""),
-                1 if exam_dict.get("ignore_barrier") else 0,
-                exam_dict.get("color")
-            ))
+                         INSERT INTO exams (id, subject_id, subject, title, date, note, ignore_barrier, color)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                         """, (
+                             exam_dict["id"], subj_id, exam_dict["subject"], exam_dict["title"], exam_dict["date"],
+                             exam_dict.get("note", ""), 1 if exam_dict.get("ignore_barrier") else 0,
+                             exam_dict.get("color")))
             conn.commit()
 
     def update_exam(self, exam_dict):
-        """Aktualizuje istniejący egzamin."""
         with self._get_conn() as conn:
             conn.execute("""
-                UPDATE exams
-                SET subject=?, title=?, date=?, note=?, ignore_barrier=?, color=?
-                WHERE id = ?
-            """, (
-                exam_dict["subject"], exam_dict["title"], exam_dict["date"],
-                exam_dict.get("note", ""),
-                1 if exam_dict.get("ignore_barrier") else 0,
-                exam_dict.get("color"),
-                exam_dict["id"]
-            ))
+                         UPDATE exams
+                         SET subject=?, title=?, date=?, note=?, ignore_barrier=?, color=?
+                         WHERE id = ?
+                         """, (
+                             exam_dict["subject"], exam_dict["title"], exam_dict["date"],
+                             exam_dict.get("note", ""), 1 if exam_dict.get("ignore_barrier") else 0,
+                             exam_dict.get("color"),
+                             exam_dict["id"]))
             conn.commit()
 
     def delete_exam(self, exam_id):
-        """Usuwa egzamin (tematy usuwane kaskadowo)."""
         with self._get_conn() as conn:
             conn.execute("DELETE FROM exams WHERE id=?", (exam_id,))
             conn.commit()
@@ -333,18 +482,15 @@ class StorageManager:
     # --- API (TOPICS) ---
 
     def get_topic(self, topic_id):
-        """Pobiera pojedynczy temat po ID."""
         with self._get_conn() as conn:
             row = conn.execute("SELECT * FROM topics WHERE id=?", (topic_id,)).fetchone()
             if row:
                 data = dict(row)
-                # Opcjonalnie: od razu naprawiamy typ boolean
                 data["locked"] = bool(data["locked"])
                 return data
             return None
 
     def get_topics(self, exam_id=None):
-        """Zwraca listę tematów dla danego egzaminu lub wszystkie."""
         with self._get_conn() as conn:
             if exam_id:
                 return conn.execute("SELECT * FROM topics WHERE exam_id=?", (exam_id,)).fetchall()
@@ -352,37 +498,30 @@ class StorageManager:
                 return conn.execute("SELECT * FROM topics").fetchall()
 
     def add_topic(self, topic_dict):
-        """Dodaje nowy temat."""
         with self._get_conn() as conn:
             conn.execute("""
-                INSERT INTO topics (id, exam_id, name, status, scheduled_date, locked, note)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                topic_dict["id"], topic_dict["exam_id"], topic_dict["name"], topic_dict["status"],
-                topic_dict.get("scheduled_date"),
-                1 if topic_dict.get("locked") else 0,
-                topic_dict.get("note", "")
-            ))
+                         INSERT INTO topics (id, exam_id, name, status, scheduled_date, locked, note)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)
+                         """, (
+                             topic_dict["id"], topic_dict["exam_id"], topic_dict["name"], topic_dict["status"],
+                             topic_dict.get("scheduled_date"), 1 if topic_dict.get("locked") else 0,
+                             topic_dict.get("note", "")))
             conn.commit()
 
     def update_topic(self, topic_dict):
-        """Aktualizuje istniejący temat."""
         with self._get_conn() as conn:
             conn.execute("""
-                UPDATE topics
-                SET exam_id=?, name=?, status=?, scheduled_date=?, locked=?, note=?
-                WHERE id = ?
-            """, (
-                topic_dict["exam_id"], topic_dict["name"], topic_dict["status"],
-                topic_dict.get("scheduled_date"),
-                1 if topic_dict.get("locked") else 0,
-                topic_dict.get("note", ""),
-                topic_dict["id"]
-            ))
+                         UPDATE topics
+                         SET exam_id=?, name=?, status=?, scheduled_date=?, locked=?, note=?
+                         WHERE id = ?
+                         """, (
+                             topic_dict["exam_id"], topic_dict["name"], topic_dict["status"],
+                             topic_dict.get("scheduled_date"), 1 if topic_dict.get("locked") else 0,
+                             topic_dict.get("note", ""),
+                             topic_dict["id"]))
             conn.commit()
 
     def delete_topic(self, topic_id):
-        """Usuwa temat."""
         with self._get_conn() as conn:
             conn.execute("DELETE FROM topics WHERE id=?", (topic_id,))
             conn.commit()
@@ -390,44 +529,37 @@ class StorageManager:
     # --- API (DAILY TASKS) ---
 
     def get_daily_task(self, task_id):
-        """Pobiera pojedyncze zadanie dzienne po ID."""
         with self._get_conn() as conn:
             row = conn.execute("SELECT * FROM daily_tasks WHERE id=?", (task_id,)).fetchone()
             return dict(row) if row else None
 
     def get_daily_tasks(self):
-        """Zwraca listę zadań dziennych."""
         with self._get_conn() as conn:
             return conn.execute("SELECT * FROM daily_tasks").fetchall()
 
     def add_daily_task(self, task_dict):
-        """Dodaje nowe zadanie dzienne."""
         with self._get_conn() as conn:
             conn.execute("""
-                INSERT INTO daily_tasks (id, content, status, date, color, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                task_dict["id"], task_dict["content"], task_dict["status"],
-                task_dict["date"], task_dict.get("color"), task_dict.get("created_at")
-            ))
+                         INSERT INTO daily_tasks (id, content, status, date, color, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         """, (
+                             task_dict["id"], task_dict["content"], task_dict["status"],
+                             task_dict["date"], task_dict.get("color"), task_dict.get("created_at")))
             conn.commit()
 
     def update_daily_task(self, task_dict):
-        """Aktualizuje zadanie dzienne."""
         with self._get_conn() as conn:
             conn.execute("""
-                UPDATE daily_tasks
-                SET content=?, status=?, date=?, color=?, created_at=?
-                WHERE id = ?
-            """, (
-                task_dict["content"], task_dict["status"], task_dict["date"],
-                task_dict.get("color"), task_dict.get("created_at"),
-                task_dict["id"]
-            ))
+                         UPDATE daily_tasks
+                         SET content=?, status=?, date=?, color=?, created_at=?
+                         WHERE id = ?
+                         """, (
+                             task_dict["content"], task_dict["status"], task_dict["date"],
+                             task_dict.get("color"), task_dict.get("created_at"),
+                             task_dict["id"]))
             conn.commit()
 
     def delete_daily_task(self, task_id):
-        """Usuwa zadanie dzienne."""
         with self._get_conn() as conn:
             conn.execute("DELETE FROM daily_tasks WHERE id=?", (task_id,))
             conn.commit()
@@ -435,33 +567,138 @@ class StorageManager:
     # --- API (OTHERS) ---
 
     def get_blocked_dates(self):
-        """Zwraca listę zablokowanych dat (lista stringów)."""
         with self._get_conn() as conn:
             return [row["date"] for row in conn.execute("SELECT date FROM blocked_dates")]
 
     def add_blocked_date(self, date_str):
-        """Dodaje datę do zablokowanych."""
         with self._get_conn() as conn:
             conn.execute("INSERT OR IGNORE INTO blocked_dates (date) VALUES (?)", (date_str,))
             conn.commit()
 
     def remove_blocked_date(self, date_str):
-        """Usuwa datę z zablokowanych."""
         with self._get_conn() as conn:
             conn.execute("DELETE FROM blocked_dates WHERE date=?", (date_str,))
             conn.commit()
 
     def get_achievements(self):
-        """Zwraca listę ID zdobytych osiągnięć."""
         with self._get_conn() as conn:
             return [row["achievement_id"] for row in conn.execute("SELECT achievement_id FROM achievements")]
 
     def add_achievement(self, achievement_id):
-        """Dodaje osiągnięcie z dzisiejszą datą."""
         today = datetime.date.today().isoformat()
         with self._get_conn() as conn:
             conn.execute("INSERT OR IGNORE INTO achievements (achievement_id, date_earned) VALUES (?, ?)",
                          (achievement_id, today))
+            conn.commit()
+
+    # --- NOWE API (CRUD) ---
+
+    def get_semesters(self):
+        with self._get_conn() as conn:
+            return conn.execute("SELECT * FROM semesters").fetchall()
+
+    def add_semester(self, sem_dict):
+        with self._get_conn() as conn:
+            conn.execute("INSERT INTO semesters (id, name, start_date, end_date, is_current) VALUES (?, ?, ?, ?, ?)",
+                         (sem_dict["id"], sem_dict["name"], sem_dict["start_date"], sem_dict["end_date"],
+                          1 if sem_dict.get("is_current") else 0))
+            conn.commit()
+
+    def update_semester(self, sem_dict):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE semesters SET name=?, start_date=?, end_date=?, is_current=? WHERE id=?",
+                         (sem_dict["name"], sem_dict["start_date"], sem_dict["end_date"],
+                          1 if sem_dict.get("is_current") else 0, sem_dict["id"]))
+            conn.commit()
+
+    def delete_semester(self, sem_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM semesters WHERE id=?", (sem_id,))
+            conn.commit()
+
+    def get_subjects(self, semester_id=None):
+        with self._get_conn() as conn:
+            if semester_id:
+                return conn.execute("SELECT * FROM subjects WHERE semester_id=?", (semester_id,)).fetchall()
+            return conn.execute("SELECT * FROM subjects").fetchall()
+
+    def add_subject(self, sub_dict):
+        with self._get_conn() as conn:
+            conn.execute(
+                "INSERT INTO subjects (id, semester_id, name, short_name, color, weight, start_datetime, end_datetime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (sub_dict["id"], sub_dict["semester_id"], sub_dict["name"], sub_dict["short_name"], sub_dict["color"],
+                 sub_dict.get("weight", 1.0), sub_dict.get("start_datetime"), sub_dict.get("end_datetime")))
+            conn.commit()
+
+    def update_subject(self, sub_dict):
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE subjects SET semester_id=?, name=?, short_name=?, color=?, weight=?, start_datetime=?, end_datetime=? WHERE id=?",
+                (sub_dict["semester_id"], sub_dict["name"], sub_dict["short_name"], sub_dict["color"],
+                 sub_dict.get("weight", 1.0), sub_dict.get("start_datetime"), sub_dict.get("end_datetime"),
+                 sub_dict["id"]))
+            conn.commit()
+
+    def delete_subject(self, sub_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM subjects WHERE id=?", (sub_id,))
+            conn.commit()
+
+    # --- SCHEDULE ENTRIES ---
+
+    def get_schedule(self):
+        with self._get_conn() as conn:
+            return conn.execute("SELECT * FROM schedule_entries").fetchall()
+
+    def get_schedule_entries_by_subject(self, subject_id):
+        with self._get_conn() as conn:
+            return conn.execute("SELECT * FROM schedule_entries WHERE subject_id=?", (subject_id,)).fetchall()
+
+    def add_schedule_entry(self, entry_dict):
+        with self._get_conn() as conn:
+            conn.execute(
+                "INSERT INTO schedule_entries (id, subject_id, day_of_week, start_time, end_time, room, type, period_start, period_end) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (entry_dict["id"], entry_dict["subject_id"], entry_dict["day_of_week"], entry_dict["start_time"],
+                 entry_dict["end_time"], entry_dict.get("room"), entry_dict.get("type"),
+                 entry_dict.get("period_start"), entry_dict.get("period_end")))
+            conn.commit()
+
+    def delete_schedule_entry(self, entry_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM schedule_entries WHERE id=?", (entry_id,))
+            conn.commit()
+
+    # NOWE METODY DLA WYJĄTKÓW (ODWOŁANYCH ZAJĘĆ)
+    def add_schedule_cancellation(self, entry_id, date_str):
+        new_id = f"cancel_{uuid.uuid4().hex[:8]}"
+        with self._get_conn() as conn:
+            conn.execute("INSERT INTO schedule_cancellations (id, entry_id, date) VALUES (?, ?, ?)",
+                         (new_id, entry_id, date_str))
+            conn.commit()
+
+    def get_schedule_cancellations(self):
+        """Zwraca listę słowników: {'entry_id': '...', 'date': '...'}"""
+        with self._get_conn() as conn:
+            return conn.execute("SELECT entry_id, date FROM schedule_cancellations").fetchall()
+
+    # --- GRADES ---
+
+    def get_grades(self, subject_id=None):
+        with self._get_conn() as conn:
+            if subject_id:
+                return conn.execute("SELECT * FROM grades WHERE subject_id=?", (subject_id,)).fetchall()
+            return conn.execute("SELECT * FROM grades").fetchall()
+
+    def add_grade(self, grade_dict):
+        with self._get_conn() as conn:
+            conn.execute("INSERT INTO grades (id, subject_id, value, weight, desc, date) VALUES (?, ?, ?, ?, ?, ?)",
+                         (grade_dict["id"], grade_dict["subject_id"], grade_dict["value"],
+                          grade_dict.get("weight", 1.0), grade_dict.get("desc"), grade_dict.get("date")))
+            conn.commit()
+
+    def delete_grade(self, grade_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM grades WHERE id=?", (grade_id,))
             conn.commit()
 
 
