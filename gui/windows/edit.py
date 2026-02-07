@@ -3,7 +3,6 @@ from tkinter import messagebox
 import customtkinter as ctk
 from tkcalendar import DateEntry
 import uuid
-# Removed legacy 'save' import as we now use StorageManager
 from gui.windows.color_picker import ColorPickerWindow
 
 
@@ -16,29 +15,46 @@ def select_edit_item(parent, data, txt, tree, btn_style, callback=None, storage=
 
     item_id = selected_item[0]
 
-    # sprawdzenie czy to egzamin
-    for exam in data["exams"]:
-        if exam["id"] == item_id:
-            EditExamWindow(parent, txt, data, btn_style, exam, callback, storage)
-            return
+    if not storage:
+        messagebox.showerror(txt["msg_error"], "StorageManager is missing!")
+        return
 
-    # sprawdzenie czy to temat
-    for topic in data["topics"]:
-        if topic["id"] == item_id:
-            EditTopicWindow(parent, txt, data, btn_style, topic, callback, storage)
-            return
+    # Sprawdzenie czy to egzamin (Pure SQL)
+    # Pobieramy listę egzaminów i szukamy ID
+    all_exams = storage.get_exams()
+    target_exam = next((dict(e) for e in all_exams if str(e["id"]) == str(item_id)), None)
 
-    # blad
+    if target_exam:
+        # Konwersja booleana dla GUI (jeśli baza zwraca 0/1)
+        if "ignore_barrier" in target_exam:
+            target_exam["ignore_barrier"] = bool(target_exam["ignore_barrier"])
+
+        EditExamWindow(parent, txt, {}, btn_style, target_exam, callback, storage)
+        return
+
+    # Sprawdzenie czy to temat (Pure SQL)
+    all_topics = storage.get_topics()
+    target_topic = next((dict(t) for t in all_topics if str(t["id"]) == str(item_id)), None)
+
+    if target_topic:
+        # Konwersja booleana
+        if "locked" in target_topic:
+            target_topic["locked"] = bool(target_topic["locked"])
+
+        EditTopicWindow(parent, txt, {}, btn_style, target_topic, callback, storage)
+        return
+
+    # Jeśli nie znaleziono
     messagebox.showerror(txt["msg_error"], txt["msg_cant_edit"])
 
 
 # edycja egzaminow
-class EditExamWindow():
+class EditExamWindow:
     def __init__(self, parent, txt, data, btn_style, exam_data, callback=None, storage=None):
         self.txt = txt
-        self.data = data
+        self.data = data  # Ignorowane (Pure SQL)
         self.btn_style = btn_style
-        self.exam_data = exam_data  # This might be a dict (from legacy load) or Row
+        self.exam_data = exam_data
         self.callback = callback
         self.storage = storage
 
@@ -71,14 +87,13 @@ class EditExamWindow():
                                          onvalue=True, offvalue=False)
         self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=(10, 5))
 
-        # Ustalamy domyślny kolor na podstawie motywu
+        # Ustalamy domyślny kolor
         self.selected_color = exam_data.get("color")
 
-        # Ustalamy jaki kolor ma mieć przycisk (wizualnie)
+        # Wizualizacja koloru przycisku
         if self.selected_color:
             btn_visual_color = self.selected_color
         else:
-            # Jeśli brak koloru, pokaż domyślny dla motywu (żeby przycisk nie był pusty)
             mode = ctk.get_appearance_mode()
             btn_visual_color = "#000000" if mode == "Light" else "#ffffff"
 
@@ -95,10 +110,13 @@ class EditExamWindow():
         self.txt_topics = tk.Text(self.win, width=40, height=10)
         self.txt_topics.grid(row=6, column=0, columnspan=2, padx=10, pady=(0, 10))
 
-        # wczytanie tematow
-        self.topics_list = [t for t in self.data["topics"] if t["exam_id"] == exam_data["id"]]
-        for t in self.topics_list:
-            self.txt_topics.insert(tk.END, t["name"] + "\n")
+        # wczytanie tematow (Pure SQL)
+        if self.storage:
+            topics_rows = self.storage.get_topics(exam_id=exam_data["id"])
+            # Sortujemy tak, jak w notatniku (choć tutaj kolejność zapisu jest dowolna, w edycji zwykle po nazwie lub dacie)
+            # Tutaj po prostu lista
+            for t in topics_rows:
+                self.txt_topics.insert(tk.END, t["name"] + "\n")
 
         # przyciski
         btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
@@ -122,7 +140,10 @@ class EditExamWindow():
         ColorPickerWindow(self.win, self.txt, self.selected_color, on_color_picked)
 
     def save_changes(self):
-        # 1. Update Exam Data (bez zmian)
+        if not self.storage:
+            return
+
+        # 1. Update Exam Data
         updated_exam = {
             "id": self.exam_data["id"],
             "subject": self.ent_subject.get(),
@@ -134,10 +155,8 @@ class EditExamWindow():
         }
         self.storage.update_exam(updated_exam)
 
-        # 2. Update Topics (UPROSZCZONE)
-        # Zamiast bawić się w self.topics_list, po prostu pobieramy aktualne ID z bazy dla tego egzaminu
-        # i porównujemy z tym, co jest w polu tekstowym.
-
+        # 2. Update Topics
+        # Pobieramy listę nazw z pola tekstowego
         new_names_lines = [line.strip() for line in self.txt_topics.get("1.0", tk.END).split("\n") if line.strip()]
 
         # Pobieramy aktualne tematy z bazy (jako źródło prawdy)
@@ -164,41 +183,40 @@ class EditExamWindow():
                     "note": ""
                 }
                 self.storage.add_topic(new_topic)
-                # Nie musimy dodawać do kept_ids, bo to i tak nowy rekord
+                # Nowe dodajemy bez dodawania do kept_ids, bo one nie istnieją w starej bazie
 
-        # Usuwanie: Jeśli temat był w bazie, a nie ma go w nowym tekście -> DELETE
+        # Usuwanie: Jeśli temat był w starej bazie, a jego ID nie trafiło na listę zachowanych -> DELETE
+        # (Czyli użytkownik usunął linię z tekstem odpowiadającą temu tematowi)
         for db_topic in current_db_topics:
             if db_topic["id"] not in kept_ids:
-                # Sprawdzamy czy to nie jest ten nowo dodany (chociaż uuid są unikalne, więc bezpiecznie)
-                # Ale logiczniej: iterujemy po starych. Jeśli starego ID nie ma w liście 'kept_ids' -> usuń.
-                # Uwaga: w pętli wyżej 'kept_ids' zbiera tylko te, które nazwami pasowały do istniejących.
-                # Nowe tematy nie mają wpływu na usuwanie starych.
                 self.storage.delete_topic(db_topic["id"])
 
         self.win.destroy()
         messagebox.showinfo(self.txt["msg_success"], self.txt["msg_data_updated"])
         if self.callback:
-            self.callback()  # To wywoła reload_data() w PlanWindow
+            self.callback()
 
     def delete_exam(self):
+        if not self.storage:
+            return
+
         confirm = messagebox.askyesno(self.txt["msg_warning"],
                                       self.txt["msg_confirm_del_exam"].format(subject=self.exam_data["subject"]))
         if confirm:
-            # StorageManager: delete_exam (cascade deletes topics usually, or we trust storage logic)
             self.storage.delete_exam(self.exam_data["id"])
 
-            # --- POPRAWKA KOLEJNOŚCI ---
             self.win.destroy()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_exam_deleted"])
-            if self.callback: self.callback()
+            if self.callback:
+                self.callback()
 
 
 class EditTopicWindow:
     def __init__(self, parent, txt, data, btn_style, topic_data, callback=None, storage=None):
         self.txt = txt
-        self.data = data
+        self.data = data  # Ignorowane
         self.btn_style = btn_style
-        self.topic_data = topic_data  # Likely a dict from load()
+        self.topic_data = topic_data
         self.callback = callback
         self.storage = storage
 
@@ -237,6 +255,9 @@ class EditTopicWindow:
         btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
 
     def save_changes(self):
+        if not self.storage:
+            return
+
         new_name = self.ent_name.get()
         new_date = self.ent_date.get()
 
@@ -245,7 +266,6 @@ class EditTopicWindow:
             return
 
         # Przygotowanie danych do aktualizacji
-        # Tworzymy kopię danych i aktualizujemy pola
         updated_topic = dict(self.topic_data)
         updated_topic["name"] = new_name
 
@@ -265,18 +285,20 @@ class EditTopicWindow:
         # Zapis przez StorageManager
         self.storage.update_topic(updated_topic)
 
-        # --- POPRAWKA KOLEJNOŚCI ---
         self.win.destroy()
         messagebox.showinfo(self.txt["msg_success"], self.txt["msg_topic_updated"].format(info=infomess))
-        if self.callback: self.callback()
+        if self.callback:
+            self.callback()
 
     def delete_topic(self):
+        if not self.storage:
+            return
+
         confirm = messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_topic"])
         if confirm:
-            # StorageManager: delete_topic
             self.storage.delete_topic(self.topic_data["id"])
 
-            # --- POPRAWKA KOLEJNOŚCI ---
             self.win.destroy()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_topic_deleted"])
-            if self.callback: self.callback()
+            if self.callback:
+                self.callback()

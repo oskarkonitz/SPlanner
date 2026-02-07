@@ -1,26 +1,26 @@
 import customtkinter as ctk
 import calendar
 from datetime import date, datetime
-
-
-# Removed 'from core.storage import save' as operations are now handled via storage instance
+from tkinter import messagebox
 
 class BlockedDaysWindow:
-    # Updated signature to accept storage
     def __init__(self, parent, txt, data, btn_style, callback=None, refresh_callback=None, storage=None):
         self.txt = txt
-        self.data = data  # Kept for compatibility, but logic uses storage
+        # self.data jest ignorowane (zachowane dla kompatybilności sygnatury)
         self.btn_style = btn_style
-        self.callback = callback  # Save & Generate
-        self.refresh_callback = refresh_callback  # Save & Refresh Dashboard
-        self.storage = storage  # New StorageManager instance
+        self.callback = callback  # Callback dla "Save & Generate"
+        self.refresh_callback = refresh_callback  # Callback dla "Save" (odświeżenie dashboardu)
+        self.storage = storage  # Instancja StorageManager
 
-        # Inicjalizacja listy - pobieranie z StorageManager
+        # Inicjalizacja listy - pobieranie z bazy danych
         if self.storage:
+            # Storage zwraca listę stringów dat, więc możemy jej użyć bezpośrednio
             self.local_blocked_dates = self.storage.get_blocked_dates()
         else:
-            # Fallback (gdyby storage nie zostal przekazany, choc nie powinno to miec miejsca)
-            self.local_blocked_dates = self.data.get("blocked_dates", []).copy()
+            self.local_blocked_dates = []
+
+        # Tworzymy kopię listy, aby operować lokalnie przed zapisem
+        self.local_blocked_dates = list(self.local_blocked_dates)
 
         self.current_date = date.today()
         self.year = self.current_date.year
@@ -182,7 +182,7 @@ class BlockedDaysWindow:
             return
 
         # 1. Synchronizacja listy zablokowanych dat
-        # Pobieramy stan aktualny z bazy, aby wiedzieć co dodać, a co usunąć
+        # Pobieramy stan aktualny z bazy, aby wyliczyć różnice
         current_db_dates = set(self.storage.get_blocked_dates())
         new_local_dates = set(self.local_blocked_dates)
 
@@ -198,13 +198,14 @@ class BlockedDaysWindow:
             self.storage.add_blocked_date(d)
 
         # 2. Aktualizacja statystyk (Global Stats - days_off)
+        # Zwiększamy licznik 'days_off' o liczbę nowo dodanych dni wolnych
         count_added = len(days_to_add)
 
         if count_added > 0:
             stats = self.storage.get_global_stats()
             current_count = stats.get("days_off", 0)
 
-            # Upewniamy się, że wartość jest intem (zabezpieczenie)
+            # Zabezpieczenie typu
             if isinstance(current_count, str):
                 try:
                     current_count = int(current_count)
@@ -213,10 +214,6 @@ class BlockedDaysWindow:
 
             new_count = current_count + count_added
             self.storage.update_global_stat("days_off", new_count)
-
-            # Aktualizujemy lokalny słownik data dla spójności w tej sesji (jeśli main go używa)
-            if "global_stats" in self.data:
-                self.data["global_stats"]["days_off"] = new_count
 
     def action_save_only(self):
         self._update_stats_and_save()

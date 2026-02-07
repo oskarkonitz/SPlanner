@@ -12,15 +12,15 @@ class NotebookWindow:
         # i zachować zgodność ze strukturą zwracaną przez sqlite3.Row
         self.exam_data = dict(exam_data)
 
-        # 2. Pobranie tematów bezpośrednio z bazy danych (zamiast z self.data)
+        # 2. Pobranie tematów bezpośrednio z bazy danych (Pure SQL)
         if self.storage:
             raw_topics = self.storage.get_topics(exam_id=self.exam_data["id"])
-            # Konwersja sqlite3.Row -> dict dla mutowalności
+            # Konwersja sqlite3.Row -> dict dla mutowalności w obrębie okna
             self.topics = [dict(t) for t in raw_topics]
         else:
             self.topics = []
 
-        # Sortowanie tematów po dacie
+        # Sortowanie tematów po dacie (puste daty na koniec)
         self.topics.sort(key=lambda x: str(x.get("scheduled_date") or "9999-99-99"))
 
         self.current_item = None
@@ -128,7 +128,7 @@ class NotebookWindow:
             # Pobranie tekstu z widgetu (bez dodatkowego entera na końcu)
             new_text = self.text_area.get("0.0", "end-1c")
 
-            # Aktualizacja lokalnego słownika (aby GUI pamiętało zmianę do momentu przeładowania)
+            # Aktualizacja lokalnego słownika (aby GUI pamiętało zmianę do momentu przeładowania w tej sesji)
             self.current_item["note"] = new_text
 
             # Zapis do SQL w zależności od typu obiektu

@@ -7,8 +7,8 @@ class TimerWindow:
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
-        self.data = data
-        self.storage = storage  # Przechowujemy instancję StorageManager
+        self.data = data  # Ignorowane, zachowane dla kompatybilności sygnatury
+        self.storage = storage  # Instancja StorageManager
         self.callback = callback
 
         self.session_completed = False
@@ -205,7 +205,19 @@ class TimerWindow:
         self.repack_normal_mode()
 
     def update_daily_sum_label(self):
-        daily_sec = self.data["global_stats"].get("daily_study_time", 0)
+        # Pobieranie statystyk z Storage (zamiast self.data)
+        if self.storage:
+            stats = self.storage.get_global_stats()
+            daily_sec = stats.get("daily_study_time", 0)
+        else:
+            daily_sec = 0
+
+        # Zabezpieczenie typu
+        try:
+            daily_sec = int(daily_sec)
+        except ValueError:
+            daily_sec = 0
+
         mins, secs = divmod(daily_sec, 60)
         hours, mins = divmod(mins, 60)
         self.lbl_daily_sum.configure(text=f"Total Today: {hours:02d}:{mins:02d}")
@@ -213,24 +225,31 @@ class TimerWindow:
     # --- LOGIKA CZASU I STORAGE ---
 
     def increment_daily_stats(self):
-        if "global_stats" not in self.data: return
+        if not self.storage: return
 
-        # 1. Aktualizacja w pamięci (dla płynności UI i wyświetlania w labelu)
-        self.data["global_stats"]["daily_study_time"] = self.data["global_stats"].get("daily_study_time", 0) + 1
-        self.data["global_stats"]["total_study_time"] = self.data["global_stats"].get("total_study_time", 0) + 1
+        # 1. Pobieramy aktualne statystyki z bazy
+        stats = self.storage.get_global_stats()
+        current_daily = stats.get("daily_study_time", 0)
+        current_total = stats.get("total_study_time", 0)
 
-        # 2. Zapis do SQL (Persistence) - tylko co 60 sekund
-        # Korzystamy z daily_study_time jako licznika interwału
-        current_daily = self.data["global_stats"]["daily_study_time"]
-        current_total = self.data["global_stats"]["total_study_time"]
+        # Konwersja na int na wypadek błędów
+        try:
+            current_daily = int(current_daily)
+            current_total = int(current_total)
+        except ValueError:
+            current_daily = 0
+            current_total = 0
 
-        if current_daily % 60 == 0:
-            if self.storage:
-                self.storage.update_global_stat("daily_study_time", current_daily)
-                self.storage.update_global_stat("total_study_time", current_total)
+        # 2. Inkrementacja
+        new_daily = current_daily + 1
+        new_total = current_total + 1
 
-            # Callback dla odświeżenia głównego okna
-            if self.callback: self.callback()
+        # 3. Zapis bezpośredni do bazy (bez buforowania w self.data)
+        self.storage.update_global_stat("daily_study_time", new_daily)
+        self.storage.update_global_stat("total_study_time", new_total)
+
+        # 4. Callback dla odświeżenia głównego okna
+        if self.callback: self.callback()
 
     def toggle_timer(self):
         if self.is_running:
@@ -255,14 +274,6 @@ class TimerWindow:
             self.btn_start.configure(text=self.txt.get("timer_start", "START"), fg_color="#1f6aa5",
                                      hover_color="#144870")
             if self.timer_id: self.win.after_cancel(self.timer_id)
-
-            # --- FORCE SAVE NA STOP ---
-            # Zapisujemy aktualny stan liczników do SQL, aby nie stracić sekund
-            # z ostatniej niepełnej minuty w przypadku zamknięcia aplikacji.
-            if self.storage and "global_stats" in self.data:
-                stats = self.data["global_stats"]
-                self.storage.update_global_stat("daily_study_time", stats.get("daily_study_time", 0))
-                self.storage.update_global_stat("total_study_time", stats.get("total_study_time", 0))
 
             if self.callback: self.callback()
 
@@ -308,8 +319,12 @@ class TimerWindow:
             m, s = divmod(self.stopwatch_seconds, 60)
             h, m = divmod(m, 60)
             self.lbl_stopwatch.configure(text=f"{h:02d}:{m:02d}:{s:02d}")
+
             self.increment_daily_stats()
-            if self.stopwatch_seconds % 60 == 0: self.update_daily_sum_label()
+
+            if self.stopwatch_seconds % 60 == 0:
+                self.update_daily_sum_label()
+
             self.timer_id = self.win.after(1000, self.count_up)
 
     def format_time(self, seconds):
@@ -342,7 +357,7 @@ class TimerWindow:
         dialog.bind('<Return>', on_confirm)
 
     def finish_pomo(self):
-        self.stop_timer()  # To wywoła zapis czasu (daily/total)
+        self.stop_timer()
         self.win.bell()
         self.lbl_time.configure(text="00:00", text_color="green")
 
@@ -350,20 +365,23 @@ class TimerWindow:
         if mins >= 20:
             earned = max(1, int(mins / 25))
 
-            # Update memory
-            current_sessions = self.data["global_stats"].get("pomodoro_sessions", 0)
-            new_sessions = current_sessions + earned
-            self.data["global_stats"]["pomodoro_sessions"] = new_sessions
-
-            # Update Storage (SQL)
             if self.storage:
+                # Update Storage (SQL)
+                stats = self.storage.get_global_stats()
+                current_sessions = stats.get("pomodoro_sessions", 0)
+                try:
+                    current_sessions = int(current_sessions)
+                except ValueError:
+                    current_sessions = 0
+
+                new_sessions = current_sessions + earned
                 self.storage.update_global_stat("pomodoro_sessions", new_sessions)
 
             self.session_completed = True
         self.win.attributes("-topmost", True)
 
     def on_close(self):
-        # 1. Zatrzymujemy timer (to zapisuje statystyki i wywoła refresh)
+        # 1. Zatrzymujemy timer
         self.stop_timer()
 
         # 2. Niszczymy okno

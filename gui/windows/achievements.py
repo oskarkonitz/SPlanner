@@ -5,8 +5,7 @@ from core.planner import date_format
 import random
 import math
 
-
-# --- KLASA CZĄSTECZKI ---
+# --- KLASA CZĄSTECZKI (Brak zmian, czysta animacja) ---
 class Particle:
     def __init__(self, canvas, x, y, color_palette):
         self.canvas = canvas

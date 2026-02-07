@@ -51,6 +51,7 @@ class NoteDrawer(ctk.CTkFrame):
     def load_note(self, item_data, item_name):
         self.stop_animation()
 
+        # item_data jest słownikiem (kopią z DB), który edytujemy lokalnie w drawerze
         self.current_item_data = item_data
         self.lbl_item_name.configure(text=item_name)
         note_content = item_data.get("note", "")
@@ -125,7 +126,7 @@ class NoteDrawer(ctk.CTkFrame):
         self.animation_id = self.after(16, lambda: self.animate(target))
 
 
-# --- NOWA KLASA: LEWA SZUFLADKA (Z BEZPIECZNIKIEM KLIKNIĘĆ) ---
+# --- KLASA: LEWA SZUFLADKA (Z BEZPIECZNIKIEM KLIKNIĘĆ) ---
 class ToolsDrawer(ctk.CTkFrame):
     def __init__(self, parent, txt, btn_style, callbacks):
         super().__init__(parent, width=220, corner_radius=20, fg_color=("gray90", "gray20"))
@@ -134,7 +135,7 @@ class ToolsDrawer(ctk.CTkFrame):
         self.callbacks = callbacks
         self.is_open = False
         self.animation_id = None
-        self.ignore_click = False  # <--- NOWOŚĆ: Flaga ignorująca pierwsze kliknięcie
+        self.ignore_click = False
 
         # Pozycja ukryta
         self.target_x = 0.01
@@ -225,7 +226,7 @@ class ToolsDrawer(ctk.CTkFrame):
         self.lift()
         self.is_open = True
 
-        # <--- FIX: Blokujemy zamykanie na 150ms po otwarciu
+        # Blokujemy zamykanie na 150ms po otwarciu
         self.ignore_click = True
         self.after(150, lambda: setattr(self, 'ignore_click', False))
 
@@ -256,12 +257,12 @@ class PlanWindow:
                  storage=None):
         self.parent = parent
         self.txt = txt
-        self.data = data
+        # self.data jest ignorowane w trybie Pure SQL
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
         self.selection_callback = selection_callback
         self.win = parent
-        self.storage = storage  # Przechowujemy instancję StorageManager
+        self.storage = storage  # Źródło prawdy
 
         draw_target = drawer_parent if drawer_parent else self.win
 
@@ -349,11 +350,9 @@ class PlanWindow:
 
     def save_data_from_drawer(self, is_new_note=False):
         if is_new_note:
-            if "global_stats" not in self.data: self.data["global_stats"] = {}
-            curr = self.data["global_stats"].get("notes_added", 0)
-            self.data["global_stats"]["notes_added"] = curr + 1
-            if self.storage:
-                self.storage.update_global_stat("notes_added", curr + 1)
+            stats = self.storage.get_global_stats()
+            curr = stats.get("notes_added", 0)
+            self.storage.update_global_stat("notes_added", curr + 1)
 
         # Dane zostały już zaktualizowane w pamięci (referencja self.current_item_data w drawer)
         # Teraz musimy je zrzucić do SQL
@@ -374,27 +373,29 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Jeśli to egzamin
-        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
-        if target_exam:
+        # Sprawdzamy czy to egzamin
+        # Pobieramy on-demand
+        all_exams = self.storage.get_exams()
+        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+
+        if target_exam_row:
+            target_exam = dict(target_exam_row)
             if messagebox.askyesno(self.txt["msg_warning"],
                                    self.txt["msg_confirm_del_exam"].format(subject=target_exam["subject"])):
-                # SQL Delete
-                if self.storage:
-                    self.storage.delete_exam(target_exam["id"])
-
+                self.storage.delete_exam(target_exam["id"])
                 self.refresh_table()
                 if self.dashboard_callback: self.dashboard_callback()
             return
 
-        # Jeśli to temat
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        if target_topic:
-            if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_topic"]):
-                # SQL Delete
-                if self.storage:
-                    self.storage.delete_topic(target_topic["id"])
+        # Sprawdzamy czy to temat
+        # Pobieramy on-demand (wszystkie, bo szukamy po ID globalnie)
+        all_topics = self.storage.get_topics()
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
 
+        if target_topic_row:
+            target_topic = dict(target_topic_row)
+            if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_del_topic"]):
+                self.storage.delete_topic(target_topic["id"])
                 self.refresh_table()
                 if self.dashboard_callback: self.dashboard_callback()
 
@@ -406,14 +407,17 @@ class PlanWindow:
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        if target_topic:
+
+        # Pobieramy on-demand
+        all_topics = self.storage.get_topics()
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+
+        if target_topic_row:
+            target_topic = dict(target_topic_row)
             target_topic["scheduled_date"] = str(date.today())
             target_topic["locked"] = True  # Blokujemy, żeby algorytm nie zabrał
 
-            if self.storage:
-                self.storage.update_topic(target_topic)
-
+            self.storage.update_topic(target_topic)
             self.refresh_table(preserve_selection=True)
             if self.dashboard_callback: self.dashboard_callback()
 
@@ -423,10 +427,16 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        if target_topic:
-            exam = next((e for e in self.data["exams"] if e["id"] == target_topic["exam_id"]), None)
-            subject_name = exam["subject"] if exam else "???"
+        all_topics = self.storage.get_topics()
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+
+        if target_topic_row:
+            target_topic = dict(target_topic_row)
+            # Pobieramy egzamin dla nazwy
+            all_exams = self.storage.get_exams()
+            exam_row = next((e for e in all_exams if e["id"] == target_topic["exam_id"]), None)
+            subject_name = exam_row["subject"] if exam_row else "???"
+
             drawer_title = f"{subject_name}: {target_topic['name']}"
             self.drawer.load_note(target_topic, drawer_title)
 
@@ -435,39 +445,31 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
-        if target_exam:
+        all_exams = self.storage.get_exams()
+        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+
+        if target_exam_row:
+            target_exam = dict(target_exam_row)
             prefix = self.txt.get("lbl_exam_prefix", "Egzamin")
             drawer_title = f"{prefix}: {target_exam['subject']}"
             self.drawer.load_note(target_exam, drawer_title)
 
-    def reload_data(self):
-        """Pobiera świeże dane z SQL do lokalnego cache (self.data), aby GUI było aktualne."""
-        if not self.storage:
-            return
-
-        # 1. Odśwież egzaminy (konwersja Row -> dict + bool)
-        raw_exams = self.storage.get_exams()
-        self.data["exams"] = []
-        for r in raw_exams:
+    def refresh_table(self, only_unscheduled=False, preserve_selection=False):
+        # --- PURE SQL: POBIERANIE DANYCH ON-DEMAND ---
+        # Konwersja Row -> dict + bool dla wygody w GUI
+        exams = []
+        for r in self.storage.get_exams():
             d = dict(r)
             d["ignore_barrier"] = bool(d["ignore_barrier"])
-            self.data["exams"].append(d)
+            exams.append(d)
 
-        # 2. Odśwież tematy (konwersja Row -> dict + bool)
-        raw_topics = self.storage.get_topics()
-        self.data["topics"] = []
-        for r in raw_topics:
+        topics = []
+        for r in self.storage.get_topics():
             d = dict(r)
             d["locked"] = bool(d["locked"])
-            self.data["topics"].append(d)
+            topics.append(d)
 
-        # 3. Odśwież zablokowane daty
-        self.data["blocked_dates"] = self.storage.get_blocked_dates()
-
-    def refresh_table(self, only_unscheduled=False, preserve_selection=False):
-        # [FIX] ZAWSZE najpierw pobierz aktualny stan z bazy danych!
-        self.reload_data()
+        blocked_dates = self.storage.get_blocked_dates()
 
         selected_id = None
         if preserve_selection:
@@ -479,9 +481,9 @@ class PlanWindow:
 
         # 1. ZALEGŁE
         self.tree.insert("", "end", values=("", "", ""))
-        active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= date.today()}
+        active_exams_ids = {e["id"] for e in exams if date_format(e["date"]) >= date.today()}
         overdue_topics = [
-            t for t in self.data["topics"]
+            t for t in topics
             if t.get("scheduled_date") and date_format(t["scheduled_date"]) < date.today()
                and t["status"] == "todo" and t["exam_id"] in active_exams_ids
         ]
@@ -490,7 +492,7 @@ class PlanWindow:
             self.tree.insert("", "end", values=("", self.txt["tag_overdue"], ""), tags=("overdue",))
             for topic in overdue_topics:
                 subj_name = self.txt["val_other"]
-                for exam in self.data["exams"]:
+                for exam in exams:
                     if exam["id"] == topic["exam_id"]:
                         subj_name = exam["subject"]
                         break
@@ -506,22 +508,25 @@ class PlanWindow:
 
         # 2. DATY (Główna pętla)
         all_dates = set()
-        for exam in self.data["exams"]:
-            if date_format(exam["date"]) >= date.today(): all_dates.add(str(exam["date"]))
-        for topic in self.data["topics"]:
-            if topic["scheduled_date"] and date_format(topic["scheduled_date"]) >= date.today(): all_dates.add(
-                str(topic["scheduled_date"]))
-        blocked_list = self.data.get("blocked_dates", [])
+        for exam in exams:
+            if date_format(exam["date"]) >= date.today():
+                all_dates.add(str(exam["date"]))
+        for topic in topics:
+            if topic.get("scheduled_date") and date_format(topic["scheduled_date"]) >= date.today():
+                all_dates.add(str(topic["scheduled_date"]))
+
         if all_dates:
-            for bd in blocked_list:
-                if bd >= str(date.today()) and bd <= max(all_dates): all_dates.add(bd)
+            for bd in blocked_dates:
+                if bd >= str(date.today()) and bd <= max(all_dates):
+                    all_dates.add(bd)
+
         sorted_dates = sorted(list(all_dates))
 
         # Rysowanie wierszy...
         for day_str in sorted_dates:
-            todays_exams = [e for e in self.data["exams"] if e["date"] == day_str]
-            todays_topics = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == day_str]
-            is_blocked = day_str in blocked_list
+            todays_exams = [e for e in exams if e["date"] == day_str]
+            todays_topics = [t for t in topics if str(t.get("scheduled_date")) == day_str]
+            is_blocked = day_str in blocked_dates
             has_exams = len(todays_exams) > 0
 
             days_left = (date_format(day_str) - date.today()).days
@@ -572,7 +577,7 @@ class PlanWindow:
                     for topic in todays_topics:
                         subj_name = self.txt["val_other"]
                         parent_exam = None
-                        for exam in self.data["exams"]:
+                        for exam in exams:
                             if exam["id"] == topic["exam_id"]:
                                 subj_name = exam["subject"]
                                 parent_exam = exam
@@ -604,7 +609,7 @@ class PlanWindow:
             self.tree.selection_set(selected_id)
             self.tree.see(selected_id)
 
-        # --- LOGIKA PUSTEGO STANU (ZMODYFIKOWANA) ---
+        # --- LOGIKA PUSTEGO STANU ---
         has_future_items = len(sorted_dates) > 0
         has_overdue_items = len(overdue_topics) > 0
 
@@ -625,9 +630,18 @@ class PlanWindow:
 
         item_id = selected[0]
 
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
+        # Pobieranie danych on-demand do sprawdzenia stanu
+        # Pobieramy wszystko, by znaleźć po ID (StorageManager API limitation for now)
+        all_topics = self.storage.get_topics()
+        all_exams = self.storage.get_exams()
+        blocked_dates = self.storage.get_blocked_dates()
+
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
         is_date = str(item_id).startswith("date_")
+
+        target_topic = dict(target_topic_row) if target_topic_row else None
+        target_exam = dict(target_exam_row) if target_exam_row else None
 
         # --- LOGIKA PRZYCISKÓW ---
         state_1 = "disabled"
@@ -664,8 +678,7 @@ class PlanWindow:
         elif is_date:
             # Data
             date_str = str(item_id).replace("date_", "")
-            blocked_list = self.data.get("blocked_dates", [])
-            is_blocked = date_str in blocked_list
+            is_blocked = date_str in blocked_dates
 
             if is_blocked:
                 state_1 = "unblock"
@@ -693,9 +706,17 @@ class PlanWindow:
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
-        item_to_edit = target_topic or target_exam
+
+        all_topics = self.storage.get_topics()
+        all_exams = self.storage.get_exams()
+
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+
+        item_to_edit = None
+        if target_topic_row: item_to_edit = dict(target_topic_row)
+        if target_exam_row: item_to_edit = dict(target_exam_row)
+
         if item_to_edit:
             name = item_to_edit.get("name") or item_to_edit.get("subject")
             self.drawer.load_note(item_to_edit, name)
@@ -715,25 +736,22 @@ class PlanWindow:
         if not selected: return
         item_id = selected[0]
 
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
+        # Pobieramy on-demand
+        all_topics = self.storage.get_topics()
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+        target_topic = dict(target_topic_row) if target_topic_row else None
 
         # --- ZMIANA STATUSU TEMATU ---
         if target_topic:
             target_topic["status"] = "done" if target_topic["status"] == "todo" else "todo"
 
-            # SQL Update
-            if self.storage:
-                self.storage.update_topic(target_topic)
+            self.storage.update_topic(target_topic)
 
             if target_topic["status"] == "done":
-                if "global_stats" not in self.data: self.data["global_stats"] = {}
-                self.data["global_stats"]["topics_done"] = self.data["global_stats"].get("topics_done", 0) + 1
-                self.data["global_stats"]["activity_started"] = True
-
-                # SQL Stats Update
-                if self.storage:
-                    self.storage.update_global_stat("topics_done", self.data["global_stats"]["topics_done"])
-                    self.storage.update_global_stat("activity_started", True)
+                stats = self.storage.get_global_stats()
+                done_count = stats.get("topics_done", 0) + 1
+                self.storage.update_global_stat("topics_done", done_count)
+                self.storage.update_global_stat("activity_started", True)
 
             self.refresh_table(preserve_selection=True)
             if self.dashboard_callback: self.dashboard_callback()
@@ -741,109 +759,63 @@ class PlanWindow:
         # --- BLOKOWANIE / ODBLOKOWANIE DATY ---
         elif str(item_id).startswith("date_"):
             date_str = str(item_id).replace("date_", "")
-            if "blocked_dates" not in self.data: self.data["blocked_dates"] = []
 
-            # Logika dodawania/usuwania
-            if date_str in self.data["blocked_dates"]:
-                if self.storage:
-                    self.storage.remove_blocked_date(date_str)
+            blocked_dates = self.storage.get_blocked_dates()
+
+            if date_str in blocked_dates:
+                self.storage.remove_blocked_date(date_str)
             else:
-                if "global_stats" not in self.data: self.data["global_stats"] = {}
-                self.data["global_stats"]["days_off"] = self.data["global_stats"].get("days_off", 0) + 1
+                stats = self.storage.get_global_stats()
+                days_off = stats.get("days_off", 0) + 1
+                self.storage.update_global_stat("days_off", days_off)
+                self.storage.add_blocked_date(date_str)
 
-                if self.storage:
-                    self.storage.add_blocked_date(date_str)
-                    self.storage.update_global_stat("days_off", self.data["global_stats"]["days_off"])
-
-            # DECYZJA: Generować czy tylko zapisać?
             if generate:
                 self.run_and_refresh()
             else:
-                self.refresh_table(preserve_selection=True)  # Tylko odświeża widok (pokaże ikonkę blokady)
+                self.refresh_table(preserve_selection=True)
                 if self.dashboard_callback: self.dashboard_callback()
 
     def run_and_refresh(self, only_unscheduled=False):
         try:
             if not self.storage:
-                messagebox.showerror(self.txt["msg_error"], "Brak połączenia z bazą danych (StorageManager is None).")
+                messagebox.showerror(self.txt["msg_error"], "Brak połączenia z bazą danych.")
                 return
 
-            # 1. Uruchamiamy planer BEZPOŚREDNIO na bazie danych
-            # Przekazujemy self.storage, bo planner używa teraz metod .get_exams(), .get_blocked_dates() itp.
+            # Uruchamiamy planer BEZPOŚREDNIO na bazie danych (Pure SQL)
             plan(self.storage, only_unscheduled=only_unscheduled)
-
-            # 2. Synchronizacja ZWROTNA (DB -> GUI)
-            # Planner zaktualizował daty w pliku .db, ale self.data["topics"] w pamięci RAM
-            # nadal ma stare daty. Musimy je odświeżyć, żeby tabela w GUI pokazała zmiany.
-
-            # Pobieramy świeże tematy z bazy i konwertujemy sqlite3.Row na dict
-            updated_topics = [dict(t) for t in self.storage.get_topics()]
-            self.data["topics"] = updated_topics
-
-            # (Opcjonalnie) Jeśli planner mógł zmienić inne rzeczy, też warto je odświeżyć,
-            # ale topics są najważniejsze.
 
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_plan_done"])
         except Exception as e:
             messagebox.showerror(self.txt["msg_error"], f"Error: {e}")
-            # Dla celów debugowania warto wypisać błąd w konsoli
             print(f"DEBUG ERROR: {e}")
-
-    def clear_database(self):
-        if messagebox.askyesno(self.txt["msg_warning"], self.txt["msg_confirm_clear_db"]):
-            # Usuwamy z SQL
-            if self.storage:
-                for e in self.data["exams"]:
-                    self.storage.delete_exam(e["id"])
-                for t in self.data["topics"]:
-                    self.storage.delete_topic(t["id"])
-                for d in self.data["blocked_dates"]:
-                    self.storage.remove_blocked_date(d)
-
-            current_lang = self.data["settings"].get("lang", "en")
-            current_theme = self.data["settings"].get("theme", "light")
-
-            # Reset danych w pamięci
-            self.data["exams"] = []
-            self.data["topics"] = []
-            self.data["blocked_dates"] = []
-            self.data["settings"] = {"max_per_day": 2, "max_same_subject_per_day": 1, "lang": current_lang,
-                                     "theme": current_theme}
-
-            # Aktualizacja ustawień domyślnych w SQL
-            if self.storage:
-                for k, v in self.data["settings"].items():
-                    self.storage.update_setting(k, v)
-
-            self.refresh_table()
-            if self.dashboard_callback: self.dashboard_callback()
-            messagebox.showinfo(self.txt["msg_success"], self.txt["msg_db_cleared"])
 
     def open_add_window(self):
         def on_add():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
-        AddExamWindow(self.win, self.txt, self.data, self.btn_style, callback=on_add, storage=self.storage)
+        # Przekazujemy pusty dict jako data (kompatybilność)
+        AddExamWindow(self.win, self.txt, {}, self.btn_style, callback=on_add, storage=self.storage)
 
     def open_edit(self):
         def on_edit():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
-        select_edit_item(self.win, self.data, self.txt, self.tree, self.btn_style, callback=on_edit,
+        select_edit_item(self.win, {}, self.txt, self.tree, self.btn_style, callback=on_edit,
                          storage=self.storage)
 
     def open_archive(self):
         def edit_exam_wrapper(exam_data, callback):
-            EditExamWindow(self.win, self.txt, self.data, self.btn_style, exam_data, callback, storage=self.storage)
+            EditExamWindow(self.win, self.txt, {}, self.btn_style, exam_data, callback, storage=self.storage)
 
         def edit_topic_wrapper(topic_data, callback):
-            EditTopicWindow(self.win, self.txt, self.data, self.btn_style, topic_data, callback, storage=self.storage)
+            EditTopicWindow(self.win, self.txt, {}, self.btn_style, topic_data, callback, storage=self.storage)
 
-        ArchiveWindow(self.win, self.txt, self.data, self.btn_style, edit_exam_func=edit_exam_wrapper,
+        ArchiveWindow(self.win, self.txt, {}, self.btn_style, edit_exam_func=edit_exam_wrapper,
                       edit_topic_func=edit_topic_wrapper, dashboard_callback=self.dashboard_callback,
                       storage=self.storage)
 
@@ -851,22 +823,28 @@ class PlanWindow:
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        if target_topic:
+
+        all_topics = self.storage.get_topics()
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+
+        if target_topic_row:
+            target_topic = dict(target_topic_row)
             target_topic["locked"] = not target_topic.get("locked", False)
-            if self.storage:
-                self.storage.update_topic(target_topic)
+            self.storage.update_topic(target_topic)
             self.refresh_table(preserve_selection=True)
 
     def toggle_exam_barrier(self):
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
-        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
-        if target_exam:
+
+        all_exams = self.storage.get_exams()
+        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+
+        if target_exam_row:
+            target_exam = dict(target_exam_row)
             target_exam["ignore_barrier"] = not target_exam.get("ignore_barrier", False)
-            if self.storage:
-                self.storage.update_exam(target_exam)
+            self.storage.update_exam(target_exam)
             self.refresh_table(preserve_selection=True)
             messagebox.showinfo(self.txt["msg_info"], self.txt.get("msg_barrier_changed", "Zmieniono ustawienia."))
 
@@ -874,16 +852,18 @@ class PlanWindow:
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
-        target_topic = next((t for t in self.data["topics"] if str(t["id"]) == str(item_id)), None)
-        if target_topic:
+
+        all_topics = self.storage.get_topics()
+        target_topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+
+        if target_topic_row:
+            target_topic = dict(target_topic_row)
             if target_topic.get("locked", False):
                 messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
                 return
             target_topic["scheduled_date"] = str(date.today() + timedelta(days=1))
 
-            if self.storage:
-                self.storage.update_topic(target_topic)
-
+            self.storage.update_topic(target_topic)
             self.refresh_table(preserve_selection=True)
             if self.dashboard_callback: self.dashboard_callback()
 
@@ -891,19 +871,23 @@ class PlanWindow:
         selected = self.tree.selection()
         if not selected: return
         item_id = selected[0]
-        target_exam = next((e for e in self.data["exams"] if str(e["id"]) == str(item_id)), None)
-        if target_exam:
+
+        all_exams = self.storage.get_exams()
+        target_exam_row = next((e for e in all_exams if str(e["id"]) == str(item_id)), None)
+
+        if target_exam_row:
+            target_exam = dict(target_exam_row)
+
             def on_save():
                 self.refresh_table()
                 if self.dashboard_callback: self.dashboard_callback()
 
-            EditExamWindow(self.win, self.txt, self.data, self.btn_style, target_exam, on_save, storage=self.storage)
+            EditExamWindow(self.win, self.txt, {}, self.btn_style, target_exam, on_save, storage=self.storage)
 
     def show_context_menu(self, event):
         item_id = self.tree.identify_row(event.y)
         if item_id:
             self.tree.selection_set(item_id)
-            # Ręczne wywołanie dla pewności (Windows/Linux tego potrzebują, by zaktualizować stan)
             self.on_selection_change(None)
 
             if str(item_id).startswith("topic_"):
@@ -922,13 +906,18 @@ class PlanWindow:
         if not item_id:
             self.dragged_item = None
             return
+
         is_topic = False
         target_topic_data = None
-        for topic in self.data["topics"]:
-            if str(topic["id"]) == str(item_id):
-                is_topic = True
-                target_topic_data = topic
-                break
+
+        # Pobieramy dane on-demand
+        all_topics = self.storage.get_topics()
+        topic_row = next((t for t in all_topics if str(t["id"]) == str(item_id)), None)
+
+        if topic_row:
+            is_topic = True
+            target_topic_data = dict(topic_row)
+
         if is_topic:
             self.dragged_item = item_id
             item_values = self.tree.item(item_id, "values")
@@ -965,20 +954,23 @@ class PlanWindow:
         if not target_date_str:
             self.dragged_item = None
             return
-        topic_found = False
-        for topic in self.data["topics"]:
-            if str(topic["id"]) == str(self.dragged_item):
-                if topic.get("locked", False):
-                    messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
-                    self.dragged_item = None
-                    return
-                topic["scheduled_date"] = target_date_str
-                topic["locked"] = True
-                topic_found = True
 
-                if self.storage:
-                    self.storage.update_topic(topic)
-                break
+        all_topics = self.storage.get_topics()
+        topic_row = next((t for t in all_topics if str(t["id"]) == str(self.dragged_item)), None)
+
+        topic_found = False
+        if topic_row:
+            topic = dict(topic_row)
+            if topic.get("locked", False):
+                messagebox.showwarning(self.txt["msg_info"], self.txt["msg_task_locked"])
+                self.dragged_item = None
+                return
+            topic["scheduled_date"] = target_date_str
+            topic["locked"] = True
+            topic_found = True
+
+            self.storage.update_topic(topic)
+
         if topic_found:
             self.refresh_table(preserve_selection=True)
             if self.dashboard_callback: self.dashboard_callback()

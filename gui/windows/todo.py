@@ -7,21 +7,14 @@ import uuid
 from tkcalendar import Calendar
 
 
-# from core.storage import save  <-- Usunięto, ponieważ używamy teraz self.storage
-
-
 class TodoWindow:
-    # ZMIANA: Dodano argument storage=None w __init__
     def __init__(self, parent, txt, data, btn_style, dashboard_callback, storage=None):
         self.parent = parent
         self.txt = txt
-        self.data = data
+        # self.data jest ignorowane w trybie Pure SQL
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
-        self.storage = storage  # Przypisanie managera
-
-        if "daily_tasks" not in self.data:
-            self.data["daily_tasks"] = []
+        self.storage = storage  # Źródło prawdy
 
         self.current_color = None
         self.selected_task_id = None
@@ -155,20 +148,21 @@ class TodoWindow:
         if not content: return
 
         if self.selected_task_id:
-            # Edycja istniejącego zadania
-            for t in self.data["daily_tasks"]:
-                if t["id"] == self.selected_task_id:
-                    t["content"] = content
-                    t["date"] = date_val
-                    t["color"] = self.current_color
+            # EDYCJA: Pobieramy aktualne zadanie z bazy, by zachować status i created_at
+            tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+            target_task = next((t for t in tasks if t["id"] == self.selected_task_id), None)
 
-                    # Zapis przez managera (UPDATE)
-                    if self.storage:
-                        self.storage.update_daily_task(t)
-                    break
+            if target_task:
+                target_task["content"] = content
+                target_task["date"] = date_val
+                target_task["color"] = self.current_color
+
+                if self.storage:
+                    self.storage.update_daily_task(target_task)
+
             self.deselect_all()
         else:
-            # Tworzenie nowego zadania
+            # NOWE ZADANIE
             new_task = {
                 "id": str(uuid.uuid4()),
                 "content": content,
@@ -178,7 +172,6 @@ class TodoWindow:
                 "color": self.current_color
             }
 
-            # Zapis przez managera (ADD)
             if self.storage:
                 self.storage.add_daily_task(new_task)
 
@@ -186,7 +179,6 @@ class TodoWindow:
             self.current_color = None
             self.btn_color.configure(fg_color="transparent")
 
-        # USUNIĘTO: save(self.data) - zastąpione metodami storage
         self.refresh_table()
         if self.dashboard_callback: self.dashboard_callback()
 
@@ -195,7 +187,10 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        task = next((t for t in self.data["daily_tasks"] if t["id"] == item_id), None)
+        # Pobranie on-demand
+        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+        task = next((t for t in tasks if t["id"] == item_id), None)
+
         if task:
             self.selected_task_id = item_id
             self.entry_task.delete(0, "end")
@@ -230,10 +225,11 @@ class TodoWindow:
             self.deselect_all()
 
     def refresh_table(self):
-        # [FIX] Pobierz zawsze świeże dane z DB przed rysowaniem
-        if self.storage:
-            # Pobieramy i konwertujemy Row -> dict
-            self.data["daily_tasks"] = [dict(t) for t in self.storage.get_daily_tasks()]
+        if not self.storage:
+            return
+
+        # POBIERANIE DANYCH ON-DEMAND (Pure SQL)
+        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
 
         sel_id = self.selected_task_id
 
@@ -241,8 +237,6 @@ class TodoWindow:
             self.tree.delete(item)
 
         self.tree.insert("", "end", values=("", ""), tags=("default",))
-
-        tasks = self.data.get("daily_tasks", [])
 
         if not tasks:
             self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
@@ -263,6 +257,7 @@ class TodoWindow:
             if t_date < today_str and t["status"] != "done":
                 overdue_tasks.append(t)
             elif t_date >= today_str or t["status"] == "done":
+                # Ukrywanie zrobionych zadań z przeszłości (chyba że to dzisiaj)
                 if t["status"] == "done" and t_date < today_str:
                     continue
                 upcoming_tasks.append(t)
@@ -326,17 +321,18 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        task = next((t for t in self.data["daily_tasks"] if t["id"] == item_id), None)
+        # Pobieranie on-demand
+        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+        task = next((t for t in tasks if t["id"] == item_id), None)
+
         if not task: return
 
         tomorrow = date.today() + timedelta(days=1)
         task["date"] = str(tomorrow)
 
-        # Zapis przez managera (UPDATE)
         if self.storage:
             self.storage.update_daily_task(task)
 
-        # USUNIĘTO: save(self.data)
         self.refresh_table()
         if self.dashboard_callback: self.dashboard_callback()
 
@@ -345,19 +341,18 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        if not any(t["id"] == item_id for t in self.data["daily_tasks"]):
-            return
+        # Pobieranie on-demand
+        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
 
-        for t in self.data["daily_tasks"]:
-            if t["id"] == item_id:
-                t["status"] = "done" if t["status"] == "todo" else "todo"
+        # Szukanie zadania
+        target_task = next((t for t in tasks if t["id"] == item_id), None)
 
-                # Zapis przez managera (UPDATE)
-                if self.storage:
-                    self.storage.update_daily_task(t)
-                break
+        if target_task:
+            target_task["status"] = "done" if target_task["status"] == "todo" else "todo"
 
-        # USUNIĘTO: save(self.data)
+            if self.storage:
+                self.storage.update_daily_task(target_task)
+
         self.refresh_table()
         if self.dashboard_callback: self.dashboard_callback()
 
@@ -366,17 +361,17 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        if not any(t["id"] == item_id for t in self.data["daily_tasks"]): return
+        # Sprawdzenie czy zadanie istnieje w bazie (on-demand)
+        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+        if not any(t["id"] == item_id for t in tasks): return
 
         title = self.txt.get("btn_delete", "Delete")
         msg = self.txt.get("msg_confirm_del_task", "Delete this task?")
 
         if messagebox.askyesno(title, msg):
-            # Zapis przez managera (DELETE)
             if self.storage:
                 self.storage.delete_daily_task(item_id)
 
-            # USUNIĘTO: save(self.data)
             self.deselect_all()
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()

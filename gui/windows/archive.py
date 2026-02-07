@@ -3,17 +3,15 @@ from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date
 from core.planner import date_format
-# from core.storage import save  <-- USUNIĘTO (zastąpione przez StorageManager)
-from gui.windows.notebook import NotebookWindow  # <--- IMPORT NOWEGO OKNA
+from gui.windows.notebook import NotebookWindow
 
 
 class ArchiveWindow:
-    # ZAKTUALIZOWANA SYGNATURA: dodano argument storage=None
     def __init__(self, parent, txt, data, btn_style, edit_exam_func, edit_topic_func, dashboard_callback=None,
                  storage=None):
         self.txt = txt
-        self.data = data  # Zachowane dla kompatybilności przekazywania do NotebookWindow
-        self.storage = storage  # NOWE: StorageManager
+        # self.data ignorowane w trybie Pure SQL (zachowane dla kompatybilności sygnatury)
+        self.storage = storage
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
 
@@ -89,13 +87,15 @@ class ArchiveWindow:
         self.refresh_list()
 
     def refresh_list(self):
+        if not self.storage:
+            return
+
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         today = date.today()
 
-        # SQL: Pobranie wszystkich egzaminów z bazy
-        # Konwersja na dict dla łatwiejszego operowania (sqlite3.Row -> dict)
+        # POBIERANIE DANYCH ON-DEMAND (Pure SQL)
         all_exams = [dict(e) for e in self.storage.get_exams()]
 
         active_exams = []
@@ -129,7 +129,7 @@ class ArchiveWindow:
                 status_txt = self.txt["tag_x_days"].format(days=days)
                 tag = "active"
 
-            # SQL: Pobranie tematów dla konkretnego egzaminu
+            # Pobieranie tematów dla konkretnego egzaminu (On-Demand)
             topics_rows = self.storage.get_topics(exam["id"])
             topics = [dict(t) for t in topics_rows]
 
@@ -149,22 +149,22 @@ class ArchiveWindow:
 
         exam_id = selection[0]
 
-        # SQL: Pobranie danych do potwierdzenia (szukamy na liście pobranej z bazy)
+        # Pobranie danych on-demand do potwierdzenia
         all_exams = self.storage.get_exams()
+        target_exam = next((e for e in all_exams if e["id"] == exam_id), None)
+
         name = "ten egzamin"
         type_of_exam = "element"
 
-        for e in all_exams:
-            if e["id"] == exam_id:
-                name = e["subject"]
-                type_of_exam = e["title"]
-                break
+        if target_exam:
+            name = target_exam["subject"]
+            type_of_exam = target_exam["title"]
 
         confirm = messagebox.askyesno(self.txt["msg_warning"],
                                       self.txt["msg_confirm_del_perm"].format(type=type_of_exam, name=name))
         if confirm:
-            # SQL: Usunięcie egzaminu (tematy usuną się kaskadowo w bazie)
-            self.storage.delete_exam(exam_id)
+            if self.storage:
+                self.storage.delete_exam(exam_id)
 
             self.refresh_list()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archived_del"])
@@ -172,7 +172,7 @@ class ArchiveWindow:
     def delete_all_archive(self):
         today = date.today()
 
-        # SQL: Sprawdzenie czy są przeszłe egzaminy
+        # Sprawdzenie on-demand
         all_exams = self.storage.get_exams()
         has_past = any(date_format(e["date"]) < today for e in all_exams)
 
@@ -184,10 +184,9 @@ class ArchiveWindow:
         if confirm:
             ids_to_remove = [e["id"] for e in all_exams if date_format(e["date"]) < today]
 
-            # SQL: Iteracyjne usuwanie (StorageManager robi commit per delete lub można by to zoptymalizować,
-            # ale delete_exam jest bezpieczne)
-            for eid in ids_to_remove:
-                self.storage.delete_exam(eid)
+            if self.storage:
+                for eid in ids_to_remove:
+                    self.storage.delete_exam(eid)
 
             self.refresh_list()
             messagebox.showinfo(self.txt["msg_success"], self.txt["msg_archive_cleared"])
@@ -198,12 +197,12 @@ class ArchiveWindow:
             return
 
         exam_id = selection[0]
-        # SQL: Pobranie konkretnego egzaminu z bazy
+
+        # Pobranie egzaminu on-demand
         all_exams = self.storage.get_exams()
         selected_exam_row = next((e for e in all_exams if e["id"] == exam_id), None)
 
         if selected_exam_row:
-            # Konwersja na dict dla okna szczegółów
             self.open_details_window(dict(selected_exam_row))
 
     # --- OKNO SZCZEGÓŁÓW ---
@@ -230,8 +229,7 @@ class ArchiveWindow:
         action_frame = ctk.CTkFrame(hist_window, fg_color="transparent")
         action_frame.pack(fill="x", padx=20, pady=(0, 5))
 
-        # 1. Przycisk Notatnik (Lewa strona) - ZMIANA STYLU
-        # Usunięto emotkę i zmieniono styl na transparentny z ramką
+        # 1. Przycisk Notatnik
         btn_notebook = ctk.CTkButton(action_frame,
                                      text=self.txt.get('btn_notebook', 'Notatnik'),
                                      height=28, width=100,
@@ -242,7 +240,7 @@ class ArchiveWindow:
                                                                     storage=self.storage))
         btn_notebook.pack(side="left")
 
-        # 2. Label Postępu (Prawa strona)
+        # 2. Label Postępu
         lbl_progress = ctk.CTkLabel(action_frame, text="", font=("Arial", 13, "bold"))
         lbl_progress.pack(side="right")
         # ---------------------------------------
@@ -273,7 +271,7 @@ class ArchiveWindow:
             for item in tree.get_children():
                 tree.delete(item)
 
-            # SQL: Pobranie tematów dla konkretnego egzaminu
+            # Pobieranie tematów (Pure SQL)
             topics_rows = self.storage.get_topics(exam_data["id"])
             exam_topics = [dict(t) for t in topics_rows]
 
@@ -302,22 +300,27 @@ class ArchiveWindow:
                 return
 
             topic_id = selected[0]
-            # SQL: Pobranie tematów by znaleźć właściwy
+
+            # Pobranie tematu on-demand
             topics_rows = self.storage.get_topics(exam_data["id"])
             topic_row = next((t for t in topics_rows if t["id"] == topic_id), None)
 
             if topic_row:
-                # Konwersja na dict, by móc edytować
                 topic = dict(topic_row)
                 topic["status"] = "done" if topic["status"] == "todo" else "todo"
 
-                # SQL: Zapis zmian w bazie
                 self.storage.update_topic(topic)
+
+                # Aktualizacja statystyk (Consistent with Main App Logic)
+                if topic["status"] == "done":
+                    stats = self.storage.get_global_stats()
+                    done_count = stats.get("topics_done", 0) + 1
+                    self.storage.update_global_stat("topics_done", done_count)
+                    self.storage.update_global_stat("activity_started", True)
 
                 refresh_details()
                 self.refresh_list()
 
-                # --- POPRAWKA: Sprawdź osiągnięcia po zmianie statusu w archiwum ---
                 if self.dashboard_callback:
                     self.dashboard_callback()
 
@@ -328,12 +331,11 @@ class ArchiveWindow:
                 return
 
             topic_id = selected[0]
-            # SQL: Pobranie tematu
+
             topics_rows = self.storage.get_topics(exam_data["id"])
             topic_row = next((t for t in topics_rows if t["id"] == topic_id), None)
 
             if topic_row:
-                # Przekazujemy dict do funkcji edycji
                 self.edit_topic_func(dict(topic_row), callback=refresh_details)
 
         def edit_exam_local():

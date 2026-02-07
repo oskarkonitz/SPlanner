@@ -4,7 +4,6 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date, datetime
-from datetime import date
 from core.storage import StorageManager, DB_PATH, load_language
 from core.planner import date_format
 from gui.windows.plan import PlanWindow
@@ -29,80 +28,26 @@ class GUI:
         self.timer_window = None
 
         # --- INICJALIZACJA STORAGE MANAGER ---
+        # Źródło prawdy: Baza Danych SQLite
         self.storage = StorageManager(DB_PATH)
 
-        #  Ładowanie danych (Legacy mirror)
-        #  Tworzymy lokalną kopię danych, aby GUI mogło działać "po staremu"
-        #  do czasu pełnej refaktoryzacji widoków.
-        self.data = self._load_all_legacy()
-
-        # --- MIGRACJA DANYCH DO SYSTEMU GLOBALNEGO (PERSISTENT STATS) ---
-        if "global_stats" not in self.data:
-            self._migrate_stats()
-
-        # --- ZAPEWNIENIE NOWYCH PÓL TIMERA ---
-        gs = self.data["global_stats"]
-        updated_stats = False
-        if "daily_study_time" not in gs:
-            gs["daily_study_time"] = 0
-            self.storage.update_global_stat("daily_study_time", 0)
-            updated_stats = True
-        if "last_study_date" not in gs:
-            gs["last_study_date"] = ""
-            self.storage.update_global_stat("last_study_date", "")
-            updated_stats = True
-        if "all_time_best_time" not in gs:
-            gs["all_time_best_time"] = 0
-            self.storage.update_global_stat("all_time_best_time", 0)
-            updated_stats = True
-        if "total_study_time" not in gs:
-            gs["total_study_time"] = 0
-            self.storage.update_global_stat("total_study_time", 0)
-            updated_stats = True
-
-        # --- LOGIKA NOWEGO DNIA (RESET LICZNIKA) ---
-        today_str = str(date.today())
-        last_date = gs.get("last_study_date", "")
-
-        # Lista na osiągnięcia zdobyte "wczoraj", które trzeba pokazać teraz
-        self.pending_unlocks = []
-
-        if last_date != today_str:
-            daily = gs.get("daily_study_time", 0)
-            best = gs.get("all_time_best_time", 0)
-
-            # Sprawdź czy był rekord przed resetem
-            if daily > best:
-                gs["all_time_best_time"] = daily
-                self.storage.update_global_stat("all_time_best_time", daily)
-                # FIX: Jeśli to nie pierwszy dzień (best > 0) i nie ma jeszcze osiągnięcia -> ZAPISZ DO POWIADOMIENIA
-                if best > 0 and "record_breaker" not in self.data["achievements"]:
-                    self.data["achievements"].append("record_breaker")
-                    self.storage.add_achievement("record_breaker")
-                    # Dodajemy do kolejki: (ikona, klucz_tytuł, klucz_opis)
-                    self.pending_unlocks.append(("🚀", "ach_record_breaker", "ach_desc_record_breaker"))
-
-            # Reset na nowy dzień
-            gs["daily_study_time"] = 0
-            gs["last_study_date"] = today_str
-
-            # Aktualizacja w bazie
-            self.storage.update_global_stat("daily_study_time", 0)
-            self.storage.update_global_stat("last_study_date", today_str)
-        # ---------------------------------------------------------------
-
-        self.status_btn_mode = "default"
-        self.edit_btn_mode = "default"
-        self.current_theme = self.data["settings"].get("theme", "light")
-        self.current_lang = self.data["settings"].get("lang", "en")
+        # --- INICJALIZACJA USTAWIEŃ I JĘZYKA ---
+        # Pobieramy ustawienia bezpośrednio z bazy
+        settings = self.storage.get_settings()
+        self.current_theme = settings.get("theme", "light")
+        self.current_lang = settings.get("lang", "en")
         self.txt = load_language(self.current_lang)
 
+        # --- INICJALIZACJA STATYSTYK I WALIDACJA ---
+        self._initialize_global_stats()
+        self._check_new_day_reset()
+
+        # --- MENADŻER OSIĄGNIĘĆ ---
         self.ach_manager = AchievementManager(self.root, self.txt, storage=self.storage)
 
         # --- FIX: Wyświetlenie zaległych powiadomień po resecie dnia ---
         if hasattr(self, 'pending_unlocks') and self.pending_unlocks:
             self.ach_manager.notification_queue.extend(self.pending_unlocks)
-            # Uruchamiamy kolejkę z małym opóźnieniem, żeby okno zdążyło się narysować
             self.root.after(1000, self.ach_manager.process_queue)
 
         self.ach_manager.check_all(silent=True)
@@ -150,13 +95,12 @@ class GUI:
         # menu ustawienia
         settings_menu = tk.Menu(self.menubar, tearoff=0)
 
-        # --- NOWE MENU: PRZEŁĄCZANIE EGZAMINU ---
+        # --- MENU: PRZEŁĄCZANIE EGZAMINU ---
         switch_menu = tk.Menu(settings_menu, tearoff=0)
-        # Pobieramy zapisaną godzinę (domyślnie 24 = północ)
-        current_switch = self.data["settings"].get("next_exam_switch_hour", 24)
+        # Pobieramy zapisaną godzinę bezpośrednio z settings (odświeżone na początku)
+        current_switch = settings.get("next_exam_switch_hour", 24)
         self.switch_hour_var = tk.IntVar(value=current_switch)
 
-        # Opcje godzinowe (możesz dodać własne)
         hours_options = [12, 14, 16, 18, 20, 22]
 
         for h in hours_options:
@@ -164,7 +108,6 @@ class GUI:
             switch_menu.add_radiobutton(label=label, value=h, variable=self.switch_hour_var,
                                         command=lambda h=h: self.set_switch_hour(h))
 
-        # Opcja domyślna (Północ)
         switch_menu.add_separator()
         switch_menu.add_radiobutton(label=self.txt.get("switch_midnight", "Midnight"), value=24,
                                     variable=self.switch_hour_var,
@@ -199,11 +142,9 @@ class GUI:
 
         badges_menu = tk.Menu(settings_menu, tearoff=0)
 
-        # Pobieramy ustawienie (domyślnie "default")
-        current_badge_mode = self.data["settings"].get("badge_mode", "default")
+        current_badge_mode = settings.get("badge_mode", "default")
         self.badge_mode_var = tk.StringVar(value=current_badge_mode)
 
-        # Opcja 1: Domyślne (Liczba)
         badges_menu.add_radiobutton(
             label=self.txt.get("badge_default", "Default (Count)"),
             value="default",
@@ -211,7 +152,6 @@ class GUI:
             command=lambda: self.set_badge_mode("default")
         )
 
-        # Opcja 2: Kropka (Dot)
         badges_menu.add_radiobutton(
             label=self.txt.get("badge_dot", "Compact (Dot)"),
             value="dot",
@@ -219,7 +159,6 @@ class GUI:
             command=lambda: self.set_badge_mode("dot")
         )
 
-        # Opcja 3: Wyłączone
         badges_menu.add_radiobutton(
             label=self.txt.get("badge_off", "Disabled"),
             value="off",
@@ -290,9 +229,9 @@ class GUI:
             "corner_radius": 20,
             "fg_color": "#3a3a3a",
             "text_color": "white",
-            "hover_color": "#454545",  # <--- Dodano brakujący klucz (domyślny ciemny hover)
-            "border_color": "#3a3a3a",  # <--- Dodano brakujący klucz
-            "border_width": 0  # <--- Dodano brakujący klucz
+            "hover_color": "#454545",
+            "border_color": "#3a3a3a",
+            "border_width": 0
         }
 
         self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.on_close, **self.btn_style)
@@ -318,7 +257,7 @@ class GUI:
         self.middle_frame = tk.Frame(self.sidebar)
         self.middle_frame.pack(expand=True, fill="x", padx=15)
 
-        # Definicja nowych przycisków dynamicznych
+        # Definicja przycisków dynamicznych
         self.btn_1 = ctk.CTkButton(self.middle_frame, text="", **self.btn_style)
         self.btn_1.pack(pady=5, fill="x")
 
@@ -333,7 +272,6 @@ class GUI:
         self.tabview._segmented_button.grid_configure(pady=(10, 5))
         self.tabview._segmented_button.configure(corner_radius=20, height=32)
 
-        # --- KONFIGURACJA ZMIANY ZAKŁADEK ---
         self.tabview.configure(command=self.on_tab_change)
 
         self.tab_plan = self.tabview.add(self.txt.get("tab_plan", "Study Plan"))
@@ -347,9 +285,11 @@ class GUI:
         self.tab_todo.grid_rowconfigure(0, weight=1)
 
         # --- ZAKŁADKA 1: PLAN NAUKI ---
+        # UWAGA: Przekazujemy pusty słownik `data={}`, aby zachować zgodność z sygnaturą PlanWindow,
+        # dopóki ten plik również nie zostanie zrefaktoryzowany. Główna logika nie korzysta już z self.data w main.py.
         self.plan_view = PlanWindow(parent=self.tab_plan,
                                     txt=self.txt,
-                                    data=self.data,
+                                    data={},  # Placeholder dla kompatybilności wstecznej
                                     storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
@@ -357,26 +297,16 @@ class GUI:
                                     drawer_parent=self.root)
 
         # --- ZAKŁADKA 2: TODO LIST ---
-
         self.todo_view = TodoWindow(parent=self.tab_todo,
                                     txt=self.txt,
-                                    data=self.data,
+                                    data={},  # Placeholder
                                     storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard)
 
-        # --- KONFIGURACJA ZDARZEŃ ---
-        # Musimy obsłużyć odznaczanie w obu zakładkach
+        # Odznaczanie
         self.update_sidebar_buttons("idle", "idle", "idle")
 
-        # Odznaczanie po kliknięciu w tło (dla Planu)
-        self.sidebar.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
-
-        # --- NOWOŚĆ: WYMUSZAMY ODŚWIEŻENIE PRZYCISKÓW NA STARCIE ---
-        # Dzięki temu nie będą szarymi paskami, tylko od razu pokażą "Add Exam", "Archive" itd.
-        self.update_sidebar_buttons("idle", "idle", "idle")
-
-        # Odznaczanie po kliknięciu w tło
         self.sidebar.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
         self.middle_frame.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
         self.label_title.bind("<Button-1>", lambda e: self.plan_view.deselect_all())
@@ -407,49 +337,47 @@ class GUI:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.bind("<Configure>", self.on_window_resize)
 
-    def _load_all_legacy(self):
-        """
-        Rekonstruuje słownik self.data pobierając dane z self.storage.
-        Działa analogicznie do funkcji load() z storage.py, ale przez instancję.
-        """
-        data = {}
+    def _initialize_global_stats(self):
+        """Sprawdza i inicjalizuje brakujące klucze statystyk w bazie danych."""
+        gs = self.storage.get_global_stats()
+        keys_to_check = [
+            ("daily_study_time", 0),
+            ("last_study_date", ""),
+            ("all_time_best_time", 0),
+            ("total_study_time", 0)
+        ]
+        for key, default in keys_to_check:
+            if key not in gs:
+                self.storage.update_global_stat(key, default)
 
-        # 1. Settings & Stats
-        data["settings"] = self.storage.get_settings()
-        data["global_stats"] = self.storage.get_global_stats()
-        data["stats"] = self.storage.get_other_stats()
-        if not data["stats"]:
-            data["stats"] = {"pomodoro_count": 0}
+    def _check_new_day_reset(self):
+        """Obsługuje logikę resetu dziennego (New Day Logic) bezpośrednio na bazie."""
+        gs = self.storage.get_global_stats()
+        today_str = str(date.today())
+        last_date = gs.get("last_study_date", "")
 
-        # 2. Exams - konwersja booleana dla GUI
-        raw_exams = self.storage.get_exams()
-        data["exams"] = []
-        for r in raw_exams:
-            d = dict(r)
-            d["ignore_barrier"] = bool(d["ignore_barrier"])
-            data["exams"].append(d)
+        self.pending_unlocks = []
 
-        # 3. Topics - konwersja booleana dla GUI
-        raw_topics = self.storage.get_topics()
-        data["topics"] = []
-        for r in raw_topics:
-            d = dict(r)
-            d["locked"] = bool(d["locked"])
-            data["topics"].append(d)
+        if last_date != today_str:
+            daily = gs.get("daily_study_time", 0)
+            best = gs.get("all_time_best_time", 0)
 
-        # 4. Tasks
-        data["daily_tasks"] = [dict(r) for r in self.storage.get_daily_tasks()]
+            # Sprawdź czy był rekord przed resetem
+            if daily > best:
+                self.storage.update_global_stat("all_time_best_time", daily)
+                # Sprawdź osiągnięcie rekordu
+                achieved = self.storage.get_achievements()
+                if best > 0 and "record_breaker" not in achieved:
+                    self.storage.add_achievement("record_breaker")
+                    self.pending_unlocks.append(("🚀", "ach_record_breaker", "ach_desc_record_breaker"))
 
-        # 5. Simple Lists
-        data["blocked_dates"] = self.storage.get_blocked_dates()
-        data["achievements"] = self.storage.get_achievements()
-
-        return data
+            # Reset na nowy dzień
+            self.storage.update_global_stat("daily_study_time", 0)
+            self.storage.update_global_stat("last_study_date", today_str)
 
     def create_badges(self):
         badge_font = ("Arial", 10, "bold")
 
-        # Rodzicem pozostaje self.tabview, aby kółka mogły wystawać poza pasek
         self.badge_plan = ctk.CTkLabel(
             self.tabview, text="", width=20, height=20, corner_radius=10,
             font=badge_font, fg_color="transparent", text_color="white"
@@ -459,30 +387,6 @@ class GUI:
             self.tabview, text="", width=20, height=20, corner_radius=10,
             font=badge_font, fg_color="transparent", text_color="white"
         )
-
-    def _migrate_stats(self):
-        # Migracja struktury do słownika (Legacy) oraz aktualizacja Storage
-        existing_notes = sum(1 for t in self.data.get("topics", []) if t.get("note", "").strip())
-        existing_notes += sum(1 for e in self.data.get("exams", []) if e.get("note", "").strip())
-        existing_done = sum(1 for t in self.data.get("topics", []) if t["status"] == "done")
-        existing_exams = len(self.data.get("exams", []))
-        existing_blocked = len(self.data.get("blocked_dates", []))
-        existing_pomodoro = self.data.get("stats", {}).get("pomodoro_count", 0)
-
-        new_stats = {
-            "topics_done": existing_done,
-            "notes_added": existing_notes,
-            "exams_added": existing_exams,
-            "days_off": existing_blocked,
-            "pomodoro_sessions": existing_pomodoro,
-            "activity_started": existing_done > 0
-        }
-
-        self.data["global_stats"] = new_stats
-
-        # Zapis do Storage
-        for k, v in new_stats.items():
-            self.storage.update_global_stat(k, v)
 
     def sidebar_add(self):
         self.plan_view.open_add_window()
@@ -506,39 +410,22 @@ class GUI:
         self.plan_view.refresh_table()
 
     def set_badge_mode(self, mode):
-        self.data["settings"]["badge_mode"] = mode
+        # Aktualizacja w bazie
         self.storage.update_setting("badge_mode", mode)
         # Odświeżamy widok natychmiast
         self.update_badges_logic()
 
     def on_tab_change(self):
-        # 1. Odznacz wszystko w Planie
         if hasattr(self, 'plan_view'):
             self.plan_view.deselect_all()
-
-        # 2. Odznacz wszystko w Todo
         if hasattr(self, 'todo_view'):
             self.todo_view.deselect_all()
-
-        # 3. Zresetuj przyciski boczne do stanu "idle" (puste/szare)
         self.update_sidebar_buttons("idle", "idle", "idle")
 
     def menu_clear_data(self):
-        # Pobieramy potwierdzenie od użytkownika
         if messagebox.askyesno(self.txt.get("msg_confirm", "Confirm"),
                                self.txt.get("msg_clear_confirm", "Clear all data?")):
-            # 1. Resetowanie głównych danych w GUI Mirror
-            self.data["exams"] = []
-            self.data["topics"] = []
-            self.data["notes"] = {}  # Legacy leftovers
-            self.data["blocked_dates"] = []
-            self.data["daily_tasks"] = []
-
-            # 2. Usuwanie danych z Bazy Danych przez StorageManager
-            # Egzaminy (Topics usuną się kaskadowo w bazie, ale dla pewności usuwamy logiką managera jeśli dostępna)
-            # Manager w storage.py nie ma metody clear_all, więc iterujemy:
-
-            # Pobierz aktualne listy z DB, żeby wiedzieć co usunąć
+            # 1. Usuwanie danych z Bazy Danych
             existing_exams = self.storage.get_exams()
             for ex in existing_exams:
                 self.storage.delete_exam(ex['id'])
@@ -551,10 +438,11 @@ class GUI:
             for d in existing_blocked:
                 self.storage.remove_blocked_date(d)
 
-            # 3. Resetowanie Osiągnięć i Statystyk globalnych
-            self.data["achievements"] = []
+            # Usuwanie osiągnięć nie jest wprost wspierane metodą delete_all,
+            # ale możemy zresetować statystyki, co zablokuje zdobywanie nowych na chwilę
+            # (W pełnym SQL można by zrobić TRUNCATE achievements, tu zostawiamy tak jak jest w logice biznesowej)
 
-            # Statystyki - reset wartości
+            # 2. Resetowanie Statystyk globalnych w Bazie
             reset_stats = {
                 "topics_done": 0,
                 "notes_added": 0,
@@ -564,26 +452,25 @@ class GUI:
                 "activity_started": False,
                 "had_overdue": False
             }
-            self.data["global_stats"] = reset_stats
-
             for k, v in reset_stats.items():
                 self.storage.update_global_stat(k, v)
 
-            # 4. Synchronizacja i odświeżenie widoków
-            self.plan_view.data = self.data
+            # 3. Odświeżenie widoków (pobiorą puste dane z SQL)
+            # Przekazujemy pusty słownik, bo widoki jeszcze nie są w pełni Pure SQL,
+            # ale tutaj najważniejsze że main nie trzyma stanu.
+            self.plan_view.data = {}
             self.plan_view.refresh_table()
             self.refresh_dashboard()
 
-            # 5. Reset managera osiągnięć (żeby wyczyścić jego wewnętrzną kolejkę)
-            from gui.windows.achievements import AchievementManager
-            self.ach_manager = AchievementManager(self.root, self.txt, self.data, storage=self.storage)
+            # 4. Reset managera osiągnięć
+            self.ach_manager = AchievementManager(self.root, self.txt, storage=self.storage)
 
             messagebox.showinfo(self.txt.get("msg_info", "Info"), self.txt.get("msg_data_cleared", "Data cleared!"))
 
     def change_language(self, new_code):
-        if new_code == self.data["settings"].get("lang", "en"):
+        settings = self.storage.get_settings()
+        if new_code == settings.get("lang", "en"):
             return
-        self.data["settings"]["lang"] = new_code
         self.storage.update_setting("lang", new_code)
 
         restart = messagebox.askyesno(self.txt["msg_info"], self.txt["msg_lang_changed"])
@@ -592,26 +479,22 @@ class GUI:
             os.execl(sys.executable, sys.executable, *sys.argv)
 
     def set_switch_hour(self, hour):
-        self.data["settings"]["next_exam_switch_hour"] = hour
         self.storage.update_setting("next_exam_switch_hour", hour)
-        # Odśwież dashboard natychmiast, żeby zobaczyć efekt
         self.refresh_dashboard()
 
     def change_theme(self, theme_name):
-        self.data["settings"]["theme"] = theme_name
         self.storage.update_setting("theme", theme_name)
         self.current_theme = theme_name
         apply_theme(self, theme_name)
 
     def open_blocked_days(self):
-        # Przekazujemy self.refresh_dashboard jako refresh_callback
         BlockedDaysWindow(
             self.root,
             self.txt,
-            self.data,
+            {},  # Placeholder data
             self.btn_style,
             callback=self.menu_gen_plan,
-            refresh_callback=self.refresh_dashboard,  # <--- TO NAPRAWIA PROBLEM
+            refresh_callback=self.refresh_dashboard,
             storage=self.storage
         )
 
@@ -625,11 +508,9 @@ class GUI:
             if mode == "hidden" or mode == "disabled":
                 return False
 
-            # Reset do stylu bazowego
             current_text_col = self.btn_style.get("text_color", "white")
             current_hover = self.btn_style.get("hover_color", "#454545")
 
-            # --- DEFINICJE KOLORÓW ---
             COL_GREEN = "#00b800"
             COL_BLUE = "#3399ff"
             COL_RED = "#e74c3c"
@@ -639,11 +520,8 @@ class GUI:
             cmd = None
             color = None
 
-            # --- MAPOWANIE AKCJI ---
             if mode == "idle":
                 pass
-
-            # PRZYCISKI MENU
             elif mode == "add":
                 text = self.txt["btn_add_exam"]
                 cmd = self.sidebar_add
@@ -653,39 +531,29 @@ class GUI:
             elif mode == "tools":
                 text = self.txt.get("btn_tools", "Tools")
                 cmd = self.toggle_tools_drawer
-
-            # PRZYCISKI AKCJI
             elif mode == "complete":
                 text = self.txt.get("tag_done", "Done")
                 cmd = self.plan_view.toggle_status
                 color = COL_GREEN
-
             elif mode == "restore":
                 text = self.txt.get("btn_restore", "Restore")
                 cmd = self.plan_view.restore_status
-
-                # --- ZMIANA: Biały w Dark Mode, Szary w Light Mode ---
                 if self.current_theme == "dark":
                     color = "#ffffff"
                 else:
                     color = "gray"
-
             elif mode.startswith("edit"):
                 text = self.txt["btn_edit"]
                 cmd = self.sidebar_edit
                 color = COL_BLUE
-
             elif mode == "delete":
                 text = self.txt["btn_delete"]
                 cmd = self.plan_view.delete_selected_item
                 color = COL_RED
-
             elif mode == "move_today":
                 text = self.txt.get("btn_move_today", "To Today")
                 cmd = self.plan_view.move_selected_to_today
                 color = COL_ORANGE
-
-            # --- ZMIANA: Ujednolicenie koloru czerwonego dla Block i Block & Gen ---
             elif mode == "block":
                 text = self.txt.get("btn_block", "Block")
                 cmd = lambda: self.plan_view.toggle_status(generate=False)
@@ -703,11 +571,9 @@ class GUI:
                 cmd = lambda: self.plan_view.toggle_status(generate=True)
                 color = COL_GREEN
 
-            # --- APLIKOWANIE STYLU ---
             btn.configure(text=text, command=cmd)
 
             if color:
-                # STYL "OUTLINE"
                 btn.configure(
                     fg_color="transparent",
                     border_color=color,
@@ -716,7 +582,6 @@ class GUI:
                     hover_color=current_hover
                 )
             else:
-                # STYL "SOLID"
                 btn.configure(
                     fg_color=self.btn_style["fg_color"],
                     text_color=current_text_col,
@@ -724,7 +589,6 @@ class GUI:
                     border_width=1,
                     hover_color=current_hover
                 )
-
             return True
 
         if s1 == "idle":
@@ -751,13 +615,11 @@ class GUI:
         AchievementsWindow(self.root, self.txt, self.storage, self.btn_style)
 
     def open_timer(self):
-        # Sprawdzamy czy okno już istnieje
         if self.timer_window is None or not self.timer_window.winfo_exists():
-            # Przypisujemy instancję do zmiennej self.timer_window
-            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style, self.data,
+            self.timer_window = TimerWindow(self.root, self.txt, self.btn_style, {},
                                             callback=self.refresh_dashboard, storage=self.storage)
         else:
-            self.timer_window.lift()  # Jeśli istnieje, wyciągamy na wierzch
+            self.timer_window.lift()
 
     def animate_bar(self, bar, target_value):
         current_value = bar.get()
@@ -782,51 +644,45 @@ class GUI:
         _step(0)
 
     def on_window_resize(self, event):
-        # Sprawdzamy, czy zdarzenie dotyczy głównego okna (self.root).
-        # Zdarzenie <Configure> jest wysyłane dla każdego widgetu, więc musimy filtrować,
-        # żeby kod nie wykonywał się 100 razy na sekundę dla każdego przycisku.
         if event.widget == self.root:
-            # Ponieważ okno zmieniło rozmiar, pasek zakładek też mógł się przesunąć.
-            # Przeliczamy pozycję ikonek.
             self.update_badges_logic()
 
     def update_badges_logic(self):
-        # 1. Sprawdź tryb wyświetlania
-        mode = self.data["settings"].get("badge_mode", "default")
+        # Pobieramy dane On-Demand i konwertujemy na dict, by używać metod .get()
+        settings = self.storage.get_settings()
+        exams = [dict(x) for x in self.storage.get_exams()]
+        topics = [dict(x) for x in self.storage.get_topics()]
+        daily_tasks = [dict(x) for x in self.storage.get_daily_tasks()]
 
-        # Jeśli wyłączone -> ukryj i wyjdź
+        mode = settings.get("badge_mode", "default")
+
         if mode == "off":
             self.badge_plan.place_forget()
             self.badge_todo.place_forget()
             return
 
-        # 2. Konfiguracja wyglądu w zależności od trybu
         if mode == "dot":
-            size = 10  # Nieco mniejsza kropka (było 12)
+            size = 10
             font_size = 1
-            offset_y = 0  # Było -5. Zmieniamy na 0, żeby kropka zeszła niżej (bliżej środka w pionie)
-            offset_x = -20  # KLUCZOWA ZMIANA: Było 5. Dajemy -20, żeby cofnąć kropkę w lewo na przycisk
-        else:  # default
+            offset_y = 0
+            offset_x = -20
+        else:
             size = 20
             font_size = 10
             offset_y = -12
             offset_x = -10
 
-        # Aktualizacja rozmiaru widgetów (musimy to zrobić tu, bo rozmiar się zmienia)
         self.badge_plan.configure(width=size, height=size, font=("Arial", font_size, "bold"))
         self.badge_todo.configure(width=size, height=size, font=("Arial", font_size, "bold"))
 
-        # 3. Pobranie pozycji paska
         try:
             seg_btn = self.tabview._segmented_button
             seg_x = seg_btn.winfo_x()
             seg_y = seg_btn.winfo_y()
             seg_w = seg_btn.winfo_width()
         except AttributeError:
-            return  # Zabezpieczenie przed błędem przy starcie
+            return
 
-        # Obliczanie pozycji (z uwzględnieniem offsetów dla trybu dot/default)
-        # Zakładamy podział 50/50 paska
         plan_x_px = seg_x + (seg_w / 2) + offset_x
         todo_x_px = seg_x + seg_w + offset_x
         badge_y_px = seg_y + offset_y
@@ -834,13 +690,12 @@ class GUI:
         today = date.today()
         today_str = str(today)
 
-        # --- OBLICZENIA (bez zmian) ---
-        active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
+        active_exams_ids = {e["id"] for e in exams if date_format(e["date"]) >= today}
         p_overdue = 0
         p_today_todo = 0
         p_today_done = 0
 
-        for t in self.data["topics"]:
+        for t in topics:
             if t["exam_id"] not in active_exams_ids: continue
             t_date = t.get("scheduled_date")
             if not t_date: continue
@@ -855,44 +710,29 @@ class GUI:
 
         total_p = p_overdue + p_today_todo
 
-        # --- RYSOWANIE PLAN BADGE ---
         should_show_plan = total_p > 0 or p_today_done > 0
         if should_show_plan:
-            # Ustalanie koloru
             color = "#e74c3c" if p_overdue > 0 else ("#e67e22" if p_today_todo > 0 else "#2ecc71")
-
-            # Ustalanie tekstu: Liczba, Ptaszek lub Pusty (dla kropki)
-            if mode == "dot":
-                text = ""  # Pusta kropka
-            else:
-                text = str(total_p) if total_p > 0 else "✓"
-
+            text = "" if mode == "dot" else (str(total_p) if total_p > 0 else "✓")
             self.badge_plan.configure(fg_color=color, text=text)
             self.badge_plan.place(x=plan_x_px, y=badge_y_px)
             self.badge_plan.lift()
         else:
             self.badge_plan.place_forget()
 
-        # --- OBLICZENIA TODO (bez zmian) ---
-        t_overdue = sum(1 for t in self.data.get("daily_tasks", [])
+        t_overdue = sum(1 for t in daily_tasks
                         if t.get("date", "") < today_str and t["status"] == "todo")
-        t_today_todo = sum(1 for t in self.data.get("daily_tasks", [])
+        t_today_todo = sum(1 for t in daily_tasks
                            if t.get("date", "") == today_str and t["status"] == "todo")
-        t_today_done = sum(1 for t in self.data.get("daily_tasks", [])
+        t_today_done = sum(1 for t in daily_tasks
                            if t.get("date", "") == today_str and t["status"] == "done")
 
         total_t = t_overdue + t_today_todo
 
-        # --- RYSOWANIE TODO BADGE ---
         should_show_todo = total_t > 0 or t_today_done > 0
         if should_show_todo:
             color = "#e74c3c" if t_overdue > 0 else ("#e67e22" if t_today_todo > 0 else "#2ecc71")
-
-            if mode == "dot":
-                text = ""
-            else:
-                text = str(total_t) if total_t > 0 else "✓"
-
+            text = "" if mode == "dot" else (str(total_t) if total_t > 0 else "✓")
             self.badge_todo.configure(fg_color=color, text=text)
             self.badge_todo.place(x=todo_x_px, y=badge_y_px)
             self.badge_todo.lift()
@@ -900,73 +740,62 @@ class GUI:
             self.badge_todo.place_forget()
 
     def refresh_dashboard(self):
+        # --- PURE SQL: POBIERANIE DANYCH ON-DEMAND ---
+        # FIX: Rzutowanie na dict, aby sqlite3.Row nie powodował błędu AttributeError przy .get()
+        exams = [dict(r) for r in self.storage.get_exams()]
+        topics = [dict(r) for r in self.storage.get_topics()]
+        daily_tasks = [dict(r) for r in self.storage.get_daily_tasks()]
+        global_stats = self.storage.get_global_stats()
+        settings = self.storage.get_settings()
+
         today = date.today()
         today_str = str(today)
         current_colors = THEMES.get(self.current_theme, THEMES["light"])
         default_text = current_colors["fg_text"]
 
-        # --- 1. DANE Z PLANU NAUKI (EXAMS/TOPICS) ---
-        active_exams_ids = {e["id"] for e in self.data["exams"] if date_format(e["date"]) >= today}
-        active_topics = [t for t in self.data["topics"] if t["exam_id"] in active_exams_ids]
+        # 1. PLAN NAUKI
+        active_exams_ids = {e["id"] for e in exams if date_format(e["date"]) >= today}
+        active_topics = [t for t in topics if t["exam_id"] in active_exams_ids]
 
         plan_total = len(active_topics)
         plan_done = len([t for t in active_topics if t["status"] == "done"])
 
-        # Plan na dziś
-        today_plan_all = [t for t in self.data["topics"] if str(t.get("scheduled_date")) == today_str]
+        today_plan_all = [t for t in topics if str(t.get("scheduled_date")) == today_str]
         today_plan_total = len(today_plan_all)
         today_plan_done = len([t for t in today_plan_all if t["status"] == "done"])
 
-        # --- 2. DANE Z DAILY TASKS (TODO) ---
-        # Zasada: Bierzemy wszystkie z przyszłości/dzisiaj.
-        # Z przeszłości bierzemy TYLKO niezrobione (zaległe).
-
-        todo_list = self.data.get("daily_tasks", [])
-
+        # 2. DAILY TASKS
         todo_total = 0
         todo_done = 0
-
         today_todo_total = 0
         today_todo_done = 0
 
-        for t in todo_list:
+        for t in daily_tasks:
             t_date = t.get("date", "")
             is_done = t["status"] == "done"
 
-            # --- Logika ogólna (Total Progress) ---
-            # Jeśli data pusta -> liczymy zawsze
             if not t_date:
                 todo_total += 1
                 if is_done: todo_done += 1
-
-            # Jeśli data >= Dziś -> liczymy zawsze
             elif t_date >= today_str:
                 todo_total += 1
                 if is_done: todo_done += 1
-
-                # --- Logika "Na dziś" ---
                 if t_date == today_str:
                     today_todo_total += 1
                     if is_done: today_todo_done += 1
-
-            # Jeśli data < Dziś (Przeszłość)
             else:
-                # Jeśli zrobione -> IGNORUJEMY (historyczne, nie wchodzą w statystyki)
-                if is_done:
-                    continue
-                else:
-                    # Jeśli niezrobione -> ZALEGŁE (wchodzą w Total jako do zrobienia)
+                # Przeszłość: tylko niezrobione (zaległe)
+                if not is_done:
                     todo_total += 1
-                    # todo_done nie zwiększamy, bo jest todo
 
-        # --- 3. SUMOWANIE ---
+        # 3. SUMOWANIE
         final_total = plan_total + todo_total
         final_done = plan_done + todo_done
 
         final_today_total = today_plan_total + today_todo_total
         final_today_done = today_plan_done + today_todo_done
 
-        # A. Wyświetlanie Total Progress
+        # Wyświetlanie Total
         prog_val = 0.0
         prog_percent = 0
         if final_total > 0:
@@ -977,7 +806,7 @@ class GUI:
             text=self.txt["stats_total_progress"].format(done=final_done, total=final_total, progress=prog_percent))
         self.animate_bar(self.bar_total, prog_val)
 
-        # B. Wyświetlanie Today Progress
+        # Wyświetlanie Today
         if final_today_total > 0:
             p_day_val = final_today_done / final_today_total
             p_day_perc = int(p_day_val * 100)
@@ -1011,41 +840,32 @@ class GUI:
             self.lbl_today.configure(text=self.txt["stats_no_today"], text_color="#1f6aa5")
             self.bar_today.set(0)
 
-        # 4. CZAS DZIENNY (Obliczanie i wyświetlanie)
-        daily_sec = self.data["global_stats"].get("daily_study_time", 0)
-
+        # 4. CZAS DZIENNY
+        daily_sec = global_stats.get("daily_study_time", 0)
         if daily_sec > 0:
-            # Obliczanie czasu
             mins, secs = divmod(daily_sec, 60)
             hours, mins = divmod(mins, 60)
             time_str = f"{hours:02d}:{mins:02d}"
-
-            # Pobranie tekstu i ustawienie labela
             lbl_prefix = self.txt.get("lbl_daily_focus", "Today's Focus")
             self.lbl_daily_time.configure(text=f"{lbl_prefix}: {time_str}")
-
-            # Przywracamy widoczność (parametry takie jak w __init__)
-            # Ponieważ ten element był na samym dole stats_frame, pack() doda go na koniec.
             self.lbl_daily_time.pack(pady=(5, 0))
         else:
-            # Jeśli 0, ukrywamy element
             self.lbl_daily_time.pack_forget()
 
-        # C. Najbliższy egzamin (Bez zmian)
-        switch_hour = self.data["settings"].get("next_exam_switch_hour", 24)
+        # 5. NAJBLIŻSZY EGZAMIN
+        switch_hour = settings.get("next_exam_switch_hour", 24)
         now_hour = datetime.now().hour
 
         if switch_hour < 24 and now_hour >= switch_hour:
-            future_exams = [e for e in self.data["exams"] if date_format(e["date"]) > today]
+            future_exams = [e for e in exams if date_format(e["date"]) > today]
         else:
-            future_exams = [e for e in self.data["exams"] if date_format(e["date"]) >= today]
+            future_exams = [e for e in exams if date_format(e["date"]) >= today]
 
         future_exams.sort(key=lambda x: x["date"])
 
         if future_exams:
             nearest = future_exams[0]
             days = (date_format(nearest["date"]) - today).days
-
             same_day_exams = [e for e in future_exams if e["date"] == nearest["date"]]
             subjects_str = ",\n".join([e["subject"] for e in same_day_exams])
 
@@ -1070,19 +890,15 @@ class GUI:
         else:
             self.lbl_next_exam.configure(text=self.txt["stats_no_upcoming"], text_color="green")
 
+        # 6. OSIĄGNIĘCIA
         if hasattr(self, 'ach_manager'):
-            # Sprawdzamy czy okno timera jest fizycznie otwarte
             timer_window_open = False
             if self.timer_window is not None and self.timer_window.winfo_exists():
                 timer_window_open = True
-
-            # Jeśli okno jest otwarte (nawet jak stoi w miejscu) -> tryb cichy (silent=True)
-            # Jeśli okno zamknięte -> tryb głośny (silent=False)
             is_silent = timer_window_open
 
             self.ach_manager.check_all(silent=is_silent)
 
-            # Wypuszczamy kolejkę TYLKO gdy okno jest już zamknięte
             if not is_silent:
                 self.ach_manager.flush_deferred()
 
@@ -1095,20 +911,16 @@ class GUI:
         ManualWindow(self.root, self.txt, self.btn_style)
 
     def open_plan_window(self):
-        PlanWindow(self.root, self.txt, self.data, self.btn_style,
+        # Placeholder data
+        PlanWindow(self.root, self.txt, {}, self.btn_style,
                    dashboard_callback=self.refresh_dashboard, storage=self.storage)
 
     def on_close(self):
-        # 1. Sprawdzamy czy okno timera istnieje I czy timer odlicza
         if self.timer_window is not None and self.timer_window.winfo_exists():
-            # Sprawdzamy flagę is_running wewnątrz obiektu TimerWindow
-            # Używamy getattr dla bezpieczeństwa, gdyby zmienna nie istniała
             if getattr(self.timer_window, "is_running", False):
                 msg = self.txt.get("msg_timer_warning", "Pomodoro is running! Are you sure you want to exit?")
                 if not messagebox.askyesno(self.txt["msg_warning"], msg):
-                    return  # Anuluj zamykanie
-
-        # 2. Jeśli timer nie działa (lub użytkownik potwierdził), zamykamy aplikację
+                    return
         self.root.quit()
 
 
