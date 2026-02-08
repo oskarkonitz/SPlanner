@@ -5,6 +5,7 @@ from core.planner import date_format
 import random
 import math
 
+
 # --- KLASA CZĄSTECZKI (Brak zmian, czysta animacja) ---
 class Particle:
     def __init__(self, canvas, x, y, color_palette):
@@ -383,7 +384,7 @@ class UnlockPopup:
 
 
 class StaticAchievementItem(ctk.CTkFrame):
-    def __init__(self, parent, icon, title, desc, is_unlocked, *args, **kwargs):
+    def __init__(self, parent, icon, title, desc, is_unlocked, corner_text=None, *args, **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
 
         mode = ctk.get_appearance_mode()
@@ -409,9 +410,18 @@ class StaticAchievementItem(ctk.CTkFrame):
         ctk.CTkLabel(text_frame, text=desc, font=("Arial", 12), text_color=desc_color, anchor="w", wraplength=350).pack(
             fill="x")
 
+        # --- NOWOŚĆ: Wyświetlanie tekstu w prawym górnym rogu ---
+        # TWORZYMY NA KOŃCU, ŻEBY BYŁO NA WIERZCHU I DAJEMY LIFT
+        if corner_text:
+            lbl_corner = ctk.CTkLabel(main_frame, text=corner_text, font=("Arial", 11, "bold"), text_color="#3498db")
+            lbl_corner.place(relx=0.97, rely=0.08, anchor="ne")
+            lbl_corner.lift()
+        # --------------------------------------------------------
+
 
 class AccordionItem(ctk.CTkFrame):
-    def __init__(self, parent, txt, icon, title, level_text, details_list, is_unlocked, *args, **kwargs):
+    def __init__(self, parent, txt, icon, title, level_text, details_list, is_unlocked, corner_text=None, *args,
+                 **kwargs):
         super().__init__(parent, fg_color="transparent", *args, **kwargs)
         self.txt = txt
         self.details_list = details_list
@@ -454,6 +464,15 @@ class AccordionItem(ctk.CTkFrame):
             w.bind("<Button-1>", lambda e: self.toggle())
 
         self.details_frame = ctk.CTkFrame(self, fg_color="transparent")
+
+        # --- NOWOŚĆ: Wyświetlanie tekstu w prawym górnym rogu ---
+        # TWORZYMY NA KOŃCU I LIFT
+        if corner_text:
+            lbl_corner = ctk.CTkLabel(self.main_frame, text=corner_text, font=("Arial", 11, "bold"),
+                                      text_color="#3498db")
+            lbl_corner.place(relx=0.97, rely=0.08, anchor="ne")
+            lbl_corner.lift()
+        # --------------------------------------------------------
 
     def toggle(self):
         if self.is_expanded:
@@ -530,9 +549,19 @@ class AchievementsWindow:
                 current_val = self.manager.get_current_metric(check_func)
                 d_text += f" ({current_val}/{threshold})"
 
+            # --- MODYFIKACJA: Wyświetlanie rekordu dla Rocket w rogu (HH:MM) ---
+            corner_txt = None
+            if ach_id == "record_breaker" and self.storage:
+                stats = self.storage.get_global_stats()
+                best_sec = int(stats.get("all_time_best_time", 0))
+                h = best_sec // 3600
+                m = (best_sec % 3600) // 60
+                corner_txt = f"{h:02d}:{m:02d}"
+
             families[base].append({
                 "id": ach_id, "lvl": lvl, "title": t_text, "desc": d_text,
-                "unlocked": is_unlocked
+                "unlocked": is_unlocked,
+                "corner_text": corner_txt  # Przekazujemy tekst do rogu
             })
             if base not in family_meta:
                 clean_title = t_text.split(" I")[0].split(" IV")[0].strip()
@@ -550,7 +579,8 @@ class AchievementsWindow:
                     icon=meta["icon"],
                     title=item["title"],
                     desc=item["desc"],
-                    is_unlocked=item["unlocked"]
+                    is_unlocked=item["unlocked"],
+                    corner_text=item.get("corner_text")  # Przekazujemy
                 ).pack(fill="x", pady=5)
             else:
                 highest_lvl_idx = -1
@@ -561,6 +591,9 @@ class AchievementsWindow:
 
                 display_title = items[highest_lvl_idx]["title"] if is_unlocked_any else meta["title"]
                 level_suffix = ""
+
+                # Jeśli którykolwiek element ma corner_text, bierzemy go
+                display_corner = next((it.get("corner_text") for it in items if it.get("corner_text")), None)
 
                 details = []
                 for it in items:
@@ -573,5 +606,6 @@ class AchievementsWindow:
                     title=display_title,
                     level_text=level_suffix,
                     details_list=details,
-                    is_unlocked=is_unlocked_any
+                    is_unlocked=is_unlocked_any,
+                    corner_text=display_corner  # Przekazujemy
                 ).pack(fill="x", pady=5)

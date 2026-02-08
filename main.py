@@ -353,6 +353,43 @@ class GUI:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.bind("<Configure>", self.on_window_resize)
 
+        # --- SMART STARTUP (NOWA FUNKCJA) ---
+        self._perform_smart_startup()
+
+    def _perform_smart_startup(self):
+        """
+        Logika startowa:
+        1. Sprawdź Plan (czy są tematy 'todo' z datą). Jeśli tak -> Otwórz Plan.
+        2. Sprawdź ToDo (czy są zadania 'todo'). Jeśli tak -> Otwórz ToDo.
+        3. Fallback -> Otwórz Schedule.
+        """
+        # 1. PLAN
+        topics = self.storage.get_topics()
+        plan_active = False
+        for t in topics:
+            if t["status"] == "todo" and t["scheduled_date"]:
+                plan_active = True
+                break
+
+        if plan_active:
+            self.tabview.set(self.txt.get("tab_plan", "Study Plan"))
+            return
+
+        # 2. TODO
+        tasks = self.storage.get_daily_tasks()
+        todo_active = False
+        for t in tasks:
+            if t["status"] == "todo":
+                todo_active = True
+                break
+
+        if todo_active:
+            self.tabview.set(self.txt.get("tab_todo", "Daily Tasks"))
+            return
+
+        # 3. SCHEDULE (Fallback)
+        self.tabview.set(self.txt.get("lbl_schedule", "Schedule"))
+
     def _initialize_global_stats(self):
         """Sprawdza i inicjalizuje brakujące klucze statystyk w bazie danych."""
         gs = self.storage.get_global_stats()
@@ -524,7 +561,8 @@ class GUI:
             self.refresh_dashboard()
             self.update_badges_logic()
 
-        SettingsWindow(self.root, self.txt, self.btn_style, self.storage, app_version=VERSION, callback_refresh=on_settings_saved)
+        SettingsWindow(self.root, self.txt, self.btn_style, self.storage, app_version=VERSION,
+                       callback_refresh=on_settings_saved)
 
     def update_sidebar_buttons(self, s1, s2, s3):
         # 1. RESET UI
