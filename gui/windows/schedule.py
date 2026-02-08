@@ -8,6 +8,7 @@ from gui.windows.subjects_manager import SubjectsManagerWindow
 START_HOUR = 7  # Początek osi czasu (7:00)
 END_HOUR = 22  # Koniec osi czasu (22:00)
 PX_PER_HOUR = 60  # Wysokość jednej godziny w pikselach
+EXAM_DURATION_HOURS = 1.5  # Domyślny czas trwania kafelka egzaminu (dla wizualizacji)
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
@@ -94,6 +95,7 @@ class SchedulePanel(ctk.CTkFrame):
             self.day_labels.append(lbl)
 
         # --- OBSZAR PRZEWIJANY (Wewnątrz border_frame) ---
+        # Kolor tła planu: ("white", "#2b2b2b")
         self.scroll_frame = ctk.CTkScrollableFrame(self.border_frame, corner_radius=6, fg_color=("white", "#2b2b2b"))
         self.scroll_frame.pack(fill="both", expand=True, padx=3, pady=3)
 
@@ -144,26 +146,51 @@ class SchedulePanel(ctk.CTkFrame):
     # --- ŁADOWANIE DANYCH ---
     def load_data(self):
         self.semesters = [dict(s) for s in self.storage.get_semesters()]
+        # Sortujemy semestry, aby aktualny był na szczycie (dla domyślnego wyboru)
         self.semesters.sort(key=lambda x: not x["is_current"])
 
-        values = [s["name"] for s in self.semesters]
+        # Lista wartości do ComboBox: "All" + nazwy semestrów
+        all_label = self.txt.get("val_all", "All")
+        sem_names = [s["name"] for s in self.semesters]
+        values = [all_label] + sem_names
+
         self.combo_sem.configure(values=values)
 
+        # Logika wyboru domyślnego
         if self.semesters:
             if not self.current_semester_id:
+                # Domyślnie wybieramy pierwszy semestr (aktualny dzięki sortowaniu)
                 self.current_semester_id = self.semesters[0]["id"]
                 self.combo_sem.set(self.semesters[0]["name"])
-            self.refresh_schedule()
+            elif self.current_semester_id == "ALL":
+                self.combo_sem.set(all_label)
+            else:
+                # Próbujemy znaleźć nazwę dla obecnego ID
+                current_name = next((s["name"] for s in self.semesters if s["id"] == self.current_semester_id), None)
+                if current_name:
+                    self.combo_sem.set(current_name)
+                else:
+                    # Fallback jeśli ID nie istnieje (np. po usunięciu)
+                    self.current_semester_id = self.semesters[0]["id"]
+                    self.combo_sem.set(self.semesters[0]["name"])
         else:
-            self.combo_sem.set("")
-            self.current_semester_id = None
-            self.refresh_schedule()
+            # Brak semestrów - tylko opcja All (choć i tak pusto)
+            self.combo_sem.set(all_label)
+            self.current_semester_id = "ALL"
+
+        self.refresh_schedule()
 
     def on_semester_change(self, choice):
-        sem = next((s for s in self.semesters if s["name"] == choice), None)
-        if sem:
-            self.current_semester_id = sem["id"]
-            self.refresh_schedule()
+        all_label = self.txt.get("val_all", "All")
+
+        if choice == all_label:
+            self.current_semester_id = "ALL"
+        else:
+            sem = next((s for s in self.semesters if s["name"] == choice), None)
+            if sem:
+                self.current_semester_id = sem["id"]
+
+        self.refresh_schedule()
 
     def open_subjects_manager(self):
         SubjectsManagerWindow(self.winfo_toplevel(), self.txt, self.btn_style, self.storage,
@@ -173,33 +200,59 @@ class SchedulePanel(ctk.CTkFrame):
         # 1. UI Updates
         self.update_week_label()
 
-        # Wyczyść stare bloczki
+        # Wyczyść stare bloczki (zabezpieczamy się usuwając tylko elementy harmonogramu i markery)
         for widget in self.grid_area.winfo_children():
-            if isinstance(widget, ctk.CTkButton) or (
-                    isinstance(widget, ctk.CTkFrame) and getattr(widget, "is_marker", False)):
+            if isinstance(widget, ctk.CTkButton) or \
+                    (isinstance(widget, ctk.CTkFrame) and (
+                            getattr(widget, "is_marker", False) or getattr(widget, "is_block", False))):
                 widget.destroy()
 
         if not self.current_semester_id: return
 
-        # 2. Pobierz przedmioty dla semestru
-        raw_subjects = self.storage.get_subjects(self.current_semester_id)
+        # 2. Pobierz przedmioty
+        if self.current_semester_id == "ALL":
+            # Pobieramy przedmioty ze WSZYSTKICH semestrów
+            raw_subjects = self.storage.get_subjects(None)
+        else:
+            # Pobieramy tylko dla konkretnego
+            raw_subjects = self.storage.get_subjects(self.current_semester_id)
+
         self.subjects_cache = {s["id"]: dict(s) for s in raw_subjects}
+        semester_subj_ids = set(self.subjects_cache.keys())
 
         # 3. Pobierz Odwołania (Exceptions)
         raw_cancels = self.storage.get_schedule_cancellations()
         self.cancellations = {(c["entry_id"], c["date"]) for c in raw_cancels}
 
-        # 4. Pobierz wpisy harmonogramu
+        # 4. Pobierz wpisy harmonogramu (Zajęcia cykliczne)
         all_schedule = [dict(x) for x in self.storage.get_schedule()]
 
-        # 5. Rysowanie
+        # 5. Rysowanie ZAJĘĆ CYKLICZNYCH
         for entry in all_schedule:
             self._process_and_draw_entry(entry)
+
+        # 6. Rysowanie EGZAMINÓW (Na wierzchu - hierarchia)
+        all_exams = [dict(e) for e in self.storage.get_exams()]
+        week_end = self.current_week_monday + timedelta(days=6)
+
+        for exam in all_exams:
+            # Pomiń egzaminy przedmiotów, których nie ma w cache (filtrowanie po semestrze)
+            if exam.get("subject_id") not in semester_subj_ids:
+                continue
+
+            try:
+                exam_date = datetime.strptime(exam["date"], "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                continue
+
+            # Sprawdź czy egzamin jest w wyświetlanym tygodniu
+            if self.current_week_monday <= exam_date <= week_end:
+                self._draw_exam_block(exam, exam_date)
 
         self._draw_current_time_indicator()
 
     def _process_and_draw_entry(self, entry):
-        # Sprawdź czy przedmiot należy do obecnego semestru
+        # Sprawdź czy przedmiot należy do obecnego widoku (semestr lub all)
         subject = self.subjects_cache.get(entry["subject_id"])
         if not subject: return
 
@@ -214,7 +267,6 @@ class SchedulePanel(ctk.CTkFrame):
         s_end = subject.get("end_datetime")
 
         if s_start:
-            # Weź tylko datę (pierwsza część stringa "YYYY-MM-DD HH:MM")
             try:
                 dt_start = datetime.strptime(s_start.split()[0], "%Y-%m-%d").date()
                 if current_entry_date < dt_start: return  # Jeszcze się nie zaczęło
@@ -253,22 +305,73 @@ class SchedulePanel(ctk.CTkFrame):
         color = subject["color"]
         text = f"{subject['short_name']}\n{entry.get('type', '')}\n{entry.get('room', '')}"
 
-        btn = ctk.CTkButton(self.grid_area, text=text, fg_color=color,
-                            corner_radius=6,
-                            height=int(height - 2),
-                            font=("Arial", 11),
-                            hover_color=color)
+        # --- STYL KAFELKA ---
+        container = ctk.CTkFrame(self.grid_area, fg_color=color, corner_radius=6, height=int(height - 2))
+        container.is_block = True
 
-        # Bindowanie PPM (Prawy przycisk myszy)
-        # MacOS używa Button-2 lub Button-3, Windows/Linux Button-3
-        btn.bind("<Button-3>", lambda e: self.show_context_menu(e, entry["id"], date_str))
-        if self._tk_ws() == "aqua":  # Mac support
-            btn.bind("<Button-2>", lambda e: self.show_context_menu(e, entry["id"], date_str))
+        white_border = ctk.CTkFrame(container, fg_color="white", corner_radius=5)
+        white_border.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.88)
+
+        lbl = ctk.CTkLabel(white_border, text=text,
+                           fg_color=("white", "#2b2b2b"),
+                           text_color=("black", "white"),
+                           font=("Arial", 11),
+                           wraplength=85)
+        lbl.pack(expand=True, fill="both", padx=4, pady=4)
+
+        # Bindowanie PPM
+        for widget in [container, white_border, lbl]:
+            widget.bind("<Button-3>", lambda e: self.show_context_menu(e, entry["id"], date_str))
+            if self._tk_ws() == "aqua":
+                widget.bind("<Button-2>", lambda e: self.show_context_menu(e, entry["id"], date_str))
 
         rel_w = (1.0 - 0.06) / 7
         rel_x = 0.06 + (day_idx * rel_w)
+        container.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
 
-        btn.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
+    def _draw_exam_block(self, exam, exam_date):
+        """Rysuje kafelek egzaminu (czerwony, na wierzchu)."""
+        subject = self.subjects_cache.get(exam["subject_id"])
+        if not subject: return
+
+        # FIX: Jeśli brakuje czasu lub jest None, ustaw domyślnie 08:00
+        time_str = exam.get("time") or "08:00"
+
+        try:
+            start_h, start_m = map(int, time_str.split(":"))
+        except (ValueError, TypeError):
+            return
+
+        start_val = start_h + start_m / 60.0
+        duration = EXAM_DURATION_HOURS
+
+        y_pos = (start_val - START_HOUR) * PX_PER_HOUR
+        height = duration * PX_PER_HOUR
+        day_idx = exam_date.weekday()  # 0=Mon, 6=Sun
+
+        color = "#e74c3c"
+        text = f"{subject['short_name']}\n{exam['title']}"
+
+        # --- STYL KAFELKA EGZAMINU ---
+        container = ctk.CTkFrame(self.grid_area, fg_color=color, corner_radius=6, height=int(height - 2))
+        container.is_block = True
+
+        white_border = ctk.CTkFrame(container, fg_color="white", corner_radius=5)
+        white_border.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.88)
+
+        lbl = ctk.CTkLabel(white_border, text=text,
+                           fg_color=("white", "#2b2b2b"),
+                           text_color=("black", "white"),
+                           font=("Arial", 11, "bold"),
+                           wraplength=85)
+        lbl.pack(expand=True, fill="both", padx=4, pady=4)
+
+        rel_w = (1.0 - 0.06) / 7
+        rel_x = 0.06 + (day_idx * rel_w)
+        container.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
+
+        # Podnieś egzamin na wierzch (żeby przykrył zwykłe zajęcia)
+        container.lift()
 
     def show_context_menu(self, event, entry_id, date_str):
         """Menu kontekstowe do usuwania zajęć."""
@@ -319,7 +422,9 @@ class SchedulePanel(ctk.CTkFrame):
         line = ctk.CTkFrame(self.grid_area, height=2, fg_color="#e74c3c")
         line.is_marker = True
         line.place(relx=rel_x, y=y_pos, relwidth=rel_w)
+        line.lift()
 
         dot = ctk.CTkFrame(self.grid_area, width=8, height=8, corner_radius=4, fg_color="#e74c3c")
         dot.is_marker = True
         dot.place(x=42, y=y_pos - 3)
+        dot.lift()

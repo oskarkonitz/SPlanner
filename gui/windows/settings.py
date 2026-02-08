@@ -33,6 +33,28 @@ class SettingsWindow:
         self.var_grade_mode = tk.StringVar(value=grad_sys.get("grade_mode", "percentage"))
         self.var_weight_mode = tk.StringVar(value=grad_sys.get("weight_mode", "percentage"))
 
+        # --- NOWE FUNKCJE (Advanced & Thresholds) ---
+        self.var_advanced_grading = tk.BooleanVar(value=grad_sys.get("advanced_mode", False))
+
+        # Pobieramy progi z bazy lub domyślne
+        defaults = {"3.0": 50, "3.5": 60, "4.0": 70, "4.5": 80, "5.0": 90}
+        saved_thresholds = grad_sys.get("thresholds", defaults)
+
+        # Konwertujemy słownik na listę słowników dla łatwiejszej edycji GUI (dynamiczne dodawanie/usuwanie)
+        # Struktura: [{'grade_var': StringVar, 'value_var': StringVar}, ...]
+        self.threshold_rows = []
+
+        # Sortujemy po wartości procentowej rosnąco dla porządku
+        sorted_items = sorted(saved_thresholds.items(), key=lambda x: x[1])
+
+        for grade_key, val in sorted_items:
+            self.threshold_rows.append({
+                'grade_var': tk.StringVar(value=str(grade_key)),
+                'value_var': tk.StringVar(value=str(val))
+            })
+
+        # ---------------------------------------------
+
         # --- UKŁAD GŁÓWNY ---
         self.win.grid_columnconfigure(1, weight=1)
         self.win.grid_rowconfigure(0, weight=1)
@@ -47,8 +69,8 @@ class SettingsWindow:
         self.btn_nav_plan = self._create_nav_btn("set_cat_planner", 2, lambda: self.show_frame("planner"))
         self.btn_nav_data = self._create_nav_btn("set_cat_data", 3, lambda: self.show_frame("data"))
 
-        # 2. PRAWY OBSZAR (ZAWARTOŚĆ)
-        self.frame_content = ctk.CTkFrame(self.win, corner_radius=0, fg_color="transparent")
+        # 2. PRAWY OBSZAR (ZAWARTOŚĆ) - TERAZ SCROLLOWALNY
+        self.frame_content = ctk.CTkScrollableFrame(self.win, corner_radius=0, fg_color="transparent")
         self.frame_content.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
 
         # 3. DOLNY PASEK (ZAPISZ)
@@ -65,6 +87,16 @@ class SettingsWindow:
 
         # Inicjalizacja ramek
         self.frames = {}
+        # Kontenery na treść poszczególnych sekcji (będą pakowane do frame_content)
+        # Uwaga: w CTkScrollableFrame pakujemy bezpośrednio widgety lub ramki sekcji
+
+        # Tworzymy kontenery dla każdej sekcji, ale nie pakujemy ich od razu
+        # Zamiast podmieniać całe ramki (co w ScrollableFrame jest trudniejsze z gridem/packiem),
+        # będziemy czyścić frame_content i budować widok na nowo przy przełączaniu.
+
+        # AKTUALIZACJA: Aby zachować logikę show_frame z poprzedniego kodu,
+        # stworzymy ramki wewnątrz scrollable frame i będziemy zarządzać ich widocznością.
+
         self._init_general_frame()
         self._init_grading_frame()
         self._init_planner_frame()
@@ -155,6 +187,89 @@ class SettingsWindow:
         ctk.CTkRadioButton(f, text=self.txt.get("weight_sys_num", "Numeric Weights (e.g. 1, 3)"),
                            variable=self.var_weight_mode, value="numeric").pack(anchor="w", pady=5)
 
+        # --- SEPARATOR ---
+        ctk.CTkFrame(f, height=2, fg_color=("gray70", "gray30")).pack(fill="x", pady=20)
+
+        # Advanced Mode
+        ctk.CTkLabel(f, text=self.txt.get("lbl_adv_grading", "Advanced Grading (Modules)"),
+                     font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkSwitch(f, text=self.txt.get("btn_enable", "Enable"),
+                      variable=self.var_advanced_grading).pack(anchor="w", pady=5)
+
+        ctk.CTkLabel(f, text=self.txt.get("msg_adv_grading_note",
+                                          "Allows grouping grades into modules (e.g. Lecture, Lab)."),
+                     text_color="gray", font=("Arial", 11)).pack(anchor="w", pady=(0, 15))
+
+        # --- DYNAMICZNE PROGI (THRESHOLDS) ---
+
+        # Nagłówek sekcji z przyciskiem "+"
+        h_frame = ctk.CTkFrame(f, fg_color="transparent")
+        h_frame.pack(fill="x", pady=(10, 5))
+
+        ctk.CTkLabel(h_frame, text=self.txt.get("lbl_thresholds", "GPA Thresholds"),
+                     font=("Arial", 16, "bold")).pack(side="left")
+
+        # Przycisk "+" (Dodaj próg)
+        ctk.CTkButton(h_frame, text="+", width=30, height=25,
+                      fg_color="#2ecc71", hover_color="#27ae60",
+                      command=self._add_threshold_row).pack(side="left", padx=10)
+
+        # Kontener na listę progów
+        self.thresholds_container = ctk.CTkFrame(f, fg_color="transparent")
+        self.thresholds_container.pack(fill="x", pady=5)
+
+        # Inicjalne rysowanie listy
+        self._refresh_thresholds_ui()
+
+    def _refresh_thresholds_ui(self):
+        """Przerysowuje listę progów na podstawie self.threshold_rows."""
+        # Wyczyść stare widgety
+        for widget in self.thresholds_container.winfo_children():
+            widget.destroy()
+
+        # Nagłówki kolumn
+        if self.threshold_rows:
+            header_f = ctk.CTkFrame(self.thresholds_container, fg_color="transparent")
+            header_f.pack(fill="x", pady=(0, 5))
+            ctk.CTkLabel(header_f, text="Grade Name", width=80, anchor="w", font=("Arial", 11, "bold")).pack(
+                side="left", padx=5)
+            ctk.CTkLabel(header_f, text="Min %", width=60, anchor="w", font=("Arial", 11, "bold")).pack(side="left",
+                                                                                                        padx=5)
+
+        # Rysowanie wierszy
+        for i, row_data in enumerate(self.threshold_rows):
+            row_frame = ctk.CTkFrame(self.thresholds_container, fg_color="transparent")
+            row_frame.pack(fill="x", pady=2)
+
+            # Pole nazwy oceny (Edytowalne)
+            ctk.CTkEntry(row_frame, textvariable=row_data['grade_var'], width=80, justify="center").pack(side="left",
+                                                                                                         padx=5)
+
+            # Pole wartości % (Edytowalne)
+            ctk.CTkEntry(row_frame, textvariable=row_data['value_var'], width=60, justify="center").pack(side="left",
+                                                                                                         padx=5)
+            ctk.CTkLabel(row_frame, text="%", text_color="gray").pack(side="left")
+
+            # Przycisk "-" (Usuń) - używamy lambda z default argumentem i=i, żeby zamrozić wartość
+            ctk.CTkButton(row_frame, text="-", width=30, height=25,
+                          fg_color="#e74c3c", hover_color="#c0392b",
+                          command=lambda idx=i: self._remove_threshold_row(idx)).pack(side="left", padx=15)
+
+    def _add_threshold_row(self):
+        """Dodaje nowy, pusty wiersz do listy progów."""
+        self.threshold_rows.append({
+            'grade_var': tk.StringVar(value=""),
+            'value_var': tk.StringVar(value="0")
+        })
+        self._refresh_thresholds_ui()
+
+    def _remove_threshold_row(self, index):
+        """Usuwa wiersz o podanym indeksie."""
+        if 0 <= index < len(self.threshold_rows):
+            self.threshold_rows.pop(index)
+            self._refresh_thresholds_ui()
+
     def _init_planner_frame(self):
         f = ctk.CTkFrame(self.frame_content, fg_color="transparent")
         self.frames["planner"] = f
@@ -210,10 +325,32 @@ class SettingsWindow:
         self.storage.update_setting("badge_mode", self.var_badges.get())
         self.storage.update_setting("next_exam_switch_hour", int(self.var_switch_hour.get()))
 
+        # --- ZBIERANIE DANYCH PROGÓW (Z LISTY DO SŁOWNIKA) ---
+        new_thresholds = {}
+        try:
+            for row in self.threshold_rows:
+                g_name = row['grade_var'].get().strip()
+                g_val_str = row['value_var'].get().strip()
+
+                if not g_name:
+                    continue  # Pomiń puste nazwy
+
+                val = int(g_val_str)
+                if val < 0 or val > 100: raise ValueError
+
+                new_thresholds[g_name] = val
+        except ValueError:
+            messagebox.showwarning(self.txt.get("msg_error", "Error"),
+                                   "Threshold percentages must be integers (0-100).")
+            return
+        # -------------------------------
+
         new_grading = {
             "grade_mode": self.var_grade_mode.get(),
             "weight_mode": self.var_weight_mode.get(),
-            "pass_threshold": 50
+            "pass_threshold": 50,
+            "advanced_mode": self.var_advanced_grading.get(),
+            "thresholds": new_thresholds
         }
         self.storage.update_setting("grading_system", new_grading)
 

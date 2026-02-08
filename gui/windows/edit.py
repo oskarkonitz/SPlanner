@@ -96,19 +96,27 @@ class EditExamWindow:
         if exam_data["date"]:
             self.ent_date.set_date(exam_data["date"])
 
-        # 4. BARIERA
+        # 4. CZAS (NOWOŚĆ)
+        ctk.CTkLabel(self.win, text=self.txt.get("form_time", "Time (HH:MM)")).grid(row=3, column=0, pady=5, padx=10, sticky="e")
+        self.ent_time = tk.Entry(self.win, width=30)
+        # Pobieramy czas z danych lub domyślnie 09:00
+        current_time = exam_data.get("time") or "09:00"
+        self.ent_time.insert(0, current_time)
+        self.ent_time.grid(row=3, column=1, padx=10, pady=5)
+
+        # 5. BARIERA
         self.var_ignore_barrier = tk.BooleanVar(value=exam_data.get("ignore_barrier", False))
         cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
         self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
                                          onvalue=True, offvalue=False)
-        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=(10, 5))
+        self.cb_barrier.grid(row=4, column=0, columnspan=2, pady=(10, 5))
 
         # USUNIĘTO SEKCJE KOLORU (Zgodnie z życzeniem)
 
-        # 5. TEMATY (Edycja)
-        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=5, column=0, pady=(0, 5), columnspan=2)
+        # 6. TEMATY (Edycja)
+        ctk.CTkLabel(self.win, text=self.txt["form_topics_edit"]).grid(row=6, column=0, pady=(0, 5), columnspan=2)
         self.txt_topics = tk.Text(self.win, width=40, height=10)
-        self.txt_topics.grid(row=6, column=0, columnspan=2, padx=10, pady=(0, 10))
+        self.txt_topics.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10))
 
         # wczytanie tematow
         if self.storage:
@@ -118,7 +126,7 @@ class EditExamWindow:
 
         # PRZYCISKI
         btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_frame.grid(row=7, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=8, column=0, columnspan=2, pady=20)
 
         btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save_changes"], command=self.save_changes,
                                  **self.btn_style)
@@ -188,6 +196,7 @@ class EditExamWindow:
         subject_name = self.combo_subject.get().strip()
         title = self.ent_title.get().strip()
         date_val = self.ent_date.get()
+        time_val = self.ent_time.get().strip()  # Pobranie godziny
 
         if not subject_name or not title:
             messagebox.showwarning(self.txt["msg_error"], self.txt.get("msg_fill_fields", "Fill all fields"))
@@ -244,6 +253,7 @@ class EditExamWindow:
             "subject": subject_name,  # Legacy tekst
             "title": title,
             "date": date_val,
+            "time": time_val,  # Zapis godziny
             "note": self.exam_data.get("note", ""),
             "ignore_barrier": self.var_ignore_barrier.get(),
             "color": subject_color  # Cache koloru

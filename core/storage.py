@@ -7,7 +7,7 @@ import platformdirs
 
 # --- KONFIGURACJA ---
 # False: folder projektu/core | True: folder systemowy (AppData/Config)
-USE_SYSTEM_STORAGE = True
+USE_SYSTEM_STORAGE = False
 
 # Nazwy aplikacji
 APP_NAME = "StudyPlanner"
@@ -95,6 +95,7 @@ class StorageManager:
                     subject TEXT, -- Stara kolumna (Legacy tekst)
                     title TEXT,
                     date TEXT,
+                    time TEXT, -- Nowa kolumna: Godzina egzaminu
                     note TEXT,
                     ignore_barrier INTEGER DEFAULT 0,
                     color TEXT,
@@ -185,16 +186,37 @@ class StorageManager:
 
             # 4. OCENY (GRADES)
             conn.execute("""
-                CREATE TABLE IF NOT EXISTS grades (
-                    id TEXT PRIMARY KEY,
-                    subject_id TEXT,
-                    value REAL,
-                    weight REAL DEFAULT 1.0,
-                    desc TEXT,
-                    date TEXT,
-                    FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
-                )
-            """)
+                         CREATE TABLE IF NOT EXISTS grades
+                         (
+                             id TEXT PRIMARY KEY,
+                             subject_id TEXT,
+                             module_id TEXT,
+                             value REAL,
+                             weight REAL DEFAULT 1.0,
+                             desc TEXT,
+                             date TEXT,
+                             FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE,
+                             FOREIGN KEY (module_id) REFERENCES grade_modules (id) ON DELETE SET NULL
+                         )
+                         """)
+
+            # 5. MODUŁY OCEN
+            conn.execute("""
+                         CREATE TABLE IF NOT EXISTS grade_modules
+                         (
+                             id TEXT PRIMARY KEY,
+                             subject_id TEXT,
+                             name TEXT,
+                             weight REAL DEFAULT 0.0,
+                             FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
+                         )
+                         """)
+
+            try:
+                conn.execute(
+                    "ALTER TABLE grades ADD COLUMN module_id TEXT REFERENCES grade_modules(id) ON DELETE SET NULL")
+            except sqlite3.OperationalError:
+                pass  # Kolumna już istnieje
 
     # --- MIGRACJE ---
 
@@ -218,6 +240,9 @@ class StorageManager:
 
         # 3. Migracja Przedmiotów (Dodanie kolumn czasowych)
         self._migrate_subjects_add_dates()
+
+        # 4. Migracja Egzaminów (Dodanie godziny)
+        self._migrate_exams_add_time()
 
     def _migrate_json_to_sql(self):
         """Stara migracja z JSON (bez zmian logicznych)."""
@@ -340,6 +365,17 @@ class StorageManager:
                     pass
             conn.commit()
 
+    def _migrate_exams_add_time(self):
+        """Dodaje kolumnę 'time' do tabeli exams, jeśli nie istnieje."""
+        with self._get_conn() as conn:
+            columns = [row[1] for row in conn.execute("PRAGMA table_info(exams)")]
+            if "time" not in columns:
+                try:
+                    conn.execute("ALTER TABLE exams ADD COLUMN time TEXT")
+                except sqlite3.OperationalError:
+                    pass
+            conn.commit()
+
     # --- API (SETTINGS & STATS) ---
 
     def get_settings(self):
@@ -453,10 +489,11 @@ class StorageManager:
                         subj_id = new_sid
 
             conn.execute("""
-                         INSERT INTO exams (id, subject_id, subject, title, date, note, ignore_barrier, color)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                         INSERT INTO exams (id, subject_id, subject, title, date, time, note, ignore_barrier, color)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                          """, (
                              exam_dict["id"], subj_id, exam_dict["subject"], exam_dict["title"], exam_dict["date"],
+                             exam_dict.get("time"),  # Dodana godzina
                              exam_dict.get("note", ""), 1 if exam_dict.get("ignore_barrier") else 0,
                              exam_dict.get("color")))
             conn.commit()
@@ -465,10 +502,11 @@ class StorageManager:
         with self._get_conn() as conn:
             conn.execute("""
                          UPDATE exams
-                         SET subject=?, title=?, date=?, note=?, ignore_barrier=?, color=?
+                         SET subject=?, title=?, date=?, time=?, note=?, ignore_barrier=?, color=?
                          WHERE id = ?
                          """, (
                              exam_dict["subject"], exam_dict["title"], exam_dict["date"],
+                             exam_dict.get("time"),  # Dodana godzina
                              exam_dict.get("note", ""), 1 if exam_dict.get("ignore_barrier") else 0,
                              exam_dict.get("color"),
                              exam_dict["id"]))
@@ -691,9 +729,11 @@ class StorageManager:
 
     def add_grade(self, grade_dict):
         with self._get_conn() as conn:
-            conn.execute("INSERT INTO grades (id, subject_id, value, weight, desc, date) VALUES (?, ?, ?, ?, ?, ?)",
-                         (grade_dict["id"], grade_dict["subject_id"], grade_dict["value"],
-                          grade_dict.get("weight", 1.0), grade_dict.get("desc"), grade_dict.get("date")))
+            # Dodano module_id
+            conn.execute("INSERT INTO grades (id, subject_id, module_id, value, weight, desc, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                         (grade_dict["id"], grade_dict["subject_id"], grade_dict.get("module_id"),
+                          grade_dict["value"], grade_dict.get("weight", 1.0),
+                          grade_dict.get("desc"), grade_dict.get("date")))
             conn.commit()
 
     def delete_grade(self, grade_id):
@@ -701,6 +741,26 @@ class StorageManager:
             conn.execute("DELETE FROM grades WHERE id=?", (grade_id,))
             conn.commit()
 
+    def get_grade_modules(self, subject_id):
+        with self._get_conn() as conn:
+            return conn.execute("SELECT * FROM grade_modules WHERE subject_id=?", (subject_id,)).fetchall()
+
+    def add_grade_module(self, module_dict):
+        with self._get_conn() as conn:
+            conn.execute("INSERT INTO grade_modules (id, subject_id, name, weight) VALUES (?, ?, ?, ?)",
+                         (module_dict["id"], module_dict["subject_id"], module_dict["name"], module_dict["weight"]))
+            conn.commit()
+
+    def update_grade_module(self, module_dict):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE grade_modules SET name=?, weight=? WHERE id=?",
+                         (module_dict["name"], module_dict["weight"], module_dict["id"]))
+            conn.commit()
+
+    def delete_grade_module(self, module_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM grade_modules WHERE id=?", (module_id,))
+            conn.commit()
 
 # Inicjalizacja Managera (Singleton w obrębie modułu)
 manager = StorageManager(DB_PATH)

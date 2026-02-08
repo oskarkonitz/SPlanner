@@ -60,23 +60,29 @@ class AddExamWindow:
         self.entry_date = DateEntry(self.win, width=27, date_pattern='y-mm-dd')
         self.entry_date.grid(row=2, column=1, padx=10, pady=10)
 
+        # WPROWADZENIE GODZINY (NOWOŚĆ)
+        tk.Label(self.win, text=self.txt.get("form_time", "Time (HH:MM)")).grid(row=3, column=0, pady=10, padx=10, sticky="e")
+        self.entry_time = tk.Entry(self.win, width=30)
+        self.entry_time.insert(0, "09:00") # Domyślna godzina
+        self.entry_time.grid(row=3, column=1, padx=10, pady=10)
+
         # CHECKBOX BARIERY
         self.var_ignore_barrier = tk.BooleanVar(value=False)
         cb_text = self.txt.get("form_ignore_barrier", "Ignoruj w planowaniu (Bariera)")
         self.cb_barrier = tk.Checkbutton(self.win, text=cb_text, variable=self.var_ignore_barrier,
                                          onvalue=True, offvalue=False)
-        self.cb_barrier.grid(row=3, column=0, columnspan=2, pady=(10, 5))
+        self.cb_barrier.grid(row=4, column=0, columnspan=2, pady=(10, 5))
 
         # USUNIĘTO SEKCJĘ KOLORU (Color Preview) ZGODNIE Z PROŚBĄ
         self.selected_color = None
 
         # WPROWADZENIE TEMATÓW
-        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=5, column=0, pady=(0, 5), columnspan=2)
+        tk.Label(self.win, text=self.txt["form_topics_add"]).grid(row=6, column=0, pady=(0, 5), columnspan=2)
         self.text_topics = tk.Text(self.win, width=40, height=10)
-        self.text_topics.grid(row=6, column=0, columnspan=2, padx=10, pady=(0, 10))
+        self.text_topics.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10))
 
         btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_frame.grid(row=7, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=8, column=0, columnspan=2, pady=20)
 
         # PRZYCISK ZAPISU
         btn_save = ctk.CTkButton(btn_frame, text=self.txt["btn_save"], command=self.save_exam, **self.btn_style)
@@ -146,6 +152,7 @@ class AddExamWindow:
         subject_name = self.combo_subject.get().strip()
         title = self.entry_title.get().strip()
         date_val = self.entry_date.get()
+        time_val = self.entry_time.get().strip() # Pobranie godziny
         topics_raw = self.text_topics.get("1.0", tk.END).strip()
 
         if not subject_name or not title or not date_val:
@@ -218,6 +225,7 @@ class AddExamWindow:
             "subject": subject_name,  # Legacy
             "title": title,
             "date": date_val,
+            "time": time_val, # Dodana godzina
             "note": "",
             "ignore_barrier": self.var_ignore_barrier.get(),
             "color": subject_color  # Legacy/Cache

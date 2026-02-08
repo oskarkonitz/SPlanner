@@ -15,7 +15,7 @@ from packaging import version
 # --- KONFIGURACJA ---
 REPO_OWNER = "oskarkonitz"
 REPO_NAME = "SPlanner"
-CURRENT_VERSION = "2.0.0"
+CURRENT_VERSION = "2.0.1"
 
 
 # Dodano argument 'txt' do funkcji

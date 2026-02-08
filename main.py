@@ -22,7 +22,7 @@ from gui.windows.schedule import SchedulePanel
 from gui.windows.grades import GradesWindow
 from gui.windows.settings import SettingsWindow
 
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 
 
 class GUI:
