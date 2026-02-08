@@ -7,7 +7,7 @@ import platformdirs
 
 # --- KONFIGURACJA ---
 # False: folder projektu/core | True: folder systemowy (AppData/Config)
-USE_SYSTEM_STORAGE = False
+USE_SYSTEM_STORAGE = True
 
 # Nazwy aplikacji
 APP_NAME = "StudyPlanner"
@@ -46,7 +46,14 @@ DEFAULT_DATA = {
             "grade_mode": "percentage",   # "numeric" (2-5) lub "percentage" (0-100)
             "weight_mode": "percentage",  # "numeric" (1-5) lub "percentage" (0-100)
             "pass_threshold": 50
-        }
+        },
+        # NOWE: Domyślne przypisania dźwięków (ID dźwięku lub None)
+        "sound_timer_finish": "def_level_up", # Domyślnie Level Up
+        "sound_achievement": "def_coin",      # Domyślnie Coin
+        "sound_all_done": "def_fanfare",      # Domyślnie Fanfare
+        # NOWE: GŁOŚNOŚĆ I WYCISZENIE
+        "sound_enabled": True,
+        "sound_volume": 0.5  # Wartość od 0.0 do 1.0
     },
     "global_stats": {
         "topics_done": 0,
@@ -64,6 +71,80 @@ DEFAULT_DATA = {
     "stats": {"pomodoro_count": 0}
 }
 
+# --- NOWOŚĆ: DOMYŚLNE DŹWIĘKI (PRESETY) ---
+DEFAULT_SOUNDS = [
+    {
+        "id": "def_coin",
+        "name": "Retro Coin",
+        "steps": [
+            {"freq": 988, "dur": 0.08, "type": "Square"},  # B5
+            {"freq": 1319, "dur": 0.35, "type": "Square"}  # E6
+        ]
+    },
+    {
+        "id": "def_level_up",
+        "name": "Level Up!",
+        "steps": [
+            {"freq": 523, "dur": 0.1, "type": "Square"},   # C5
+            {"freq": 659, "dur": 0.1, "type": "Square"},   # E5
+            {"freq": 784, "dur": 0.1, "type": "Square"},   # G5
+            {"freq": 1046, "dur": 0.1, "type": "Square"},  # C6
+            {"freq": 784, "dur": 0.1, "type": "Square"},   # G5
+            {"freq": 1046, "dur": 0.4, "type": "Square"}   # C6
+        ]
+    },
+    {
+        "id": "def_game_over",
+        "name": "Game Over",
+        "steps": [
+            {"freq": 784, "dur": 0.3, "type": "Sawtooth"}, # G5
+            {"freq": 740, "dur": 0.3, "type": "Sawtooth"}, # F#5
+            {"freq": 698, "dur": 0.3, "type": "Sawtooth"}, # F5
+            {"freq": 622, "dur": 0.8, "type": "Sawtooth"}  # D#5
+        ]
+    },
+    {
+        "id": "def_laser",
+        "name": "Laser Shoot",
+        "steps": [
+            {"freq": 1200, "dur": 0.05, "type": "Sawtooth"},
+            {"freq": 800, "dur": 0.05, "type": "Sawtooth"},
+            {"freq": 400, "dur": 0.05, "type": "Sawtooth"},
+            {"freq": 200, "dur": 0.05, "type": "Sawtooth"}
+        ]
+    },
+    {
+        "id": "def_alarm",
+        "name": "Red Alert",
+        "steps": [
+            {"freq": 880, "dur": 0.3, "type": "Square"},
+            {"freq": 440, "dur": 0.3, "type": "Square"},
+            {"freq": 880, "dur": 0.3, "type": "Square"},
+            {"freq": 440, "dur": 0.3, "type": "Square"}
+        ]
+    },
+    {
+        "id": "def_magic",
+        "name": "Magic Spell",
+        "steps": [
+            {"freq": 1000, "dur": 0.1, "type": "Sine"},
+            {"freq": 1500, "dur": 0.1, "type": "Sine"},
+            {"freq": 2000, "dur": 0.1, "type": "Sine"},
+            {"freq": 2500, "dur": 0.4, "type": "Sine"}
+        ]
+    },
+    {
+        "id": "def_fanfare",
+        "name": "Victory Fanfare",
+        "steps": [
+            {"freq": 523, "dur": 0.15, "type": "Square"},  # C5
+            {"freq": 659, "dur": 0.15, "type": "Square"},  # E5
+            {"freq": 784, "dur": 0.15, "type": "Square"},  # G5
+            {"freq": 1046, "dur": 0.6, "type": "Square"}   # C6
+        ]
+    }
+]
+
 
 class StorageManager:
     def __init__(self, db_path):
@@ -74,6 +155,7 @@ class StorageManager:
         self.db_path = db_path
         self._init_db()
         self._check_migrations()
+        self._ensure_default_sounds() # Dodanie domyślnych dźwięków
 
     def _get_conn(self):
         """Pomocnicza funkcja zwracająca połączenie z row_factory (używać wewnątrz with)."""
@@ -212,11 +294,32 @@ class StorageManager:
                          )
                          """)
 
+            # 6. NIESTANDARDOWE DŹWIĘKI (RETRO AUDIO LAB)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS custom_sounds (
+                    id TEXT PRIMARY KEY,
+                    name TEXT,
+                    steps_json TEXT -- Przechowuje listę kroków (freq, dur, type) jako JSON
+                )
+            """)
+
             try:
                 conn.execute(
                     "ALTER TABLE grades ADD COLUMN module_id TEXT REFERENCES grade_modules(id) ON DELETE SET NULL")
             except sqlite3.OperationalError:
                 pass  # Kolumna już istnieje
+
+    def _ensure_default_sounds(self):
+        """Dodaje domyślne dźwięki do bazy, jeśli ich nie ma."""
+        with self._get_conn() as conn:
+            for sound in DEFAULT_SOUNDS:
+                # Sprawdź czy dźwięk o tym ID już istnieje
+                exists = conn.execute("SELECT 1 FROM custom_sounds WHERE id=?", (sound["id"],)).fetchone()
+                if not exists:
+                    steps_json = json.dumps(sound["steps"])
+                    conn.execute("INSERT INTO custom_sounds (id, name, steps_json) VALUES (?, ?, ?)",
+                                 (sound["id"], sound["name"], steps_json))
+            conn.commit()
 
     # --- MIGRACJE ---
 
@@ -433,6 +536,48 @@ class StorageManager:
     def update_other_stat(self, key, value):
         with self._get_conn() as conn:
             conn.execute("INSERT OR REPLACE INTO stats (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+            conn.commit()
+
+    # --- CUSTOM SOUNDS API (RETRO AUDIO LAB) ---
+
+    def get_custom_sounds(self):
+        """Zwraca listę słowników: {'id', 'name', 'steps'}"""
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM custom_sounds").fetchall()
+            results = []
+            for r in rows:
+                d = dict(r)
+                try:
+                    d["steps"] = json.loads(d["steps_json"])
+                except (json.JSONDecodeError, TypeError):
+                    d["steps"] = []
+                del d["steps_json"]
+                results.append(d)
+            return results
+
+    def get_custom_sound(self, sound_id):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM custom_sounds WHERE id=?", (sound_id,)).fetchone()
+            if row:
+                d = dict(row)
+                try:
+                    d["steps"] = json.loads(d["steps_json"])
+                except (json.JSONDecodeError, TypeError):
+                    d["steps"] = []
+                return d
+            return None
+
+    def add_custom_sound(self, sound_dict):
+        """sound_dict: {'id', 'name', 'steps'}"""
+        steps_json = json.dumps(sound_dict["steps"])
+        with self._get_conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO custom_sounds (id, name, steps_json) VALUES (?, ?, ?)",
+                         (sound_dict["id"], sound_dict["name"], steps_json))
+            conn.commit()
+
+    def delete_custom_sound(self, sound_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM custom_sounds WHERE id=?", (sound_id,))
             conn.commit()
 
     # --- API (EXAMS) ---

@@ -486,5 +486,23 @@
     "msg_grade_num_error": "Ocena i Waga muszą być liczbami.",
     "msg_grade_perc_error": "Ocena % musi wynosić 0-100.",
 
-    "form_time": "Godzina (HH:MM)"
+    "form_time": "Godzina (HH:MM)",
+
+    "set_cat_audio": "Retro Audio Lab",
+    "audio_title": "🎹 Retro Audio Lab",
+    "audio_desc": "Twórz 8-bitowe efekty dźwiękowe dla stopera i osiągnięć.",
+    "audio_enabled": "Dźwięk WŁ",
+    "audio_volume": "Głośność:",
+    "audio_select_label": "Wybierz dźwięk do edycji:",
+    "audio_new_sound": "Nowy Dźwięk",
+    "audio_name_label": "Nazwa dźwięku:",
+    "audio_add_note": "+ Dodaj Nutę",
+    "audio_play": "▶ Odtwórz",
+    "audio_events_title": "Przypisanie Zdarzeń",
+    "audio_event_timer": "Koniec Czasu:",
+    "audio_event_ach": "Odblokowanie Osiągnięcia:",
+    "audio_event_done": "Wszystkie Zadania:",
+    "audio_pitch": "Ton",
+    "audio_duration": "Czas",
+    "msg_empty_name": "Nazwa dźwięku nie może być pusta"
 }

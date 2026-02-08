@@ -486,5 +486,23 @@
     "msg_grade_num_error": "Grade and Weight must be numbers.",
     "msg_grade_perc_error": "Grade % must be 0-100.",
 
-    "form_time": "Time (HH:MM)"
+    "form_time": "Time (HH:MM)",
+
+    "set_cat_audio": "Retro Audio Lab",
+    "audio_title": "🎹 Retro Audio Lab",
+    "audio_desc": "Create 8-bit sound effects for timers and achievements.",
+    "audio_enabled": "Sound ON",
+    "audio_volume": "Volume:",
+    "audio_select_label": "Select Sound to Edit:",
+    "audio_new_sound": "New Sound",
+    "audio_name_label": "Sound Name:",
+    "audio_add_note": "+ Add Note",
+    "audio_play": "▶ Play Preview",
+    "audio_events_title": "Event Bindings",
+    "audio_event_timer": "Timer Finish:",
+    "audio_event_ach": "Achievement Unlock:",
+    "audio_event_done": "All Tasks Done:",
+    "audio_pitch": "Pitch",
+    "audio_duration": "Duration",
+    "msg_empty_name": "Sound name cannot be empty"
 }

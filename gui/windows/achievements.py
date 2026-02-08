@@ -4,6 +4,7 @@ from datetime import date
 from core.planner import date_format
 import random
 import math
+from core.sound import play_event_sound
 
 
 # --- KLASA CZĄSTECZKI (Brak zmian, czysta animacja) ---
@@ -152,6 +153,11 @@ class AchievementManager:
     def process_queue(self):
         if self.is_showing_popup or not self.notification_queue:
             return
+
+        # --- ODTWARZANIE DŹWIĘKU ---
+        if self.storage:
+            play_event_sound(self.storage, "sound_achievement")
+        # ---------------------------
 
         self.is_showing_popup = True
         icon, title_key, desc_key = self.notification_queue.pop(0)

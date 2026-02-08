@@ -21,6 +21,7 @@ from gui.windows.subjects_manager import SubjectsManagerWindow
 from gui.windows.schedule import SchedulePanel
 from gui.windows.grades import GradesWindow
 from gui.windows.settings import SettingsWindow
+from core.sound import play_event_sound
 
 VERSION = "2.0.1"
 
@@ -904,6 +905,10 @@ class GUI:
                         self.effect_confetti.start(text=msg)
                     else:
                         self.effect_fireworks.start(text=msg)
+
+                    # --- ODTWARZANIE DŹWIĘKU "ALL DONE" ---
+                    play_event_sound(self.storage, "sound_all_done")
+                    # --------------------------------------
 
                     self.celebration_shown = True
             else:

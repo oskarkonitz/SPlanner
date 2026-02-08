@@ -486,5 +486,23 @@
     "msg_grade_num_error": "Note und Gewicht müssen Zahlen sein.",
     "msg_grade_perc_error": "Note % muss 0-100 sein.",
 
-    "form_time": "Zeit (HH:MM)"
+    "form_time": "Zeit (HH:MM)",
+
+    "set_cat_audio": "Retro Audio Labor",
+    "audio_title": "🎹 Retro Audio Labor",
+    "audio_desc": "Erstelle 8-Bit-Soundeffekte für Timer und Erfolge.",
+    "audio_enabled": "Ton AN",
+    "audio_volume": "Lautstärke:",
+    "audio_select_label": "Sound auswählen:",
+    "audio_new_sound": "Neuer Sound",
+    "audio_name_label": "Sound Name:",
+    "audio_add_note": "+ Note hinzufügen",
+    "audio_play": "▶ Vorschau",
+    "audio_events_title": "Ereigniszuordnung",
+    "audio_event_timer": "Timer fertig:",
+    "audio_event_ach": "Erfolg freigeschaltet:",
+    "audio_event_done": "Alle Aufgaben erledigt:",
+    "audio_pitch": "Tonhöhe",
+    "audio_duration": "Dauer",
+    "msg_empty_name": "Soundname darf nicht leer sein"
 }

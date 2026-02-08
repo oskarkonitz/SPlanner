@@ -486,5 +486,23 @@
     "msg_grade_num_error": "La nota y el peso deben ser números.",
     "msg_grade_perc_error": "La nota % debe ser 0-100.",
 
-    "form_time": "Hora (HH:MM)"
+    "form_time": "Hora (HH:MM)",
+
+    "set_cat_audio": "Laboratorio de Audio Retro",
+    "audio_title": "🎹 Laboratorio de Audio Retro",
+    "audio_desc": "Crea efectos de sonido de 8 bits para temporizadores y logros.",
+    "audio_enabled": "Sonido ON",
+    "audio_volume": "Volumen:",
+    "audio_select_label": "Seleccionar sonido:",
+    "audio_new_sound": "Nuevo Sonido",
+    "audio_name_label": "Nombre del sonido:",
+    "audio_add_note": "+ Añadir Nota",
+    "audio_play": "▶ Reproducir",
+    "audio_events_title": "Asignación de Eventos",
+    "audio_event_timer": "Temporizador terminado:",
+    "audio_event_ach": "Logro desbloqueado:",
+    "audio_event_done": "Todas las tareas:",
+    "audio_pitch": "Tono",
+    "audio_duration": "Duración",
+    "msg_empty_name": "El nombre del sonido no puede estar vacío"
 }

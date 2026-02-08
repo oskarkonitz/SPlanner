@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
+from core.sound import play_event_sound
 
 
 class TimerWindow:
@@ -357,6 +358,12 @@ class TimerWindow:
 
     def finish_pomo(self):
         self.stop_timer()
+
+        # --- ZMIANA: Obsługa dźwięku z Retro Audio Lab ---
+        if self.storage:
+            play_event_sound(self.storage, "sound_timer_finish")
+        # -------------------------------------------------
+
         self.win.bell()
         self.lbl_time.configure(text="00:00", text_color="green")
 
