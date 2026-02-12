@@ -1,6 +1,7 @@
 from core.sound import play_event_sound
 from core.planner import date_format
 from datetime import date
+from gui.dialogs.achievements_popup import UnlockPopup
 
 class AchievementManager:
     def __init__(self, parent_window, txt, storage=None):

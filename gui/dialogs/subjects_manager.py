@@ -1,3 +1,4 @@
+import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
 from tkcalendar import DateEntry
@@ -5,47 +6,70 @@ import uuid
 from gui.dialogs.color_picker import ColorPickerWindow
 
 
-class SubjectsManagerWindow:
-    def __init__(self, parent, txt, btn_style, storage, refresh_callback=None):
+class SubjectsManagerPanel(ctk.CTkFrame):
+    def __init__(self, parent, txt, btn_style, storage, refresh_callback=None, close_callback=None, drawer=None):
+        super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
         self.storage = storage
         self.refresh_callback = refresh_callback
+        self.close_callback = close_callback
+        self.drawer = drawer
 
         self.current_semester_id = None
         self.semesters_data = []
 
-        # GŁÓWNE OKNO
-        self.win = ctk.CTkToplevel(parent)
-        self.win.title(self.txt.get("win_subj_man_title", "Subjects & Semesters Manager"))
-        self.win.geometry("1000x700")
-        self.win.minsize(900, 600)
-
         # UKŁAD GŁÓWNY
-        self.win.columnconfigure(0, weight=3)  # Lewy (30%)
-        self.win.columnconfigure(1, weight=7)  # Prawy (70%)
-        self.win.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+
+        # --- HEADER ---
+        self.header = ctk.CTkFrame(self, height=50, corner_radius=0, fg_color="transparent")
+        self.header.grid(row=0, column=0, sticky="ew", padx=20, pady=(10, 0))
+
+        ctk.CTkLabel(self.header, text=self.txt.get("win_subj_man_title", "Subjects & Semesters Manager"),
+                     font=("Arial", 20, "bold")).pack(side="left")
+
+        # --- RAMKA Z BIAŁYM OBRAMOWANIEM ---
+        self.border_frame = ctk.CTkFrame(self, fg_color="transparent",
+                                         border_width=1, border_color=("gray70", "white"), corner_radius=0)
+        self.border_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+
+        # --- PANED WINDOW (ROZCIĄGLIWY PODZIAŁ) ---
+        self.paned = tk.PanedWindow(self.border_frame, orient="horizontal", sashwidth=6, bg="#2b2b2b", bd=0)
+        self.paned.pack(fill="both", expand=True, padx=2, pady=2)
 
         # --- LEWY PANEL: SEMESTRY ---
-        self.frame_left = ctk.CTkFrame(self.win, corner_radius=0)
-        self.frame_left.grid(row=0, column=0, sticky="nsew", padx=(0, 2))
+        self.frame_left = ctk.CTkFrame(self.paned, corner_radius=0, fg_color="transparent")
+        self.paned.add(self.frame_left, minsize=250, stretch="always")
+
         self._init_left_panel()
 
         # --- PRAWY PANEL: PRZEDMIOTY ---
-        self.frame_right = ctk.CTkFrame(self.win, corner_radius=0, fg_color="transparent")
-        self.frame_right.grid(row=0, column=1, sticky="nsew")
+        self.frame_right = ctk.CTkFrame(self.paned, corner_radius=0, fg_color="transparent")
+        self.paned.add(self.frame_right, minsize=400, stretch="always")
+
         self._init_right_panel()
 
-        # --- STOPKA Z PRZYCISKIEM ZAMKNIJ ---
-        self.frame_footer = ctk.CTkFrame(self.win, height=40, corner_radius=0)
-        self.frame_footer.grid(row=1, column=0, columnspan=2, sticky="ew")
+        # --- STOPKA ---
+        self.frame_footer = ctk.CTkFrame(self, height=40, corner_radius=0, fg_color="transparent")
+        self.frame_footer.grid(row=2, column=0, sticky="ew")
 
-        ctk.CTkButton(self.frame_footer, text=self.txt.get("btn_close", "Close"),
-                      command=self.win.destroy,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="right",
-                                                                                                    padx=20, pady=10)
+        ctk.CTkButton(self.frame_footer, text=self.txt.get("btn_close", "Back"),
+                      command=self.perform_close,
+                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90"),
+                      height=32, corner_radius=20).pack(side="right", padx=20, pady=10)
 
         self.load_semesters()
+
+    def perform_close(self):
+        if self.close_callback:
+            self.close_callback()
+        elif hasattr(self, 'winfo_toplevel'):
+            try:
+                self.winfo_toplevel().destroy()
+            except:
+                pass
 
     def _init_left_panel(self):
         ctk.CTkLabel(self.frame_left, text=self.txt.get("lbl_semesters", "Semesters"),
@@ -87,7 +111,8 @@ class SubjectsManagerWindow:
         ctk.CTkButton(btn_frame, text=self.txt.get("btn_set_current", "Set as Current"),
                       command=self.set_current_semester,
                       fg_color="transparent", border_width=1, border_color="gray",
-                      text_color=("gray10", "gray90")).pack(fill="x", pady=(5, 0))
+                      text_color=("gray10", "gray90"), hover_color=("gray80", "gray30"),
+                      height=32, corner_radius=20).pack(fill="x", pady=(5, 0))
 
     def _init_right_panel(self):
         # Empty State
@@ -179,10 +204,12 @@ class SubjectsManagerWindow:
         sem = next((s for s in self.semesters_data if s["id"] == self.current_semester_id), None)
         if sem: self.lbl_current_sem_title.configure(text=sem["name"])
 
-    # --- CRUD SEMESTRY (z odświeżaniem) ---
+    # --- CRUD SEMESTRY (SZUFLADA) ---
     def add_semester(self):
         cb = lambda: [self.load_semesters(), self.refresh_callback() if self.refresh_callback else None]
-        AddSemesterWindow(self.win, self.txt, self.btn_style, self.storage, callback=cb)
+        if self.drawer:
+            self.drawer.set_content(AddSemesterPanel, txt=self.txt, btn_style=self.btn_style,
+                                    storage=self.storage, callback=cb, close_callback=self.drawer.close_panel)
 
     def edit_semester(self):
         sel = self.tree_sem.selection()
@@ -190,7 +217,10 @@ class SubjectsManagerWindow:
         sem = next((s for s in self.semesters_data if s["id"] == sel[0]), None)
         if sem:
             cb = lambda: [self.load_semesters(), self.refresh_callback() if self.refresh_callback else None]
-            AddSemesterWindow(self.win, self.txt, self.btn_style, self.storage, sem, cb)
+            if self.drawer:
+                self.drawer.set_content(AddSemesterPanel, txt=self.txt, btn_style=self.btn_style,
+                                        storage=self.storage, sem_data=sem, callback=cb,
+                                        close_callback=self.drawer.close_panel)
 
     def delete_semester(self):
         sel = self.tree_sem.selection()
@@ -218,8 +248,6 @@ class SubjectsManagerWindow:
 
         subjects = [dict(s) for s in self.storage.get_subjects(self.current_semester_id)]
         for sub in subjects:
-            # Kolorowanie w tabeli - jeśli None to domyślny czarny/biały z motywu
-            # Tutaj używamy bezpiecznego koloru tylko do tagu, jeśli None to tag nie zadziała (będzie domyślny)
             safe_color = sub['color'] if sub.get('color') else ""
             if safe_color:
                 self.tree_subj.tag_configure(f"col_{sub['id']}", foreground=safe_color)
@@ -233,11 +261,14 @@ class SubjectsManagerWindow:
             self.tree_subj.insert("", "end", iid=sub["id"], text=f"● {sub['name']}",
                                   values=(sub["short_name"], sub["weight"], s_start, s_end), tags=tags)
 
-    # --- CRUD PRZEDMIOTY (z odświeżaniem) ---
+    # --- CRUD PRZEDMIOTY (SZUFLADA) ---
     def add_subject(self):
         if not self.current_semester_id: return
         cb = lambda: [self.load_subjects(), self.refresh_callback() if self.refresh_callback else None]
-        AddSubjectWindow(self.win, self.txt, self.btn_style, self.storage, self.current_semester_id, callback=cb)
+        if self.drawer:
+            self.drawer.set_content(AddSubjectPanel, txt=self.txt, btn_style=self.btn_style,
+                                    storage=self.storage, semester_id=self.current_semester_id,
+                                    callback=cb, close_callback=self.drawer.close_panel)
 
     def edit_subject(self):
         sel = self.tree_subj.selection()
@@ -246,7 +277,10 @@ class SubjectsManagerWindow:
         sub = next((s for s in subjects if s["id"] == sel[0]), None)
         if sub:
             cb = lambda: [self.load_subjects(), self.refresh_callback() if self.refresh_callback else None]
-            AddSubjectWindow(self.win, self.txt, self.btn_style, self.storage, self.current_semester_id, sub, cb)
+            if self.drawer:
+                self.drawer.set_content(AddSubjectPanel, txt=self.txt, btn_style=self.btn_style,
+                                        storage=self.storage, semester_id=self.current_semester_id,
+                                        subject_data=sub, callback=cb, close_callback=self.drawer.close_panel)
 
     def delete_subject(self):
         sel = self.tree_subj.selection()
@@ -257,47 +291,66 @@ class SubjectsManagerWindow:
             if self.refresh_callback: self.refresh_callback()
 
 
-class AddSemesterWindow:
-    def __init__(self, parent, txt, btn_style, storage, sem_data=None, callback=None):
-        self.win = ctk.CTkToplevel(parent)
+class AddSemesterPanel(ctk.CTkFrame):
+    def __init__(self, parent, txt, btn_style, storage, sem_data=None, callback=None, close_callback=None):
+        super().__init__(parent, fg_color="transparent")
         self.txt = txt
+        self.btn_style = btn_style
         self.storage = storage
         self.sem_data = sem_data
         self.callback = callback
+        self.close_callback = close_callback
 
-        self.win.title("Edit Semester" if sem_data else "Add Semester")
-        self.win.geometry("350x300")
+        self.center_box = ctk.CTkFrame(self, fg_color="transparent")
+        self.center_box.pack(expand=True, fill="x", padx=30)
+        self.center_box.grid_columnconfigure(0, weight=1)
+        self.center_box.grid_columnconfigure(1, weight=2)
 
-        ctk.CTkLabel(self.win, text=self.txt.get("form_name", "Name")).pack(pady=(10, 2))
-        self.ent_name = ctk.CTkEntry(self.win)
-        self.ent_name.pack(pady=5)
+        title = "Edit Semester" if sem_data else "Add Semester"
+        ctk.CTkLabel(self.center_box, text=title, font=("Arial", 20, "bold")).grid(row=0, column=0, columnspan=2,
+                                                                                   pady=(0, 20))
+
+        ctk.CTkLabel(self.center_box, text=self.txt.get("form_name", "Name")).grid(row=1, column=0, pady=10, sticky="e",
+                                                                                   padx=10)
+        self.ent_name = ctk.CTkEntry(self.center_box)
+        self.ent_name.grid(row=1, column=1, pady=10, sticky="ew", padx=10)
         if sem_data: self.ent_name.insert(0, sem_data["name"])
 
-        f_date = ctk.CTkFrame(self.win, fg_color="transparent")
-        f_date.pack(pady=10)
+        ctk.CTkLabel(self.center_box, text=self.txt.get("form_start", "Start")).grid(row=2, column=0, pady=10,
+                                                                                     sticky="e", padx=10)
 
-        ctk.CTkLabel(f_date, text=self.txt.get("form_start", "Start")).grid(row=0, column=0, padx=5)
-        self.cal_start = DateEntry(f_date, width=12, date_pattern='y-mm-dd')
-        self.cal_start.grid(row=1, column=0, padx=5)
+        f_start = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        f_start.grid(row=2, column=1, sticky="w", padx=10)
+        self.cal_start = DateEntry(f_start, width=15, date_pattern='y-mm-dd', background='#3a3a3a', foreground='white',
+                                   borderwidth=0)
+        self.cal_start.pack()
 
-        ctk.CTkLabel(f_date, text=self.txt.get("form_end", "End")).grid(row=0, column=1, padx=5)
-        self.cal_end = DateEntry(f_date, width=12, date_pattern='y-mm-dd')
-        self.cal_end.grid(row=1, column=1, padx=5)
+        ctk.CTkLabel(self.center_box, text=self.txt.get("form_end", "End")).grid(row=3, column=0, pady=10, sticky="e",
+                                                                                 padx=10)
+
+        f_end = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        f_end.grid(row=3, column=1, sticky="w", padx=10)
+        self.cal_end = DateEntry(f_end, width=15, date_pattern='y-mm-dd', background='#3a3a3a', foreground='white',
+                                 borderwidth=0)
+        self.cal_end.pack()
 
         if sem_data:
             self.cal_start.set_date(sem_data["start_date"])
             self.cal_end.set_date(sem_data["end_date"])
 
-        btn_box = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_box.pack(pady=20, fill="x")
+        btn_box = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        btn_box.grid(row=4, column=0, columnspan=2, pady=30)
 
-        ctk.CTkButton(btn_box, text=self.txt.get("btn_save", "Save"), command=self.save, **btn_style).pack(side="left",
-                                                                                                           padx=20,
-                                                                                                           expand=True)
-        ctk.CTkButton(btn_box, text=self.txt.get("btn_cancel", "Cancel"), command=self.win.destroy,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="right",
-                                                                                                    padx=20,
-                                                                                                    expand=True)
+        ctk.CTkButton(btn_box, text=self.txt.get("btn_save", "Save"), command=self.save, **self.btn_style).pack(
+            side="left", padx=10)
+
+        ctk.CTkButton(btn_box, text=self.txt.get("btn_cancel", "Cancel"), command=self.perform_close,
+                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90"),
+                      height=32, corner_radius=20, font=("Arial", 13, "bold"), border_color="gray",
+                      hover_color=("gray80", "gray30")).pack(side="left", padx=10)
+
+    def perform_close(self):
+        if self.close_callback: self.close_callback()
 
     def save(self):
         name = self.ent_name.get()
@@ -314,86 +367,89 @@ class AddSemesterWindow:
         else:
             self.storage.add_semester(data)
         if self.callback: self.callback()
-        self.win.destroy()
+        self.perform_close()
 
 
-class AddSubjectWindow:
-    def __init__(self, parent, txt, btn_style, storage, semester_id, subject_data=None, callback=None):
-        self.win = ctk.CTkToplevel(parent)
+class AddSubjectPanel(ctk.CTkFrame):
+    def __init__(self, parent, txt, btn_style, storage, semester_id, subject_data=None, callback=None,
+                 close_callback=None):
+        super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
         self.storage = storage
         self.subject_data = subject_data
         self.current_semester_id = semester_id
         self.callback = callback
+        self.close_callback = close_callback
 
         self.schedule_entries = []
         if self.subject_data:
             raw = self.storage.get_schedule_entries_by_subject(self.subject_data["id"])
             self.schedule_entries = [dict(r) for r in raw]
 
-        # FIX: Domyślny kolor to None (niebieski tylko jako fallback przy wyświetlaniu, ale nie tutaj)
         self.selected_color = subject_data["color"] if subject_data else None
 
+        self.center_box = ctk.CTkFrame(self, fg_color="transparent")
+        self.center_box.pack(expand=True, fill="x", padx=30)
+        self.center_box.grid_columnconfigure(0, weight=1)
+        self.center_box.grid_columnconfigure(1, weight=2)
+
         title = "Edit Subject" if subject_data else "Add Subject"
-        self.win.title(title)
-        self.win.geometry("500x700")
+        ctk.CTkLabel(self.center_box, text=title, font=("Arial", 20, "bold")).grid(row=0, column=0, columnspan=2,
+                                                                                   pady=(0, 20))
 
-        # 1. NAZWA i SEMESTR
-        f_top = ctk.CTkFrame(self.win, fg_color="transparent")
-        f_top.pack(fill="x", padx=10, pady=10)
-
-        ctk.CTkLabel(f_top, text=self.txt.get("form_name", "Subject Name")).grid(row=0, column=0, sticky="w", padx=5)
-        self.ent_name = ctk.CTkEntry(f_top, width=200)
-        self.ent_name.grid(row=0, column=1, sticky="w", padx=5)
+        ctk.CTkLabel(self.center_box, text=self.txt.get("form_name", "Subject Name")).grid(row=1, column=0, sticky="e",
+                                                                                           padx=10, pady=5)
+        self.ent_name = ctk.CTkEntry(self.center_box)
+        self.ent_name.grid(row=1, column=1, sticky="ew", padx=10, pady=5)
         if subject_data: self.ent_name.insert(0, subject_data["name"])
 
-        # Semestr Change
-        ctk.CTkLabel(f_top, text=self.txt.get("lbl_semester", "Semester")).grid(row=1, column=0, sticky="w", padx=5,
-                                                                                pady=5)
+        ctk.CTkLabel(self.center_box, text=self.txt.get("lbl_semester", "Semester")).grid(row=2, column=0, sticky="e",
+                                                                                          padx=10, pady=5)
 
         self.all_semesters = [dict(s) for s in self.storage.get_semesters()]
         sem_names = [s["name"] for s in self.all_semesters]
-        self.combo_sem = ctk.CTkComboBox(f_top, values=sem_names)
-        self.combo_sem.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+        self.combo_sem = ctk.CTkComboBox(self.center_box, values=sem_names)
+        self.combo_sem.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
 
         start_sem_id = subject_data["semester_id"] if subject_data else semester_id
         start_sem = next((s for s in self.all_semesters if s["id"] == start_sem_id), None)
         if start_sem: self.combo_sem.set(start_sem["name"])
 
-        # 2. SKRÓT, WAGA, KOLOR
-        f_opts = ctk.CTkFrame(self.win, fg_color="transparent")
-        f_opts.pack(fill="x", padx=10)
+        opts_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        opts_frame.grid(row=3, column=0, columnspan=2, pady=10)
 
-        ctk.CTkLabel(f_opts, text="Short").pack(side="left", padx=5)
-        self.ent_short = ctk.CTkEntry(f_opts, width=50)
+        ctk.CTkLabel(opts_frame, text="Short:").pack(side="left", padx=5)
+        self.ent_short = ctk.CTkEntry(opts_frame, width=60)
         self.ent_short.pack(side="left", padx=5)
         if subject_data: self.ent_short.insert(0, subject_data["short_name"])
 
-        ctk.CTkLabel(f_opts, text="ECTS").pack(side="left", padx=5)
-        self.ent_weight = ctk.CTkEntry(f_opts, width=40)
+        ctk.CTkLabel(opts_frame, text="ECTS:").pack(side="left", padx=5)
+        self.ent_weight = ctk.CTkEntry(opts_frame, width=50)
         self.ent_weight.pack(side="left", padx=5)
         self.ent_weight.insert(0, str(subject_data["weight"]) if subject_data else "1.0")
 
-        # FIX: Wizualizacja koloru na przycisku (jeśli None to szary)
         btn_disp_color = self.selected_color if self.selected_color else "gray"
-        self.btn_color = ctk.CTkButton(f_opts, text="", width=30, height=28, fg_color=btn_disp_color,
+        self.btn_color = ctk.CTkButton(opts_frame, text="", width=30, height=28, fg_color=btn_disp_color,
                                        command=self.pick_color)
         self.btn_color.pack(side="left", padx=10)
 
-        # 3. CZAS TRWANIA
-        ctk.CTkFrame(self.win, height=2, fg_color="gray").pack(fill="x", padx=20, pady=5)
+        dates_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        dates_frame.grid(row=4, column=0, columnspan=2, pady=5)
 
-        f_dur = ctk.CTkFrame(self.win, fg_color="transparent")
-        f_dur.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(dates_frame, text="Start:").pack(side="left", padx=5)
+        f_d1 = ctk.CTkFrame(dates_frame, fg_color="transparent")
+        f_d1.pack(side="left")
+        self.cal_start = DateEntry(f_d1, width=12, date_pattern='y-mm-dd', background='#3a3a3a', foreground='white',
+                                   borderwidth=0)
+        self.cal_start.pack()
 
-        ctk.CTkLabel(f_dur, text="Start Date:").pack(side="left", padx=5)
-        self.cal_start = DateEntry(f_dur, width=12, date_pattern='y-mm-dd')
-        self.cal_start.pack(side="left", padx=5)
-
-        ctk.CTkLabel(f_dur, text="End Date:").pack(side="left", padx=5)
-        self.cal_end = DateEntry(f_dur, width=12, date_pattern='y-mm-dd')
-        self.cal_end.pack(side="left", padx=5)
+        ctk.CTkLabel(dates_frame, text="End:").pack(side="left", padx=5)
+        f_d2 = ctk.CTkFrame(dates_frame, fg_color="transparent")
+        f_d2.pack(side="left")
+        self.cal_end = DateEntry(f_d2, width=12, date_pattern='y-mm-dd', background='#3a3a3a', foreground='white',
+                                 borderwidth=0)
+        self.cal_end.pack()
 
         if subject_data:
             if subject_data.get("start_datetime"):
@@ -414,40 +470,41 @@ class AddSubjectWindow:
                 except:
                     pass
 
-        # 4. HARMONOGRAM
-        ctk.CTkFrame(self.win, height=2, fg_color="gray").pack(fill="x", padx=20, pady=10)
+        sched_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        sched_frame.grid(row=5, column=0, columnspan=2, pady=10, sticky="ew")
 
-        f_sched_head = ctk.CTkFrame(self.win, fg_color="transparent")
-        f_sched_head.pack(fill="x", padx=10)
-        ctk.CTkLabel(f_sched_head, text=self.txt.get("lbl_schedule", "Class Schedule"),
+        ctk.CTkLabel(sched_frame, text=self.txt.get("lbl_schedule", "Class Schedule"),
                      font=("Arial", 12, "bold")).pack(side="left")
-        ctk.CTkButton(f_sched_head, text="+ Add Slot", width=80, height=24, command=self.add_slot).pack(side="right")
+        ctk.CTkButton(sched_frame, text="+ Slot", width=60, height=24, command=self.add_slot).pack(side="right")
 
-        self.tree_sched = ttk.Treeview(self.win, columns=("day", "time", "loc"), show="headings", height=5)
+        self.tree_sched = ttk.Treeview(self.center_box, columns=("day", "time", "loc"), show="headings", height=4)
         self.tree_sched.heading("day", text="Day")
         self.tree_sched.column("day", width=80)
         self.tree_sched.heading("time", text="Time")
         self.tree_sched.column("time", width=100)
         self.tree_sched.heading("loc", text="Room/Type")
         self.tree_sched.column("loc", width=100)
-        self.tree_sched.pack(fill="both", expand=True, padx=15, pady=5)
+        self.tree_sched.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10)
 
-        ctk.CTkButton(self.win, text="Remove Selected Slot", fg_color="#e74c3c", hover_color="#c0392b", height=24,
-                      command=self.remove_slot).pack(pady=5)
+        ctk.CTkButton(self.center_box, text="Remove Selected Slot", fg_color="#e74c3c", hover_color="#c0392b",
+                      height=24,
+                      command=self.remove_slot).grid(row=7, column=0, columnspan=2, pady=5)
 
         self.refresh_schedule_list()
 
-        # 5. PRZYCISKI
-        btn_box = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_box.pack(pady=20, fill="x")
+        btn_box = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        btn_box.grid(row=8, column=0, columnspan=2, pady=20)
 
-        ctk.CTkButton(btn_box, text=self.txt.get("btn_save", "Save"), command=self.save, **btn_style).pack(side="left",
-                                                                                                           padx=20,
-                                                                                                           expand=True)
-        ctk.CTkButton(btn_box, text=self.txt.get("btn_cancel", "Cancel"), command=self.win.destroy,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="right",
-                                                                                                    padx=20,
-                                                                                                    expand=True)
+        ctk.CTkButton(btn_box, text=self.txt.get("btn_save", "Save"), command=self.save, **self.btn_style).pack(
+            side="left", padx=10)
+
+        ctk.CTkButton(btn_box, text=self.txt.get("btn_cancel", "Cancel"), command=self.perform_close,
+                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90"),
+                      height=32, corner_radius=20, font=("Arial", 13, "bold"), border_color="gray",
+                      hover_color=("gray80", "gray30")).pack(side="left", padx=10)
+
+    def perform_close(self):
+        if self.close_callback: self.close_callback()
 
     def refresh_schedule_list(self):
         for item in self.tree_sched.get_children(): self.tree_sched.delete(item)
@@ -461,7 +518,7 @@ class AddSubjectWindow:
             self.tree_sched.insert("", "end", iid=str(idx), values=(d_name, t_str, loc_str))
 
     def add_slot(self):
-        AddScheduleEntryWindow(self.win, self.txt, self.btn_style, callback=self.on_slot_added)
+        AddScheduleEntryPopup(self, self.txt, self.btn_style, callback=self.on_slot_added)
 
     def on_slot_added(self, new_entry):
         self.schedule_entries.append(new_entry)
@@ -475,7 +532,7 @@ class AddSubjectWindow:
         self.refresh_schedule_list()
 
     def pick_color(self):
-        ColorPickerWindow(self.win, self.txt, self.selected_color,
+        ColorPickerWindow(self.winfo_toplevel(), self.txt, self.selected_color,
                           lambda c: (setattr(self, 'selected_color', c), self.btn_color.configure(fg_color=c)))
 
     def save(self):
@@ -498,14 +555,8 @@ class AddSubjectWindow:
 
         sub_id = self.subject_data["id"] if self.subject_data else f"sub_{uuid.uuid4().hex[:8]}"
         data = {
-            "id": sub_id,
-            "semester_id": sem_id,
-            "name": name,
-            "short_name": short,
-            "color": self.selected_color,  # Tu przekazujemy None jeśli nie wybrano
-            "weight": w,
-            "start_datetime": start_date,
-            "end_datetime": end_date
+            "id": sub_id, "semester_id": sem_id, "name": name, "short_name": short,
+            "color": self.selected_color, "weight": w, "start_datetime": start_date, "end_datetime": end_date
         }
 
         if self.subject_data:
@@ -514,64 +565,93 @@ class AddSubjectWindow:
             self.storage.add_subject(data)
 
         old_entries = self.storage.get_schedule_entries_by_subject(sub_id)
-        for old in old_entries:
-            self.storage.delete_schedule_entry(old["id"])
+        for old in old_entries: self.storage.delete_schedule_entry(old["id"])
 
         for entry in self.schedule_entries:
             entry_id = f"sch_{uuid.uuid4().hex[:8]}"
             db_entry = {
-                "id": entry_id,
-                "subject_id": sub_id,
-                "day_of_week": entry["day_of_week"],
-                "start_time": entry["start_time"],
-                "end_time": entry["end_time"],
-                "room": entry["room"],
-                "type": entry["type"],
-                "period_start": None,
-                "period_end": None
+                "id": entry_id, "subject_id": sub_id, "day_of_week": entry["day_of_week"],
+                "start_time": entry["start_time"], "end_time": entry["end_time"], "room": entry["room"],
+                "type": entry["type"], "period_start": None, "period_end": None
             }
             self.storage.add_schedule_entry(db_entry)
 
         if self.callback: self.callback()
-        self.win.destroy()
+        self.perform_close()
 
 
-class AddScheduleEntryWindow:
-    def __init__(self, parent, txt, btn_style, callback):
-        self.win = ctk.CTkToplevel(parent)
+class AddScheduleEntryPopup:
+    def __init__(self, parent_widget, txt, btn_style, callback):
+        self.parent = parent_widget
         self.txt = txt
         self.callback = callback
-        self.win.title("Add Class Slot")
-        self.win.geometry("300x350")
 
-        ctk.CTkLabel(self.win, text="Day of Week").pack(pady=5)
-        self.combo_day = ctk.CTkComboBox(self.win,
+        # Toplevel bez systemowej belki (overrideredirect usunięte dla kompatybilności z MacOS, ale stylem udajemy)
+        self.win = ctk.CTkToplevel(self.parent)
+        self.win.title("Add Slot")
+        self.win.resizable(False, False)
+        self.win.attributes("-topmost", True)
+        # FIX: Transient dla focusu
+        try:
+            self.win.transient(self.parent.winfo_toplevel())
+        except:
+            pass
+        self.win.lift()
+        self.win.focus_force()
+        self.win.grab_set()  # Modalność - blokuje klikanie pod spód
+        self.win.configure(fg_color="#2b2b2b")
+
+        w = 280
+        h = 350
+
+        try:
+            # Pozycjonowanie obok szuflady
+            drawer_x = self.parent.winfo_rootx()
+            drawer_y = self.parent.winfo_rooty()
+            pos_x = drawer_x - w - 10
+            pos_y = drawer_y + 100
+            self.win.geometry(f"{w}x{h}+{pos_x}+{pos_y}")
+        except:
+            self.win.geometry(f"{w}x{h}")
+
+        border = ctk.CTkFrame(self.win, fg_color="transparent", border_width=2, border_color="gray")
+        border.pack(fill="both", expand=True)
+
+        ctk.CTkLabel(border, text="Add Class Slot", font=("Arial", 16, "bold")).pack(pady=10)
+
+        ctk.CTkLabel(border, text="Day of Week").pack(pady=2)
+        self.combo_day = ctk.CTkComboBox(border, width=200,
                                          values=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
                                                  "Sunday"])
-        self.combo_day.pack()
+        self.combo_day.pack(pady=2)
 
-        f_time = ctk.CTkFrame(self.win, fg_color="transparent")
-        f_time.pack(pady=10)
-        ctk.CTkLabel(f_time, text="Start (HH:MM)").grid(row=0, column=0)
-        ctk.CTkLabel(f_time, text="End (HH:MM)").grid(row=0, column=1)
-        self.ent_start = ctk.CTkEntry(f_time, width=60, placeholder_text="08:00")
+        f_time = ctk.CTkFrame(border, fg_color="transparent")
+        f_time.pack(pady=5)
+        ctk.CTkLabel(f_time, text="Start").grid(row=0, column=0, padx=5)
+        ctk.CTkLabel(f_time, text="End").grid(row=0, column=1, padx=5)
+        self.ent_start = ctk.CTkEntry(f_time, width=80, placeholder_text="08:00")
         self.ent_start.grid(row=1, column=0, padx=5)
-        self.ent_end = ctk.CTkEntry(f_time, width=60, placeholder_text="09:30")
+        self.ent_end = ctk.CTkEntry(f_time, width=80, placeholder_text="09:30")
         self.ent_end.grid(row=1, column=1, padx=5)
 
-        ctk.CTkLabel(self.win, text="Room").pack()
-        self.ent_room = ctk.CTkEntry(self.win)
+        ctk.CTkLabel(border, text="Room / Type").pack(pady=2)
+        self.ent_room = ctk.CTkEntry(border, width=200, placeholder_text="Room 101")
         self.ent_room.pack(pady=2)
 
-        ctk.CTkLabel(self.win, text="Type (Lecture/Lab)").pack()
-        self.ent_type = ctk.CTkComboBox(self.win, values=["Lecture", "Lab", "Seminar", "Exam"])
-        self.ent_type.pack(pady=2)
+        self.ent_type = ctk.CTkComboBox(border, width=200, values=["Lecture", "Lab", "Seminar", "Exam"])
+        self.ent_type.pack(pady=5)
 
-        btn_box = ctk.CTkFrame(self.win, fg_color="transparent")
-        btn_box.pack(pady=20, fill="x")
-        ctk.CTkButton(btn_box, text="Add", command=self.save, **btn_style).pack(side="left", padx=20, expand=True)
-        ctk.CTkButton(btn_box, text="Cancel", command=self.win.destroy, fg_color="transparent", border_width=1,
-                      text_color=("gray10", "gray90")).pack(side="right", padx=20, expand=True)
+        btn_box = ctk.CTkFrame(border, fg_color="transparent")
+        btn_box.pack(pady=20, fill="x", side="bottom")
+
+        ctk.CTkButton(btn_box, text=self.txt.get("btn_save", "Save"), command=self.save, **btn_style).pack(side="left",
+                                                                                                           padx=15,
+                                                                                                           expand=True)
+
+        # FIX: Manualny styl Cancel
+        ctk.CTkButton(btn_box, text=self.txt.get("btn_cancel", "Cancel"), command=self.win.destroy,
+                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90"),
+                      hover_color=("gray80", "gray30")).pack(side="right", padx=15, expand=True)
 
     def save(self):
         day_str = self.combo_day.get()

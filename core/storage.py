@@ -7,7 +7,7 @@ import platformdirs
 
 # --- KONFIGURACJA ---
 # False: folder projektu/core | True: folder systemowy (AppData/Config)
-USE_SYSTEM_STORAGE = True
+USE_SYSTEM_STORAGE = False
 
 # Nazwy aplikacji
 APP_NAME = "StudyPlanner"

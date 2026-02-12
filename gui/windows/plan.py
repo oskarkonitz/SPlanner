@@ -3,15 +3,17 @@ from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date, timedelta
 from core.planner import plan, date_format
-from gui.dialogs.add_exam import AddExamWindow
-from gui.windows.archive import ArchiveWindow
-from gui.dialogs.edit import select_edit_item, EditExamWindow, EditTopicWindow
+# ZMIANA: Importujemy nowe Panele zamiast Window
+from gui.dialogs.add_exam import AddExamPanel
+from gui.windows.archive import ArchivePanel
+from gui.dialogs.edit import select_edit_item, EditExamPanel, EditTopicPanel
 from gui.components.drawers import NoteDrawer
+
 
 # --- GŁÓWNA KLASA OKNA PLANU ---
 class PlanWindow:
     def __init__(self, parent, txt, btn_style, dashboard_callback, selection_callback, drawer_parent=None,
-                 storage=None):
+                 storage=None, content_drawer=None):
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
@@ -19,6 +21,7 @@ class PlanWindow:
         self.selection_callback = selection_callback
         self.win = parent
         self.storage = storage  # Źródło prawdy
+        self.content_drawer = content_drawer  # ZMIANA: Przechowujemy referencję do prawej szuflady
 
         draw_target = drawer_parent if drawer_parent else self.win
 
@@ -527,26 +530,58 @@ class PlanWindow:
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
-        AddExamWindow(self.win, self.txt, self.btn_style, callback=on_add, storage=self.storage)
+        # ZMIANA: Używamy szuflady zamiast nowego okna
+        if self.content_drawer:
+            self.content_drawer.set_content(AddExamPanel,
+                                            txt=self.txt,
+                                            btn_style=self.btn_style,
+                                            callback=on_add,
+                                            storage=self.storage,
+                                            close_callback=self.content_drawer.close_panel)
+        else:
+            # Fallback (opcjonalny, jeśli brak szuflady)
+            pass
 
     def open_edit(self):
         def on_edit():
             self.refresh_table()
             if self.dashboard_callback: self.dashboard_callback()
 
+        # ZMIANA: Przekazujemy szufladę do select_edit_item
         select_edit_item(self.win, self.txt, self.tree, self.btn_style, callback=on_edit,
-                         storage=self.storage)
+                         storage=self.storage, drawer=self.content_drawer)
 
     def open_archive(self):
+        # ZMIANA: Wrapper funkcji edycji dla archiwum
         def edit_exam_wrapper(exam_data, callback):
-            EditExamWindow(self.win, self.txt, self.btn_style, exam_data, callback, storage=self.storage)
+            # Edycja egzaminu w szufladzie
+            if self.content_drawer:
+                self.content_drawer.set_content(EditExamPanel, txt=self.txt, btn_style=self.btn_style,
+                                                exam_data=exam_data, callback=callback, storage=self.storage,
+                                                close_callback=self.content_drawer.close_panel)
 
         def edit_topic_wrapper(topic_data, callback):
-            EditTopicWindow(self.win, self.txt, self.btn_style, topic_data, callback, storage=self.storage)
+            # Edycja tematu w szufladzie
+            if self.content_drawer:
+                self.content_drawer.set_content(EditTopicPanel, txt=self.txt, btn_style=self.btn_style,
+                                                topic_data=topic_data, callback=callback, storage=self.storage,
+                                                close_callback=self.content_drawer.close_panel)
 
-        ArchiveWindow(self.win, self.txt, self.btn_style, edit_exam_func=edit_exam_wrapper,
-                      edit_topic_func=edit_topic_wrapper, dashboard_callback=self.dashboard_callback,
-                      storage=self.storage)
+        # Archiwum otwiera się w nowym oknie (jak wcześniej) LUB w panelu, jeśli main.py to obsłuży.
+        # W tym miejscu plan.py używał wcześniej Toplevel.
+        # Jeśli chcemy szufladę/panel w głównym oknie, to main.py powinien to otwierać.
+        # Ale tutaj zostawiamy otwarcie okna jako fallback LUB (lepiej) nic nie robimy, bo przycisk Archive jest teraz w main.py.
+        # Jednak jeśli user wywoła to stąd (np. z menu kontekstowego?), to obsłużmy to.
+
+        # Otwarcie ArchivePanel w osobnym oknie (fallback dla kompatybilności)
+        # LUB użycie content_drawer (ale ArchivePanel jest za duży na boczną szufladę).
+        # Tu zostawiamy stare zachowanie (Toplevel) ale z nową klasą ArchivePanel
+        top = ctk.CTkToplevel(self.win)
+        top.title(self.txt["win_archive_title"])
+        top.geometry("800x600")
+        ArchivePanel(top, self.txt, self.btn_style, edit_exam_func=edit_exam_wrapper,
+                     edit_topic_func=edit_topic_wrapper, dashboard_callback=self.dashboard_callback,
+                     storage=self.storage).pack(fill="both", expand=True)
 
     def toggle_lock(self):
         selected = self.tree.selection()
@@ -602,7 +637,11 @@ class PlanWindow:
                 self.refresh_table()
                 if self.dashboard_callback: self.dashboard_callback()
 
-            EditExamWindow(self.win, self.txt, self.btn_style, target_exam, on_save, storage=self.storage)
+            # ZMIANA: Używamy szuflady
+            if self.content_drawer:
+                self.content_drawer.set_content(EditExamPanel, txt=self.txt, btn_style=self.btn_style,
+                                                exam_data=target_exam, callback=on_save, storage=self.storage,
+                                                close_callback=self.content_drawer.close_panel)
 
     def show_context_menu(self, event):
         item_id = self.tree.identify_row(event.y)

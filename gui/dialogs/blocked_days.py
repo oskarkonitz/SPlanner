@@ -3,13 +3,15 @@ import calendar
 from datetime import date, datetime
 from tkinter import messagebox
 
-class BlockedDaysWindow:
-    def __init__(self, parent, txt, btn_style, callback=None, refresh_callback=None, storage=None):
+class BlockedDaysPanel(ctk.CTkFrame):
+    def __init__(self, parent, txt, btn_style, callback=None, refresh_callback=None, storage=None, close_callback=None):
+        super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
         self.callback = callback  # Callback dla "Save & Generate"
         self.refresh_callback = refresh_callback  # Callback dla "Save" (odświeżenie dashboardu)
         self.storage = storage  # Instancja StorageManager
+        self.close_callback = close_callback # Funkcja zamykająca szufladę
 
         # Inicjalizacja listy - pobieranie z bazy danych
         if self.storage:
@@ -25,22 +27,15 @@ class BlockedDaysWindow:
         self.year = self.current_date.year
         self.month = self.current_date.month
 
-        # --- KONFIGURACJA OKNA ---
-        self.win = ctk.CTkToplevel(parent)
-        self.win.title(self.txt.get("win_blocked_title", "Manage Days Off"))
-        self.win.geometry("550x600")
-        self.win.resizable(False, False)
-        self.win.attributes("-topmost", True)
-
         # --- NAGŁÓWKI ---
         header_text = self.txt.get("lbl_blocked_header", "Select days off:")
         legend_text = self.txt.get("lbl_blocked_legend", "(Red = Off)")
 
-        ctk.CTkLabel(self.win, text=header_text, font=("Arial", 16, "bold")).pack(pady=(15, 5))
-        ctk.CTkLabel(self.win, text=legend_text, font=("Arial", 12), text_color="gray").pack(pady=(0, 10))
+        ctk.CTkLabel(self, text=header_text, font=("Arial", 16, "bold")).pack(pady=(15, 5))
+        ctk.CTkLabel(self, text=legend_text, font=("Arial", 12), text_color="gray").pack(pady=(0, 10))
 
         # --- NAWIGACJA ---
-        nav_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        nav_frame = ctk.CTkFrame(self, fg_color="transparent")
         nav_frame.pack(fill="x", padx=20, pady=5)
 
         self.btn_prev = ctk.CTkButton(nav_frame, text="<", width=40, command=self.prev_month)
@@ -53,7 +48,7 @@ class BlockedDaysWindow:
         self.btn_next.pack(side="right")
 
         # --- KALENDARZ ---
-        self.cal_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        self.cal_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.cal_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
         for i in range(7):
@@ -62,7 +57,7 @@ class BlockedDaysWindow:
         self.draw_calendar()
 
         # --- PRZYCISKI DOLNE ---
-        btn_frame = ctk.CTkFrame(self.win, fg_color="transparent")
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(pady=20, side="bottom")
 
         # 1. ZAPISZ
@@ -88,11 +83,22 @@ class BlockedDaysWindow:
         self.btn_cancel = ctk.CTkButton(
             btn_frame,
             text=self.txt.get("btn_cancel", "Cancel"),
-            command=self.win.destroy,
+            command=self.perform_close,
             **self.btn_style
         )
         self.btn_cancel.configure(fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
         self.btn_cancel.pack(side="left", padx=5)
+
+    def perform_close(self):
+        if self.close_callback:
+            self.close_callback()
+        else:
+            # Fallback jeśli używane poza szufladą (dla testów)
+            if hasattr(self, 'winfo_toplevel'):
+                try:
+                    self.winfo_toplevel().destroy()
+                except:
+                    pass
 
     def draw_calendar(self):
         for widget in self.cal_frame.winfo_children():
@@ -216,13 +222,13 @@ class BlockedDaysWindow:
 
     def action_save_only(self):
         self._update_stats_and_save()
-        self.win.destroy()
+        self.perform_close()
         # Wywołujemy odświeżanie dashboardu po zapisie
         if self.refresh_callback:
             self.refresh_callback()
 
     def action_save_and_gen(self):
         self._update_stats_and_save()
-        self.win.destroy()
+        self.perform_close()
         if self.callback:
             self.callback()

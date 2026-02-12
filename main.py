@@ -9,19 +9,29 @@ from core.planner import date_format
 from gui.windows.plan import PlanWindow
 from gui.dialogs.manual import ManualWindow
 from gui.theme_manager import apply_theme, THEMES
-from gui.dialogs.blocked_days import BlockedDaysWindow
+# ZMIANA: Importujemy Panel zamiast Window
+from gui.dialogs.blocked_days import BlockedDaysPanel
 from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates
-from gui.components.drawers import ToolsDrawer
+# ZMIANA: Import ContentDrawer
+from gui.components.drawers import ToolsDrawer, ContentDrawer
 from gui.windows.todo import TodoWindow
-from gui.dialogs.subjects_manager import SubjectsManagerWindow
+# ZMIANA: Importujemy Panel zamiast Window
+from gui.dialogs.subjects_manager import SubjectsManagerPanel
 from gui.windows.schedule import SchedulePanel
-from gui.windows.grades import GradesWindow
+# ZMIANA: Importujemy Panel zamiast Window
+from gui.windows.grades import GradesPanel
 from gui.windows.settings import SettingsWindow
 from core.sound import play_event_sound
+# ZMIANA: Importujemy Panel zamiast Window oraz wrappery do edycji
+from gui.windows.archive import ArchivePanel
+# ZMIANA: Importujemy Panel zamiast Window do szuflad
+from gui.dialogs.add_exam import AddExamPanel
+from gui.windows.achievements import AchievementsPanel
+from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 
 VERSION = "2.0.1"
 
@@ -31,6 +41,7 @@ class GUI:
         self.root = root
 
         self.timer_window = None
+        self.current_panel = None  # Zmienna do śledzenia aktywnego widoku pełnoekranowego
 
         # --- INICJALIZACJA STORAGE MANAGER ---
         # Źródło prawdy: Baza Danych SQLite
@@ -42,6 +53,20 @@ class GUI:
         self.current_theme = settings.get("theme", "light")
         self.current_lang = settings.get("lang", "en")
         self.txt = load_language(self.current_lang)
+
+        # --- STYL PRZYCISKÓW (ZDEFINIOWANY NA POCZĄTKU) ---
+        self.btn_style = {
+            "font": ("Arial", 13, "bold"),
+            "height": 32,
+            "corner_radius": 20,
+            "fg_color": "#3a3a3a",
+            "text_color": "white",
+            "hover_color": "#454545",
+            "border_color": "#3a3a3a",
+            "border_width": 0
+        }
+        # Helper dla stylów w innych klasach
+        self.get_btn_style = lambda: self.btn_style
 
         # --- INICJALIZACJA STATYSTYK I WALIDACJA ---
         self._initialize_global_stats()
@@ -65,6 +90,23 @@ class GUI:
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=1)
 
+        # --- SZUFLADY (DRAWERS) - Muszą być na wierzchu, ale inicjujemy je tutaj ---
+        # Prawa szuflada (Formularze)
+        self.right_drawer = ContentDrawer(self.root)
+
+        # Inicjalizacja szufladki narzędziowej (Lewa)
+        callbacks = {
+            "timer": self.open_timer,
+            "achievements": self.open_achievements,
+            "days_off": self.open_blocked_days,
+            "subjects": self.open_subjects_manager,
+            "grades": self.open_grades_manager,
+            "gen_full": self.menu_gen_plan,
+            "gen_new": self.menu_gen_plan_new
+        }
+        # TERAZ btn_style JEST JUŻ ZDEFINIOWANY
+        self.tools_drawer = ToolsDrawer(self.root, self.txt, self.btn_style, callbacks)
+
         # Menu gorne
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
@@ -80,6 +122,7 @@ class GUI:
         tools_menu = tk.Menu(self.menubar, tearoff=0)
         tools_menu.add_command(label=self.txt["btn_refresh"], command=self.menu_refresh)
         tools_menu.add_separator()
+        # Zmiana: Add Exam otwiera szufladę
         tools_menu.add_command(label=self.txt["btn_add_exam"], command=self.sidebar_add)
         tools_menu.add_separator()
         tools_menu.add_command(label=self.txt.get("btn_gen_full", "Generate (Full)"), command=self.menu_gen_plan)
@@ -231,18 +274,6 @@ class GUI:
                                            text_color="orange")
         self.lbl_daily_time.pack(pady=(5, 0))
 
-        #  Styl przycisków
-        self.btn_style = {
-            "font": ("Arial", 13, "bold"),
-            "height": 32,
-            "corner_radius": 20,
-            "fg_color": "#3a3a3a",
-            "text_color": "white",
-            "hover_color": "#454545",
-            "border_color": "#3a3a3a",
-            "border_width": 0
-        }
-
         self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.on_close, **self.btn_style)
         self.btn_exit.pack(side="bottom", pady=30)
 
@@ -276,8 +307,13 @@ class GUI:
         self.btn_3 = ctk.CTkButton(self.middle_frame, text="", **self.btn_style)
         self.btn_3.pack(pady=5, fill="x")
 
-        self.tabview = ctk.CTkTabview(self.root, corner_radius=0)
-        self.tabview.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+        # --- GŁÓWNY KONTENER NA WIDOKI ---
+        # Zastępujemy bezpośrednie gridowanie tabview kontenerem, który będzie podmieniał zawartość
+        self.main_container = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.main_container.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+
+        self.tabview = ctk.CTkTabview(self.main_container, corner_radius=0)
+        self.tabview.pack(fill="both", expand=True)  # Zmienione z grid na pack wewnatrz kontenera
         self.tabview._segmented_button.grid_configure(pady=(10, 5))
         self.tabview._segmented_button.configure(corner_radius=20, height=32)
 
@@ -303,7 +339,8 @@ class GUI:
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
                                     selection_callback=self.update_sidebar_buttons,
-                                    drawer_parent=self.root)
+                                    drawer_parent=self.root,
+                                    content_drawer=self.right_drawer)
 
         # --- ZAKŁADKA 2: TODO LIST ---
         self.todo_view = TodoWindow(parent=self.tab_todo,
@@ -316,7 +353,8 @@ class GUI:
         self.schedule_view = SchedulePanel(parent=self.tab_schedule,
                                            txt=self.txt,
                                            btn_style=self.btn_style,
-                                           storage=self.storage)
+                                           storage=self.storage,
+                                           subjects_callback=self.open_subjects_manager)
         self.schedule_view.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Odznaczanie
@@ -332,18 +370,6 @@ class GUI:
 
         self.celebration_shown = False
 
-        # Inicjalizacja szufladki narzędziowej
-        callbacks = {
-            "timer": self.open_timer,
-            "achievements": self.open_achievements,
-            "days_off": self.open_blocked_days,
-            "subjects": self.open_subjects_manager,
-            "grades": self.open_grades_manager,
-            "gen_full": self.menu_gen_plan,
-            "gen_new": self.menu_gen_plan_new
-        }
-        self.tools_drawer = ToolsDrawer(self.root, self.txt, self.btn_style, callbacks)
-
         # Aplikowanie motywu i start
         apply_theme(self, self.current_theme)
         self.refresh_dashboard()
@@ -356,6 +382,39 @@ class GUI:
 
         # --- SMART STARTUP (NOWA FUNKCJA) ---
         self._perform_smart_startup()
+
+    # --- NAWIGACJA (SPA VIEW SWITCHER) ---
+    def switch_to_view(self, panel_class, **kwargs):
+        """Przełącza główny kontener z zakładek na pełny widok panelu."""
+        # 1. Zamknij szuflady jeśli otwarte
+        if self.right_drawer.is_open: self.right_drawer.close_panel()
+        if self.tools_drawer.is_open: self.tools_drawer.close_panel()
+
+        # 2. Ukryj zakładki
+        self.tabview.pack_forget()
+
+        # 3. Usuń poprzedni panel jeśli istnieje
+        if self.current_panel:
+            self.current_panel.destroy()
+            self.current_panel = None
+
+        # 4. Utwórz nowy panel
+        # Wstrzykujemy close_callback, aby panel wiedział jak wrócić
+        # ORAZ drawer, aby panel mógł otwierać swoje pod-formularze
+        self.current_panel = panel_class(self.main_container,
+                                         close_callback=self.restore_dashboard,
+                                         drawer=self.right_drawer,
+                                         **kwargs)
+        self.current_panel.pack(fill="both", expand=True)
+
+    def restore_dashboard(self):
+        """Wraca do widoku zakładek."""
+        if self.current_panel:
+            self.current_panel.destroy()
+            self.current_panel = None
+
+        self.tabview.pack(fill="both", expand=True)
+        self.refresh_dashboard()
 
     def _perform_smart_startup(self):
         """
@@ -443,7 +502,13 @@ class GUI:
         )
 
     def sidebar_add(self):
-        self.plan_view.open_add_window()
+        # ZMIANA: Zamiast Toplevel -> Szuflada
+        self.right_drawer.set_content(AddExamPanel,
+                                      txt=self.txt,
+                                      btn_style=self.get_btn_style(),
+                                      storage=self.storage,
+                                      callback=self.refresh_dashboard,
+                                      close_callback=self.right_drawer.close_panel)
 
     def sidebar_toggle(self):
         self.plan_view.toggle_status()
@@ -452,7 +517,32 @@ class GUI:
         self.plan_view.open_edit()
 
     def sidebar_archive(self):
-        self.plan_view.open_archive()
+        # ZMIANA: Zamiast Toplevel -> Switch View
+        def edit_exam_wrapper(exam_data, callback):
+            self.right_drawer.set_content(EditExamPanel,
+                                          txt=self.txt,
+                                          btn_style=self.get_btn_style(),
+                                          exam_data=exam_data,
+                                          storage=self.storage,
+                                          callback=callback,
+                                          close_callback=self.right_drawer.close_panel)
+
+        def edit_topic_wrapper(topic_data, callback):
+            self.right_drawer.set_content(EditTopicPanel,
+                                          txt=self.txt,
+                                          btn_style=self.get_btn_style(),
+                                          topic_data=topic_data,
+                                          storage=self.storage,
+                                          callback=callback,
+                                          close_callback=self.right_drawer.close_panel)
+
+        self.switch_to_view(ArchivePanel,
+                            txt=self.txt,
+                            btn_style=self.get_btn_style(),
+                            edit_exam_func=edit_exam_wrapper,
+                            edit_topic_func=edit_topic_wrapper,
+                            dashboard_callback=self.refresh_dashboard,
+                            storage=self.storage)
 
     def menu_gen_plan(self):
         self.plan_view.run_and_refresh(only_unscheduled=False)
@@ -539,20 +629,29 @@ class GUI:
         apply_theme(self, theme_name)
 
     def open_blocked_days(self):
-        BlockedDaysWindow(
-            self.root,
-            self.txt,
-            self.btn_style,
-            callback=self.menu_gen_plan,
-            refresh_callback=self.refresh_dashboard,
-            storage=self.storage
-        )
+        # ZMIANA: Zamiast Window -> ContentDrawer
+        self.right_drawer.set_content(BlockedDaysPanel,
+                                      txt=self.txt,
+                                      btn_style=self.get_btn_style(),
+                                      callback=self.menu_gen_plan,
+                                      refresh_callback=self.refresh_dashboard,
+                                      storage=self.storage,
+                                      close_callback=self.right_drawer.close_panel)
 
     def open_subjects_manager(self):
-        SubjectsManagerWindow(self.root, self.txt, self.btn_style, self.storage)
+        # ZMIANA: Switch View
+        self.switch_to_view(SubjectsManagerPanel,
+                            txt=self.txt,
+                            btn_style=self.get_btn_style(),
+                            storage=self.storage,
+                            refresh_callback=self.refresh_dashboard)
 
     def open_grades_manager(self):
-        GradesWindow(self.root, self.txt, self.btn_style, self.storage)
+        # ZMIANA: Switch View
+        self.switch_to_view(GradesPanel,
+                            txt=self.txt,
+                            btn_style=self.get_btn_style(),
+                            storage=self.storage)
 
     def open_settings_window(self):
         def on_settings_saved():
@@ -678,8 +777,12 @@ class GUI:
             self.tools_drawer.open_panel()
 
     def open_achievements(self):
-        from gui.windows.achievements import AchievementsWindow
-        AchievementsWindow(self.root, self.txt, self.storage, self.btn_style)
+        # ZMIANA: ContentDrawer
+        self.right_drawer.set_content(AchievementsPanel,
+                                      txt=self.txt,
+                                      storage=self.storage,
+                                      btn_style=self.btn_style,
+                                      close_callback=self.right_drawer.close_panel)
 
     def open_timer(self):
         if self.timer_window is None or not self.timer_window.winfo_exists():

@@ -2,28 +2,44 @@ import customtkinter as ctk
 from core.achievements_manager import AchievementManager
 from gui.components.achievements_widgets import StaticAchievementItem, AccordionItem
 
-class AchievementsWindow:
-    def __init__(self, parent, txt, storage, btn_style):
+
+class AchievementsPanel(ctk.CTkFrame):
+    def __init__(self, parent, txt, storage, btn_style, close_callback=None):
+        super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.storage = storage
+        self.close_callback = close_callback
+
         # Inicjalizacja Managera ze storage
-        self.manager = AchievementManager(parent, txt, storage)
-        self.win = ctk.CTkToplevel(parent)
-        self.win.title(self.txt.get("win_achievements", "Achievements"))
-        self.win.geometry("500x650")
-        self.win.resizable(False, True)
+        # Przekazujemy self jako rodzica dla ewentualnych dialogów managera
+        self.manager = AchievementManager(self, txt, storage)
 
+        # NAGŁÓWEK
         header_text = self.txt.get("ach_win_header_label", "🏆 Your Achievements")
-        ctk.CTkLabel(self.win, text=header_text, font=("Arial", 20, "bold")).pack(pady=15)
+        ctk.CTkLabel(self, text=header_text, font=("Arial", 20, "bold")).pack(pady=15)
 
-        self.scroll_frame = ctk.CTkScrollableFrame(self.win, width=460, height=500)
+        # SCROLLABLE FRAME
+        # Usuwamy sztywne wymiary okna, ramka dopasuje się do szuflady
+        self.scroll_frame = ctk.CTkScrollableFrame(self, width=400)
         self.scroll_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         self.build_list()
 
-        ctk.CTkButton(self.win, text=self.txt["btn_close"], command=self.win.destroy,
+        # PRZYCISK ZAMKNIJ
+        ctk.CTkButton(self, text=self.txt["btn_close"], command=self.perform_close,
                       fg_color="transparent", border_width=1, border_color="gray", text_color=("gray10", "gray90")
                       ).pack(pady=10)
+
+    def perform_close(self):
+        if self.close_callback:
+            self.close_callback()
+        else:
+            # Fallback dla testów (gdyby nie było w szufladzie)
+            if hasattr(self, 'winfo_toplevel'):
+                try:
+                    self.winfo_toplevel().destroy()
+                except:
+                    pass
 
     def build_list(self):
         # Pobieramy ID odblokowanych z bazy SQL
