@@ -31,6 +31,11 @@ class SettingsWindow:
         self.var_badges = tk.StringVar(value=self.current_settings.get("badge_mode", "default"))
         self.var_switch_hour = tk.DoubleVar(value=float(self.current_settings.get("next_exam_switch_hour", 24)))
 
+        # NOWE ZMIENNE HARMONOGRAMU (PLANU)
+        self.var_sch_full_name = tk.BooleanVar(value=self.current_settings.get("schedule_use_full_name", False))
+        self.var_sch_times = tk.BooleanVar(value=self.current_settings.get("schedule_show_times", False))
+        self.var_sch_room = tk.BooleanVar(value=self.current_settings.get("schedule_show_room", True))
+
         # NOWE ZMIENNE AUDIO
         self.var_sound_enabled = tk.BooleanVar(value=self.current_settings.get("sound_enabled", True))
         self.var_sound_volume = tk.DoubleVar(value=self.current_settings.get("sound_volume", 0.5))
@@ -62,9 +67,21 @@ class SettingsWindow:
         self.var_sound_name = tk.StringVar(value="My Retro Sound")
         self.current_sound_id = None
 
-        self.var_sound_timer = tk.StringVar(value=self.current_settings.get("sound_timer_finish") or "None")
-        self.var_sound_ach = tk.StringVar(value=self.current_settings.get("sound_achievement") or "None")
-        self.var_sound_all_done = tk.StringVar(value=self.current_settings.get("sound_all_done") or "None")
+        # --- POPRAWKA: Konwersja ID -> Name przy starcie ---
+        def get_sound_name_by_id(sound_id):
+            if not sound_id or sound_id == "None":
+                return "None"
+            # Szukamy nazwy w załadowanych dźwiękach
+            found = next((s for s in self.saved_sounds if s["id"] == sound_id), None)
+            return found["name"] if found else "None"
+
+        # Teraz zmienne inicjujemy Nazwą, a nie ID
+        self.var_sound_timer = tk.StringVar(
+            value=get_sound_name_by_id(self.current_settings.get("sound_timer_finish")))
+        self.var_sound_ach = tk.StringVar(value=get_sound_name_by_id(self.current_settings.get("sound_achievement")))
+        self.var_sound_all_done = tk.StringVar(
+            value=get_sound_name_by_id(self.current_settings.get("sound_all_done")))
+        # ---------------------------------------------------
 
         # --- UKŁAD GŁÓWNY ---
         self.win.grid_columnconfigure(1, weight=1)
@@ -226,6 +243,37 @@ class SettingsWindow:
     def _init_planner_frame(self):
         f = ctk.CTkFrame(self.frame_content, fg_color="transparent")
         self.frames["planner"] = f
+
+        # --- SEKCJA WIDOK PLANU (NOWOŚĆ) ---
+        ctk.CTkLabel(f, text=self.txt.get("set_schedule_view", "Schedule View Options"),
+                     font=("Arial", 16, "bold")).pack(
+            anchor="w", pady=(0, 10))
+
+        # 1. Nazwa Przedmiotu
+        ctk.CTkLabel(f, text=self.txt.get("set_sch_names", "Subject Names"), font=("Arial", 12, "bold")).pack(
+            anchor="w", pady=(5, 2))
+
+        # Wybór: Short vs Full
+        # Używamy RadioButtons dla opcji binarnych, żeby było czytelnie
+        ctk.CTkRadioButton(f, text=self.txt.get("set_sch_name_short", "Short (ABC)"),
+                           variable=self.var_sch_full_name, value=False).pack(anchor="w", pady=2)
+        ctk.CTkRadioButton(f, text=self.txt.get("set_sch_name_full", "Full Name"),
+                           variable=self.var_sch_full_name, value=True).pack(anchor="w", pady=2)
+
+        # 2. Czas i Sala (Checkboxy)
+        ctk.CTkLabel(f, text=self.txt.get("set_sch_details", "Details"), font=("Arial", 12, "bold")).pack(anchor="w",
+                                                                                                          pady=(15, 2))
+
+        ctk.CTkCheckBox(f, text=self.txt.get("set_sch_show_time", "Show Start/End Time"),
+                        variable=self.var_sch_times).pack(anchor="w", pady=5)
+
+        ctk.CTkCheckBox(f, text=self.txt.get("set_sch_show_room", "Show Room Number"),
+                        variable=self.var_sch_room).pack(anchor="w", pady=5)
+
+        # Separator
+        ctk.CTkFrame(f, height=2, fg_color=("gray70", "gray30")).pack(fill="x", pady=20)
+
+        # --- SEKCJA INNE (ISTNIEJĄCA) ---
         ctk.CTkLabel(f, text=self.txt.get("lbl_switch_time", "Exam Switch Time (Next Day)"),
                      font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
         self.lbl_slider = ctk.CTkLabel(f, text=f"{int(self.var_switch_hour.get())}:00")
@@ -507,6 +555,11 @@ class SettingsWindow:
         self.storage.update_setting("theme", self.var_theme.get())
         self.storage.update_setting("badge_mode", self.var_badges.get())
         self.storage.update_setting("next_exam_switch_hour", int(self.var_switch_hour.get()))
+
+        # Zapis opcji Harmonogramu
+        self.storage.update_setting("schedule_use_full_name", self.var_sch_full_name.get())
+        self.storage.update_setting("schedule_show_times", self.var_sch_times.get())
+        self.storage.update_setting("schedule_show_room", self.var_sch_room.get())
 
         # Zapis głośności
         self.storage.update_setting("sound_enabled", self.var_sound_enabled.get())

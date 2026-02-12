@@ -539,5 +539,21 @@
     "ach_busy_day_4": "Día ocupado IV",
     "ach_desc_busy_day_4": "Completaste 30 tareas en un solo día. ¡Increíble!",
     "ach_grp_grades": "Coleccionista de Notas",
-    "ach_grp_gpa": "Hitos de GPA"
+    "ach_grp_gpa": "Hitos de GPA",
+    "win_history_title": "Historial de tareas",
+    "btn_restore_overdue": "Restaurar atrasadas",
+    "btn_clear_history": "Borrar historial",
+    "msg_no_history": "No se encontró historial.",
+    "lbl_yesterday": "Ayer",
+    "lbl_last_7": "Últimos 7 días",
+    "lbl_older": "Más antiguos",
+    "msg_task_copied": "¡Tarea copiada a hoy!",
+    "msg_confirm_clear_history": "¿Seguro que quieres borrar todo el historial?",
+    "set_schedule_view": "Vista del Horario",
+    "set_sch_names": "Nombres de asignaturas",
+    "set_sch_name_short": "Corto (ABC)",
+    "set_sch_name_full": "Nombre completo",
+    "set_sch_details": "Detalles",
+    "set_sch_show_time": "Mostrar hora",
+    "set_sch_show_room": "Mostrar aula"
 }

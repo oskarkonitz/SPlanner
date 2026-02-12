@@ -539,5 +539,21 @@
     "ach_busy_day_4": "Geschäftiger Tag IV",
     "ach_desc_busy_day_4": "30 Aufgaben an einem Tag erledigt. Unglaublich!",
     "ach_grp_grades": "Notensammler",
-    "ach_grp_gpa": "Durchschnitt-Meilensteine"
+    "ach_grp_gpa": "Durchschnitt-Meilensteine",
+    "win_history_title": "Aufgabenverlauf",
+    "btn_restore_overdue": "Überfällige wiederherstellen",
+    "btn_clear_history": "Verlauf löschen",
+    "msg_no_history": "Kein Verlauf gefunden.",
+    "lbl_yesterday": "Gestern",
+    "lbl_last_7": "Letzte 7 Tage",
+    "lbl_older": "Älter",
+    "msg_task_copied": "Aufgabe auf heute kopiert!",
+    "msg_confirm_clear_history": "Sind Sie sicher, dass Sie den gesamten Verlauf löschen möchten?",
+    "set_schedule_view": "Stundenplan-Ansicht",
+    "set_sch_names": "Fächernamen",
+    "set_sch_name_short": "Kurz (ABC)",
+    "set_sch_name_full": "Vollständiger Name",
+    "set_sch_details": "Details",
+    "set_sch_show_time": "Zeit anzeigen",
+    "set_sch_show_room": "Raumnummer anzeigen"
 }

@@ -7,7 +7,7 @@ import platformdirs
 
 # --- KONFIGURACJA ---
 # False: folder projektu/core | True: folder systemowy (AppData/Config)
-USE_SYSTEM_STORAGE = False
+USE_SYSTEM_STORAGE = True
 
 # Nazwy aplikacji
 APP_NAME = "StudyPlanner"
@@ -41,9 +41,15 @@ DEFAULT_DATA = {
         "theme": "dark",
         "next_exam_switch_hour": 24,
         "badge_mode": "default",
+
+        # --- NOWE USTAWIENIA HARMONOGRAMU ---
+        "schedule_use_full_name": False,  # False = Skrócona, True = Pełna
+        "schedule_show_times": False,  # Czy pokazywać np. 08:00 - 09:30 w kafelku
+        "schedule_show_room": True,  # Czy pokazywać salę
+
         # NOWE USTAWIENIA OCEN
         "grading_system": {
-            "grade_mode": "percentage",   # "numeric" (2-5) lub "percentage" (0-100)
+            "grade_mode": "percentage",  # "numeric" (2-5) lub "percentage" (0-100)
             "weight_mode": "percentage",  # "numeric" (1-5) lub "percentage" (0-100)
             "pass_threshold": 50
         },
@@ -906,6 +912,45 @@ class StorageManager:
         with self._get_conn() as conn:
             conn.execute("DELETE FROM grade_modules WHERE id=?", (module_id,))
             conn.commit()
+
+    # --- NOWE METODY DLA HISTORII ZADAŃ ---
+
+    def get_task_history(self):
+        """Zwraca zadania zakończone LUB zaległe (data < dzisiaj)."""
+        today = str(datetime.date.today())
+        with self._get_conn() as conn:
+            # Pobieramy wszystko co jest 'done' LUB data jest w przeszłości i 'todo'
+            # Sortujemy od najnowszych
+            sql = """
+                  SELECT * \
+                  FROM daily_tasks
+                  WHERE status = 'done' \
+                     OR (date < ? AND status = 'todo')
+                  ORDER BY date DESC \
+                  """
+            return conn.execute(sql, (today,)).fetchall()
+
+    def clear_task_history(self, today_str):
+        """Usuwa zadania z historii (done lub stare)."""
+        with self._get_conn() as conn:
+            sql = "DELETE FROM daily_tasks WHERE status = 'done' OR date < ?"
+            conn.execute(sql, (today_str,))
+            conn.commit()
+
+    def restore_overdue_tasks(self, today_str):
+        """Przenosi wszystkie niezrobione zadania z przeszłości na dzisiaj."""
+        with self._get_conn() as conn:
+            # 1. Policz ile takich jest
+            count_sql = "SELECT count(*) FROM daily_tasks WHERE date < ? AND status = 'todo'"
+            count = conn.execute(count_sql, (today_str,)).fetchone()[0]
+
+            if count > 0:
+                # 2. Zaktualizuj datę na dzisiaj
+                update_sql = "UPDATE daily_tasks SET date = ? WHERE date < ? AND status = 'todo'"
+                conn.execute(update_sql, (today_str, today_str))
+                conn.commit()
+
+            return count
 
 # Inicjalizacja Managera (Singleton w obrębie modułu)
 manager = StorageManager(DB_PATH)

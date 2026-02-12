@@ -485,10 +485,18 @@ class AddSubjectPanel(ctk.CTkFrame):
         self.tree_sched.heading("loc", text="Room/Type")
         self.tree_sched.column("loc", width=100)
         self.tree_sched.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10)
+        # ZMIANA: Obsługa edycji przez dwuklik
+        self.tree_sched.bind("<Double-1>", lambda e: self.edit_slot())
 
-        ctk.CTkButton(self.center_box, text="Remove Selected Slot", fg_color="#e74c3c", hover_color="#c0392b",
-                      height=24,
-                      command=self.remove_slot).grid(row=7, column=0, columnspan=2, pady=5)
+        # ZMIANA: Kontener na przyciski akcji slotów (Edytuj/Usuń)
+        slot_actions_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
+        slot_actions_frame.grid(row=7, column=0, columnspan=2, pady=5)
+
+        ctk.CTkButton(slot_actions_frame, text="Edit Slot", fg_color="#3498db", hover_color="#2980b9",
+                      height=24, width=100, command=self.edit_slot).pack(side="left", padx=5)
+
+        ctk.CTkButton(slot_actions_frame, text="Remove Slot", fg_color="#e74c3c", hover_color="#c0392b",
+                      height=24, width=100, command=self.remove_slot).pack(side="left", padx=5)
 
         self.refresh_schedule_list()
 
@@ -523,6 +531,19 @@ class AddSubjectPanel(ctk.CTkFrame):
     def on_slot_added(self, new_entry):
         self.schedule_entries.append(new_entry)
         self.refresh_schedule_list()
+
+    # ZMIANA: Logika edycji slotu
+    def edit_slot(self):
+        sel = self.tree_sched.selection()
+        if not sel: return
+        idx = int(sel[0])  # ID w treeview to indeks w liście (str)
+        entry_data = self.schedule_entries[idx]
+
+        def on_update(updated_entry):
+            self.schedule_entries[idx] = updated_entry
+            self.refresh_schedule_list()
+
+        AddScheduleEntryPopup(self, self.txt, self.btn_style, callback=on_update, entry_data=entry_data)
 
     def remove_slot(self):
         sel = self.tree_sched.selection()
@@ -581,14 +602,16 @@ class AddSubjectPanel(ctk.CTkFrame):
 
 
 class AddScheduleEntryPopup:
-    def __init__(self, parent_widget, txt, btn_style, callback):
+    # ZMIANA: Dodano parametr entry_data
+    def __init__(self, parent_widget, txt, btn_style, callback, entry_data=None):
         self.parent = parent_widget
         self.txt = txt
         self.callback = callback
+        self.entry_data = entry_data
 
         # Toplevel bez systemowej belki (overrideredirect usunięte dla kompatybilności z MacOS, ale stylem udajemy)
         self.win = ctk.CTkToplevel(self.parent)
-        self.win.title("Add Slot")
+        self.win.title("Add/Edit Slot")
         self.win.resizable(False, False)
         self.win.attributes("-topmost", True)
         # FIX: Transient dla focusu
@@ -617,12 +640,12 @@ class AddScheduleEntryPopup:
         border = ctk.CTkFrame(self.win, fg_color="transparent", border_width=2, border_color="gray")
         border.pack(fill="both", expand=True)
 
-        ctk.CTkLabel(border, text="Add Class Slot", font=("Arial", 16, "bold")).pack(pady=10)
+        title = "Edit Class Slot" if entry_data else "Add Class Slot"
+        ctk.CTkLabel(border, text=title, font=("Arial", 16, "bold")).pack(pady=10)
 
         ctk.CTkLabel(border, text="Day of Week").pack(pady=2)
-        self.combo_day = ctk.CTkComboBox(border, width=200,
-                                         values=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
-                                                 "Sunday"])
+        days_list = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.combo_day = ctk.CTkComboBox(border, width=200, values=days_list)
         self.combo_day.pack(pady=2)
 
         f_time = ctk.CTkFrame(border, fg_color="transparent")
@@ -640,6 +663,17 @@ class AddScheduleEntryPopup:
 
         self.ent_type = ctk.CTkComboBox(border, width=200, values=["Lecture", "Lab", "Seminar", "Exam"])
         self.ent_type.pack(pady=5)
+
+        # ZMIANA: Wypełnianie danymi przy edycji
+        if entry_data:
+            day_idx = entry_data.get("day_of_week", 0)
+            if 0 <= day_idx < len(days_list):
+                self.combo_day.set(days_list[day_idx])
+
+            self.ent_start.insert(0, entry_data.get("start_time", ""))
+            self.ent_end.insert(0, entry_data.get("end_time", ""))
+            self.ent_room.insert(0, entry_data.get("room", ""))
+            self.ent_type.set(entry_data.get("type", "Lecture"))
 
         btn_box = ctk.CTkFrame(border, fg_color="transparent")
         btn_box.pack(pady=20, fill="x", side="bottom")

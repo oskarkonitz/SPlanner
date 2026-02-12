@@ -5,15 +5,17 @@ import customtkinter as ctk
 from datetime import date, timedelta, datetime
 import uuid
 from tkcalendar import Calendar
+from gui.windows.todo_history import TodoHistoryPanel
 
 
 class TodoWindow:
-    def __init__(self, parent, txt, btn_style, dashboard_callback, storage=None):
+    def __init__(self, parent, txt, btn_style, dashboard_callback, storage=None, drawer=None):
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
-        self.storage = storage  # Źródło prawdy
+        self.storage = storage
+        self.drawer = drawer  # ZAPISUJEMY DRAWER
 
         self.current_color = None
         self.selected_task_id = None
@@ -39,6 +41,12 @@ class TodoWindow:
                                      command=self.open_calendar_popup,
                                      **self.btn_style)
         self.btn_cal.pack(side="left")
+
+        self.btn_history = ctk.CTkButton(self.top_frame, text="🕒", width=35, height=35,
+                                         fg_color="transparent", border_width=1, border_color="gray",
+                                         text_color=("gray10", "gray90"),
+                                         command=self.open_history)
+        self.btn_history.pack(side="left", padx=(5, 5))
 
         # Kolor
         self.btn_color = ctk.CTkButton(self.top_frame, text="", width=35, height=35,
@@ -377,3 +385,16 @@ class TodoWindow:
                 self.context_menu.tk_popup(event.x_root, event.y_root)
             finally:
                 self.context_menu.grab_release()
+
+    def open_history(self):
+        if self.drawer:
+            self.drawer.set_content(
+                TodoHistoryPanel,
+                txt=self.txt,
+                btn_style=self.btn_style,
+                storage=self.storage,
+                close_callback=self.drawer.close_panel,
+                refresh_main_callback=lambda: [self.refresh_table(), self.dashboard_callback()]
+            )
+        else:
+            messagebox.showinfo("Info", "Drawer not available in this view context.")

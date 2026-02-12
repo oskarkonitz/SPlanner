@@ -539,5 +539,21 @@
     "ach_busy_day_4": "Busy Day IV",
     "ach_desc_busy_day_4": "Completed 30 tasks in a single day. On fire!",
     "ach_grp_grades": "Grade Collector",
-    "ach_grp_gpa": "GPA Milestones"
+    "ach_grp_gpa": "GPA Milestones",
+    "win_history_title": "Task History",
+    "btn_restore_overdue": "Restore Overdue",
+    "btn_clear_history": "Clear History",
+    "msg_no_history": "No history found.",
+    "lbl_yesterday": "Yesterday",
+    "lbl_last_7": "Last 7 Days",
+    "lbl_older": "Older",
+    "msg_task_copied": "Task copied to today!",
+    "msg_confirm_clear_history": "Are you sure you want to delete all history?",
+    "set_schedule_view": "Schedule View Options",
+    "set_sch_names": "Subject Names",
+    "set_sch_name_short": "Short (ABC)",
+    "set_sch_name_full": "Full Name",
+    "set_sch_details": "Details",
+    "set_sch_show_time": "Show Start/End Time",
+    "set_sch_show_room": "Show Room Number"
 }

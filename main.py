@@ -27,7 +27,7 @@ from gui.dialogs.add_exam import AddExamPanel
 from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 
 class GUI:
@@ -341,7 +341,8 @@ class GUI:
                                     txt=self.txt,
                                     storage=self.storage,
                                     btn_style=self.btn_style,
-                                    dashboard_callback=self.refresh_dashboard)
+                                    dashboard_callback=self.refresh_dashboard,
+                                    drawer=self.right_drawer)
 
         # --- ZAKLADKA 3: SCHEDULE ---
         self.schedule_view = SchedulePanel(parent=self.tab_schedule,

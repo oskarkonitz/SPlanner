@@ -24,7 +24,7 @@ class SchedulePanel(ctk.CTkFrame):
         self.btn_style = btn_style
         self.storage = storage
         self.subjects_callback = subjects_callback
-        self.drawer = drawer  # ZMIANA: Dodano obsługę szuflady
+        self.drawer = drawer
 
         self.current_semester_id = None
         self.semesters = []
@@ -94,10 +94,10 @@ class SchedulePanel(ctk.CTkFrame):
         self.grid_area = ctk.CTkFrame(self.scroll_frame, height=total_height, fg_color="transparent")
         self.grid_area.pack(fill="x", expand=True)
 
-        # ZMIANA: Obsługa PPM na siatce
+        # Obsługa PPM na siatce
         self.grid_area.bind("<Button-3>", self.on_grid_right_click)
         if self._tk_ws() == "aqua":
-             self.grid_area.bind("<Button-2>", self.on_grid_right_click)
+            self.grid_area.bind("<Button-2>", self.on_grid_right_click)
 
         self._draw_grid_lines()
         self.load_data()
@@ -125,11 +125,10 @@ class SchedulePanel(ctk.CTkFrame):
             day_name = self.txt.get(f"day_{DAYS[i].lower()}", DAYS[i])
             lbl.configure(text=f"{day_name} {day_date.strftime('%d.%m')}")
 
-            # ZMIANA: Podkreślenie zamiast zmiany koloru
             if day_date == today:
-                 lbl.configure(font=("Arial", 12, "bold", "underline"))
+                lbl.configure(font=("Arial", 12, "bold", "underline"))
             else:
-                 lbl.configure(font=("Arial", 12, "bold"))
+                lbl.configure(font=("Arial", 12, "bold"))
 
     def prev_week(self):
         self.current_week_monday -= timedelta(days=7)
@@ -186,11 +185,9 @@ class SchedulePanel(ctk.CTkFrame):
         self.refresh_schedule()
 
     def open_subjects_manager(self):
-        # ZMIANA: Użycie callbacku lub fallback
         if self.subjects_callback:
             self.subjects_callback()
         else:
-            # Fallback (gdyby main nie podał callbacku) - tworzymy okno modalne z panelem
             top = ctk.CTkToplevel(self)
             top.title(self.txt.get("win_subj_man_title", "Subjects"))
             top.geometry("1000x700")
@@ -241,6 +238,28 @@ class SchedulePanel(ctk.CTkFrame):
 
         self._draw_current_time_indicator()
 
+    # --- HELPERS DO KOLORÓW (SYMULACJA PRZEZROCZYSTOŚCI) ---
+    def _hex_to_rgb(self, hex_color):
+        if not hex_color or not hex_color.startswith("#"): return (128, 128, 128)
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+    def _rgb_to_hex(self, rgb):
+        return '#{:02x}{:02x}{:02x}'.format(*rgb)
+
+    def _blend_colors(self, hex1, hex2, alpha):
+        r1, g1, b1 = self._hex_to_rgb(hex1)
+        r2, g2, b2 = self._hex_to_rgb(hex2)
+        r = int(r1 * alpha + r2 * (1 - alpha))
+        g = int(g1 * alpha + g2 * (1 - alpha))
+        b = int(b1 * alpha + b2 * (1 - alpha))
+        return self._rgb_to_hex((r, g, b))
+
+    def _get_tinted_color(self, color):
+        l = self._blend_colors(color, "#ffffff", 0.25)
+        d = self._blend_colors(color, "#2b2b2b", 0.25)
+        return (l, d)
+
     def _process_and_draw_entry(self, entry):
         subject = self.subjects_cache.get(entry["subject_id"])
         if not subject: return
@@ -287,20 +306,54 @@ class SchedulePanel(ctk.CTkFrame):
         day_idx = entry["day_of_week"]
 
         color = subject["color"]
-        text = f"{subject['short_name']}\n{entry.get('type', '')}\n{entry.get('room', '')}"
 
-        container = ctk.CTkFrame(self.grid_area, fg_color=color, corner_radius=6, height=int(height - 2))
+        # --- LOGIKA TEKSTU (USTAWIENIA) ---
+        settings = self.storage.get_settings()
+        show_full_name = settings.get("schedule_use_full_name", False)
+        show_times = settings.get("schedule_show_times", False)
+        show_room = settings.get("schedule_show_room", True)
+
+        lines = []
+        # 1. Nazwa
+        subj_text = subject['name'] if show_full_name else subject['short_name']
+        lines.append(subj_text)
+
+        # 2. Czas (np. 08:00 - 09:30)
+        if show_times:
+            lines.append(f"{entry['start_time']} - {entry['end_time']}")
+
+        # 3. Typ zajęć
+        if entry.get('type'):
+            lines.append(entry['type'])
+
+        # 4. Sala
+        if show_room and entry.get('room'):
+            lines.append(entry['room'])
+
+        text = "\n".join(lines)
+        # ----------------------------------
+
+        tint_color = self._get_tinted_color(color)
+
+        container = ctk.CTkFrame(
+            self.grid_area,
+            fg_color=tint_color,
+            border_color=color,
+            border_width=2,
+            corner_radius=6,
+            height=int(height - 2)
+        )
         container.is_block = True
 
-        white_border = ctk.CTkFrame(container, fg_color="white", corner_radius=5)
+        white_border = ctk.CTkFrame(container, fg_color="transparent", corner_radius=5)
         white_border.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.88)
 
         lbl = ctk.CTkLabel(white_border, text=text,
-                           fg_color=("white", "#2b2b2b"),
+                           fg_color="transparent",
                            text_color=("black", "white"),
                            font=("Arial", 11),
                            wraplength=85)
-        lbl.pack(expand=True, fill="both", padx=4, pady=4)
+        lbl.pack(expand=True, fill="both", padx=2, pady=2)
 
         for widget in [container, white_border, lbl]:
             widget.bind("<Button-3>", lambda e: self.show_context_menu(e, entry["id"], date_str))
@@ -310,6 +363,7 @@ class SchedulePanel(ctk.CTkFrame):
         rel_w = (1.0 - 0.06) / 7
         rel_x = 0.06 + (day_idx * rel_w)
         container.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
+        container.lift()
 
     def _draw_exam_block(self, exam, exam_date):
         subject = self.subjects_cache.get(exam["subject_id"])
@@ -330,26 +384,43 @@ class SchedulePanel(ctk.CTkFrame):
         day_idx = exam_date.weekday()
 
         color = "#e74c3c"
-        text = f"{subject['short_name']}\n{exam['title']}"
 
-        container = ctk.CTkFrame(self.grid_area, fg_color=color, corner_radius=6, height=int(height - 2))
+        # --- LOGIKA TEKSTU DLA EGZAMINÓW ---
+        settings = self.storage.get_settings()
+        show_full_name = settings.get("schedule_use_full_name", False)
+        # show_times i show_room zazwyczaj nie mają sensu dla egzaminu w tym widoku,
+        # ale nazwę przedmiotu warto respektować.
+
+        subj_text = subject['name'] if show_full_name else subject['short_name']
+        text = f"{subj_text}\n\n{exam['title']}"
+        # -----------------------------------
+
+        tint_color = self._get_tinted_color(color)
+
+        container = ctk.CTkFrame(
+            self.grid_area,
+            fg_color=tint_color,
+            border_color=color,
+            border_width=2,
+            corner_radius=6,
+            height=int(height - 2)
+        )
         container.is_block = True
 
-        white_border = ctk.CTkFrame(container, fg_color="white", corner_radius=5)
+        white_border = ctk.CTkFrame(container, fg_color="transparent", corner_radius=5)
         white_border.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.88)
 
         lbl = ctk.CTkLabel(white_border, text=text,
-                           fg_color=("white", "#2b2b2b"),
+                           fg_color="transparent",
                            text_color=("black", "white"),
                            font=("Arial", 11, "bold"),
                            wraplength=85)
-        lbl.pack(expand=True, fill="both", padx=4, pady=4)
+        lbl.pack(expand=True, fill="both", padx=2, pady=2)
 
-        # ZMIANA: Obsługa edycji egzaminu
         for widget in [container, white_border, lbl]:
-             widget.bind("<Button-3>", lambda e: self.on_exam_right_click(e, exam["id"]))
-             if self._tk_ws() == "aqua":
-                 widget.bind("<Button-2>", lambda e: self.on_exam_right_click(e, exam["id"]))
+            widget.bind("<Button-3>", lambda e: self.on_exam_right_click(e, exam["id"]))
+            if self._tk_ws() == "aqua":
+                widget.bind("<Button-2>", lambda e: self.on_exam_right_click(e, exam["id"]))
 
         rel_w = (1.0 - 0.06) / 7
         rel_x = 0.06 + (day_idx * rel_w)
@@ -366,16 +437,15 @@ class SchedulePanel(ctk.CTkFrame):
         finally:
             menu.grab_release()
 
-    # ZMIANA: Nowa funkcja do menu kontekstowego egzaminu
     def on_exam_right_click(self, event, exam_id):
         menu = tk.Menu(self, tearoff=0)
         menu.add_command(label=self.txt.get("btn_edit", "Edit"),
                          command=lambda: self.on_exam_edit_click(exam_id))
 
         try:
-             menu.tk_popup(event.x_root, event.y_root)
+            menu.tk_popup(event.x_root, event.y_root)
         finally:
-             menu.grab_release()
+            menu.grab_release()
 
     def on_exam_edit_click(self, exam_id):
         if not self.drawer: return
@@ -390,20 +460,17 @@ class SchedulePanel(ctk.CTkFrame):
                                 callback=self.refresh_schedule,
                                 close_callback=self.drawer.close_panel)
 
-    # ZMIANA: Nowa funkcja obsługi PPM na pustej siatce
     def on_grid_right_click(self, event):
-        # Obliczenia pozycji
         width = self.grid_area.winfo_width()
-        if width <= 0: return # Jeszcze nie wyrenderowane
+        if width <= 0: return
 
-        # Margines to 0.06 relatywnej szerokości, reszta to 7 dni
         margin_px = width * 0.06
         day_width_px = (width - margin_px) / 7
 
         click_x = event.x
         click_y = event.y
 
-        if click_x < margin_px: return # Kliknięto na oś czasu
+        if click_x < margin_px: return
 
         day_idx = int((click_x - margin_px) // day_width_px)
         if day_idx < 0: day_idx = 0
@@ -412,19 +479,16 @@ class SchedulePanel(ctk.CTkFrame):
         clicked_date = self.current_week_monday + timedelta(days=day_idx)
         clicked_date_str = str(clicked_date)
 
-        # Obliczanie godziny i ZAOKRĄGLANIE DO 5 MIN
         hour_val = START_HOUR + (click_y / PX_PER_HOUR)
         clicked_hour = int(hour_val)
         raw_minute = int((hour_val - clicked_hour) * 60)
 
-        # Zaokrąglanie
         remainder = raw_minute % 5
         if remainder < 3:
             final_minute = raw_minute - remainder
         else:
             final_minute = raw_minute + (5 - remainder)
 
-        # Obsługa przejścia godziny
         if final_minute == 60:
             final_minute = 0
             clicked_hour += 1
@@ -435,21 +499,19 @@ class SchedulePanel(ctk.CTkFrame):
 
         menu = tk.Menu(self, tearoff=0)
 
-        # 1. Dodaj egzamin
         label_add = f"{self.txt.get('ctx_add_exam_at', 'Add Exam Here')} ({clicked_date.strftime('%Y-%m-%d')} {time_str})"
         menu.add_command(label=label_add, command=lambda: self.open_add_exam_at(clicked_date, time_str))
 
         menu.add_separator()
 
-        # 2. Dni wolne - przełączanie (Toggle)
         is_blocked = clicked_date_str in self.storage.get_blocked_dates()
 
         if is_blocked:
-             menu.add_command(label=f"{self.txt.get('ctx_unblock_day', 'Restore Day')}: {clicked_date_str}",
-                              command=lambda: self.toggle_day_block(clicked_date_str, False))
+            menu.add_command(label=f"{self.txt.get('ctx_unblock_day', 'Restore Day')}: {clicked_date_str}",
+                             command=lambda: self.toggle_day_block(clicked_date_str, False))
         else:
-             menu.add_command(label=f"{self.txt.get('ctx_block_day', 'Mark as Day Off')}: {clicked_date_str}",
-                              command=lambda: self.toggle_day_block(clicked_date_str, True))
+            menu.add_command(label=f"{self.txt.get('ctx_block_day', 'Mark as Day Off')}: {clicked_date_str}",
+                             command=lambda: self.toggle_day_block(clicked_date_str, True))
 
         try:
             menu.tk_popup(event.x_root, event.y_root)
@@ -459,7 +521,6 @@ class SchedulePanel(ctk.CTkFrame):
     def toggle_day_block(self, date_str, block):
         if block:
             self.storage.add_blocked_date(date_str)
-            # Aktualizacja statystyk (dodanie dnia wolnego)
             stats = self.storage.get_global_stats()
             curr = stats.get("days_off", 0)
             self.storage.update_global_stat("days_off", curr + 1)
@@ -474,7 +535,7 @@ class SchedulePanel(ctk.CTkFrame):
                                 txt=self.txt,
                                 btn_style=self.btn_style,
                                 storage=self.storage,
-                                callback=self.refresh_schedule, # Odśwież harmonogram po dodaniu
+                                callback=self.refresh_schedule,
                                 close_callback=self.drawer.close_panel,
                                 initial_date=date_obj,
                                 initial_time=time_str)

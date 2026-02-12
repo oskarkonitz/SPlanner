@@ -539,5 +539,21 @@
     "ach_busy_day_4": "Zajęty dzień IV",
     "ach_desc_busy_day_4": "Ukończono 30 zadań jednego dnia. Ogień!",
     "ach_grp_grades": "Kolekcjoner Ocen",
-    "ach_grp_gpa": "Mistrz Średniej"
+    "ach_grp_gpa": "Mistrz Średniej",
+    "win_history_title": "Historia Zadań",
+    "btn_restore_overdue": "Przywróć zaległe",
+    "btn_clear_history": "Wyczyść historię",
+    "msg_no_history": "Brak historii.",
+    "lbl_yesterday": "Wczoraj",
+    "lbl_last_7": "Ostatnie 7 dni",
+    "lbl_older": "Starsze",
+    "msg_task_copied": "Skopiowano zadanie na dzisiaj!",
+    "msg_confirm_clear_history": "Czy na pewno usunąć całą historię?",
+    "set_schedule_view": "Widok Harmonogramu",
+    "set_sch_names": "Nazwy przedmiotów",
+    "set_sch_name_short": "Skrócona (ABC)",
+    "set_sch_name_full": "Pełna nazwa",
+    "set_sch_details": "Szczegóły",
+    "set_sch_show_time": "Pokaż godziny zajęć",
+    "set_sch_show_room": "Pokaż numer sali"
 }
