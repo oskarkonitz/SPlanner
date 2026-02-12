@@ -504,5 +504,8 @@
     "audio_event_done": "Todas las tareas:",
     "audio_pitch": "Tono",
     "audio_duration": "Duración",
-    "msg_empty_name": "El nombre del sonido no puede estar vacío"
+    "msg_empty_name": "El nombre del sonido no puede estar vacío",
+    "ctx_add_exam_at": "Añadir examen aquí",
+    "ctx_block_day": "Marcar como día libre",
+    "ctx_unblock_day": "Restaurar día"
 }

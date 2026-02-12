@@ -504,5 +504,8 @@
     "audio_event_done": "Wszystkie Zadania:",
     "audio_pitch": "Ton",
     "audio_duration": "Czas",
-    "msg_empty_name": "Nazwa dźwięku nie może być pusta"
+    "msg_empty_name": "Nazwa dźwięku nie może być pusta",
+    "ctx_add_exam_at": "Dodaj egzamin tutaj",
+    "ctx_block_day": "Oznacz jako wolne",
+    "ctx_unblock_day": "Przywróć dzień"
 }

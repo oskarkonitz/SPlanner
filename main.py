@@ -9,26 +9,20 @@ from core.planner import date_format
 from gui.windows.plan import PlanWindow
 from gui.dialogs.manual import ManualWindow
 from gui.theme_manager import apply_theme, THEMES
-# ZMIANA: Importujemy Panel zamiast Window
 from gui.dialogs.blocked_days import BlockedDaysPanel
 from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates
-# ZMIANA: Import ContentDrawer
 from gui.components.drawers import ToolsDrawer, ContentDrawer
 from gui.windows.todo import TodoWindow
-# ZMIANA: Importujemy Panel zamiast Window
 from gui.dialogs.subjects_manager import SubjectsManagerPanel
 from gui.windows.schedule import SchedulePanel
-# ZMIANA: Importujemy Panel zamiast Window
 from gui.windows.grades import GradesPanel
 from gui.windows.settings import SettingsWindow
 from core.sound import play_event_sound
-# ZMIANA: Importujemy Panel zamiast Window oraz wrappery do edycji
 from gui.windows.archive import ArchivePanel
-# ZMIANA: Importujemy Panel zamiast Window do szuflad
 from gui.dialogs.add_exam import AddExamPanel
 from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
@@ -354,7 +348,8 @@ class GUI:
                                            txt=self.txt,
                                            btn_style=self.btn_style,
                                            storage=self.storage,
-                                           subjects_callback=self.open_subjects_manager)
+                                           subjects_callback=self.open_subjects_manager,
+                                           drawer=self.right_drawer) # ZMIANA: Przekazujemy drawer
         self.schedule_view.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Odznaczanie
@@ -552,6 +547,9 @@ class GUI:
 
     def menu_refresh(self):
         self.plan_view.refresh_table()
+        # ZMIANA: Odświeżamy też schedule jeśli aktywne
+        if hasattr(self, 'schedule_view'):
+            self.schedule_view.load_data()
 
     def set_badge_mode(self, mode):
         # Aktualizacja w bazie

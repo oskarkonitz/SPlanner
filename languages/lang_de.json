@@ -504,5 +504,8 @@
     "audio_event_done": "Alle Aufgaben erledigt:",
     "audio_pitch": "Tonhöhe",
     "audio_duration": "Dauer",
-    "msg_empty_name": "Soundname darf nicht leer sein"
+    "msg_empty_name": "Soundname darf nicht leer sein",
+    "ctx_add_exam_at": "Prüfung hier hinzufügen",
+    "ctx_block_day": "Als freien Tag markieren",
+    "ctx_unblock_day": "Tag wiederherstellen"
 }

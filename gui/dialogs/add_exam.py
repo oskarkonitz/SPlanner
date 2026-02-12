@@ -8,7 +8,8 @@ import random
 
 
 class AddExamPanel(ctk.CTkFrame):
-    def __init__(self, parent, txt, btn_style, callback=None, storage=None, close_callback=None):
+    def __init__(self, parent, txt, btn_style, callback=None, storage=None, close_callback=None, initial_date=None,
+                 initial_time=None):
         super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
@@ -69,11 +70,22 @@ class AddExamPanel(ctk.CTkFrame):
                                     background='#3a3a3a', foreground='white', borderwidth=0)
         self.entry_date.pack()
 
+        # ZMIANA: Obsługa wstępnej daty
+        if initial_date:
+            try:
+                self.entry_date.set_date(initial_date)
+            except:
+                pass
+
         # 4. CZAS
         ctk.CTkLabel(self.center_box, text=self.txt.get("form_time", "Time (HH:MM)")).grid(row=4, column=0, pady=10,
                                                                                            padx=10, sticky="e")
         self.entry_time = ctk.CTkEntry(self.center_box)
-        self.entry_time.insert(0, "09:00")
+
+        # ZMIANA: Obsługa wstępnej godziny lub domyślnej
+        default_time = initial_time if initial_time else "09:00"
+        self.entry_time.insert(0, default_time)
+
         self.entry_time.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
 
         # 5. BARIERA

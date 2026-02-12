@@ -504,5 +504,8 @@
     "audio_event_done": "All Tasks Done:",
     "audio_pitch": "Pitch",
     "audio_duration": "Duration",
-    "msg_empty_name": "Sound name cannot be empty"
+    "msg_empty_name": "Sound name cannot be empty",
+    "ctx_add_exam_at": "Add Exam Here",
+    "ctx_block_day": "Mark as Day Off",
+    "ctx_unblock_day": "Restore Day"
 }

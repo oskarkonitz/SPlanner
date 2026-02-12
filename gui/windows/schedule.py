@@ -2,8 +2,10 @@ import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
 from datetime import datetime, timedelta, date
-# ZMIANA: Importujemy Panel zamiast Window
 from gui.dialogs.subjects_manager import SubjectsManagerPanel
+from gui.dialogs.add_exam import AddExamPanel
+from gui.dialogs.blocked_days import BlockedDaysPanel
+from gui.dialogs.edit import EditExamPanel
 
 # Stałe konfiguracyjne
 START_HOUR = 7  # Początek osi czasu (7:00)
@@ -14,14 +16,15 @@ DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 class SchedulePanel(ctk.CTkFrame):
-    def __init__(self, parent, txt, btn_style, storage, subjects_callback=None):
+    def __init__(self, parent, txt, btn_style, storage, subjects_callback=None, drawer=None):
         # 1. GŁÓWNY KONTENER
         super().__init__(parent, fg_color="transparent")
 
         self.txt = txt
         self.btn_style = btn_style
         self.storage = storage
-        self.subjects_callback = subjects_callback # ZMIANA: Callback do otwierania menedżera
+        self.subjects_callback = subjects_callback
+        self.drawer = drawer  # ZMIANA: Dodano obsługę szuflady
 
         self.current_semester_id = None
         self.semesters = []
@@ -91,6 +94,11 @@ class SchedulePanel(ctk.CTkFrame):
         self.grid_area = ctk.CTkFrame(self.scroll_frame, height=total_height, fg_color="transparent")
         self.grid_area.pack(fill="x", expand=True)
 
+        # ZMIANA: Obsługa PPM na siatce
+        self.grid_area.bind("<Button-3>", self.on_grid_right_click)
+        if self._tk_ws() == "aqua":
+             self.grid_area.bind("<Button-2>", self.on_grid_right_click)
+
         self._draw_grid_lines()
         self.load_data()
 
@@ -110,10 +118,18 @@ class SchedulePanel(ctk.CTkFrame):
         txt = f"{monday.strftime('%d.%m')} - {sunday.strftime('%d.%m.%Y')}"
         self.lbl_week_date.configure(text=txt)
 
+        today = date.today()
+
         for i, lbl in enumerate(self.day_labels):
             day_date = monday + timedelta(days=i)
             day_name = self.txt.get(f"day_{DAYS[i].lower()}", DAYS[i])
             lbl.configure(text=f"{day_name} {day_date.strftime('%d.%m')}")
+
+            # ZMIANA: Podkreślenie zamiast zmiany koloru
+            if day_date == today:
+                 lbl.configure(font=("Arial", 12, "bold", "underline"))
+            else:
+                 lbl.configure(font=("Arial", 12, "bold"))
 
     def prev_week(self):
         self.current_week_monday -= timedelta(days=7)
@@ -329,6 +345,12 @@ class SchedulePanel(ctk.CTkFrame):
                            wraplength=85)
         lbl.pack(expand=True, fill="both", padx=4, pady=4)
 
+        # ZMIANA: Obsługa edycji egzaminu
+        for widget in [container, white_border, lbl]:
+             widget.bind("<Button-3>", lambda e: self.on_exam_right_click(e, exam["id"]))
+             if self._tk_ws() == "aqua":
+                 widget.bind("<Button-2>", lambda e: self.on_exam_right_click(e, exam["id"]))
+
         rel_w = (1.0 - 0.06) / 7
         rel_x = 0.06 + (day_idx * rel_w)
         container.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
@@ -343,6 +365,129 @@ class SchedulePanel(ctk.CTkFrame):
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+
+    # ZMIANA: Nowa funkcja do menu kontekstowego egzaminu
+    def on_exam_right_click(self, event, exam_id):
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label=self.txt.get("btn_edit", "Edit"),
+                         command=lambda: self.on_exam_edit_click(exam_id))
+
+        try:
+             menu.tk_popup(event.x_root, event.y_root)
+        finally:
+             menu.grab_release()
+
+    def on_exam_edit_click(self, exam_id):
+        if not self.drawer: return
+        exam = self.storage.get_exam(exam_id)
+        if not exam: return
+
+        self.drawer.set_content(EditExamPanel,
+                                txt=self.txt,
+                                btn_style=self.btn_style,
+                                exam_data=exam,
+                                storage=self.storage,
+                                callback=self.refresh_schedule,
+                                close_callback=self.drawer.close_panel)
+
+    # ZMIANA: Nowa funkcja obsługi PPM na pustej siatce
+    def on_grid_right_click(self, event):
+        # Obliczenia pozycji
+        width = self.grid_area.winfo_width()
+        if width <= 0: return # Jeszcze nie wyrenderowane
+
+        # Margines to 0.06 relatywnej szerokości, reszta to 7 dni
+        margin_px = width * 0.06
+        day_width_px = (width - margin_px) / 7
+
+        click_x = event.x
+        click_y = event.y
+
+        if click_x < margin_px: return # Kliknięto na oś czasu
+
+        day_idx = int((click_x - margin_px) // day_width_px)
+        if day_idx < 0: day_idx = 0
+        if day_idx > 6: day_idx = 6
+
+        clicked_date = self.current_week_monday + timedelta(days=day_idx)
+        clicked_date_str = str(clicked_date)
+
+        # Obliczanie godziny i ZAOKRĄGLANIE DO 5 MIN
+        hour_val = START_HOUR + (click_y / PX_PER_HOUR)
+        clicked_hour = int(hour_val)
+        raw_minute = int((hour_val - clicked_hour) * 60)
+
+        # Zaokrąglanie
+        remainder = raw_minute % 5
+        if remainder < 3:
+            final_minute = raw_minute - remainder
+        else:
+            final_minute = raw_minute + (5 - remainder)
+
+        # Obsługa przejścia godziny
+        if final_minute == 60:
+            final_minute = 0
+            clicked_hour += 1
+
+        if clicked_hour > 23: clicked_hour = 23
+
+        time_str = f"{clicked_hour:02d}:{final_minute:02d}"
+
+        menu = tk.Menu(self, tearoff=0)
+
+        # 1. Dodaj egzamin
+        label_add = f"{self.txt.get('ctx_add_exam_at', 'Add Exam Here')} ({clicked_date.strftime('%Y-%m-%d')} {time_str})"
+        menu.add_command(label=label_add, command=lambda: self.open_add_exam_at(clicked_date, time_str))
+
+        menu.add_separator()
+
+        # 2. Dni wolne - przełączanie (Toggle)
+        is_blocked = clicked_date_str in self.storage.get_blocked_dates()
+
+        if is_blocked:
+             menu.add_command(label=f"{self.txt.get('ctx_unblock_day', 'Restore Day')}: {clicked_date_str}",
+                              command=lambda: self.toggle_day_block(clicked_date_str, False))
+        else:
+             menu.add_command(label=f"{self.txt.get('ctx_block_day', 'Mark as Day Off')}: {clicked_date_str}",
+                              command=lambda: self.toggle_day_block(clicked_date_str, True))
+
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    def toggle_day_block(self, date_str, block):
+        if block:
+            self.storage.add_blocked_date(date_str)
+            # Aktualizacja statystyk (dodanie dnia wolnego)
+            stats = self.storage.get_global_stats()
+            curr = stats.get("days_off", 0)
+            self.storage.update_global_stat("days_off", curr + 1)
+        else:
+            self.storage.remove_blocked_date(date_str)
+
+        self.refresh_schedule()
+
+    def open_add_exam_at(self, date_obj, time_str):
+        if not self.drawer: return
+        self.drawer.set_content(AddExamPanel,
+                                txt=self.txt,
+                                btn_style=self.btn_style,
+                                storage=self.storage,
+                                callback=self.refresh_schedule, # Odśwież harmonogram po dodaniu
+                                close_callback=self.drawer.close_panel,
+                                initial_date=date_obj,
+                                initial_time=time_str)
+
+    def open_blocked_days(self):
+        if not self.drawer: return
+        self.drawer.set_content(BlockedDaysPanel,
+                                txt=self.txt,
+                                btn_style=self.btn_style,
+                                callback=self.refresh_schedule,
+                                refresh_callback=self.refresh_schedule,
+                                storage=self.storage,
+                                close_callback=self.drawer.close_panel)
 
     def cancel_class_instance(self, entry_id, date_str):
         if messagebox.askyesno(self.txt["msg_confirm"],
