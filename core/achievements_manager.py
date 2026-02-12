@@ -3,6 +3,7 @@ from core.planner import date_format
 from datetime import date
 from gui.dialogs.achievements_popup import UnlockPopup
 
+
 class AchievementManager:
     def __init__(self, parent_window, txt, storage=None):
         self.parent = parent_window
@@ -89,13 +90,36 @@ class AchievementManager:
             ("strategist_2", "📅", "ach_strategist_2", "ach_desc_strategist_2", self._check_strategist, 14),
             ("strategist_3", "📅", "ach_strategist_3", "ach_desc_strategist_3", self._check_strategist, 30),
             ("strategist_4", "📅", "ach_strategist_4", "ach_desc_strategist_4", self._check_strategist, 60),
+
+            # --- NOWE OSIĄGNIĘCIA OCEN (Grades) ---
+            ("grade_bad_day", "🌧️", "ach_grade_bad_day", "ach_desc_grade_bad_day", self._check_grade_specific, 2.0),
+            ("grade_close_call", "😅", "ach_grade_close_call", "ach_desc_grade_close_call", self._check_grade_specific,
+             3.0),
+            ("grade_steady", "🧱", "ach_grade_steady", "ach_desc_grade_steady", self._check_grade_specific, 3.5),
+            ("grade_good_job", "👍", "ach_grade_good_job", "ach_desc_grade_good_job", self._check_grade_specific, 4.0),
+            ("grade_high_flyer", "✈️", "ach_grade_high_flyer", "ach_desc_grade_high_flyer", self._check_grade_specific,
+             4.5),
+            ("grade_ace", "🌟", "ach_grade_ace", "ach_desc_grade_ace", self._check_grade_specific, 5.0),
+
+            ("gpa_scholar", "🎓", "ach_gpa_scholar", "ach_desc_gpa_scholar", self._check_gpa, 4.0),
+            ("gpa_mastermind", "🧠", "ach_gpa_mastermind", "ach_desc_gpa_mastermind", self._check_gpa, 4.75),
+
+            ("limit_breaker", "🚀", "ach_limit_breaker", "ach_desc_limit_breaker", self._check_grade_limit_breaker,
+             None),
+            ("comeback_king", "👑", "ach_comeback_king", "ach_desc_comeback_king", self._check_comeback_king, None),
+            ("gradebook_first", "📒", "ach_gradebook_first", "ach_desc_gradebook_first", self._check_gradebook, None),
+
+            # --- BUSY DAY (Zadania jednego dnia) ---
+            ("busy_day_1", "🔥", "ach_busy_day_1", "ach_desc_busy_day_1", self._check_busy_day, 10),
+            ("busy_day_2", "🔥", "ach_busy_day_2", "ach_desc_busy_day_2", self._check_busy_day, 15),
+            ("busy_day_3", "🔥", "ach_busy_day_3", "ach_desc_busy_day_3", self._check_busy_day, 20),
+            ("busy_day_4", "🔥", "ach_busy_day_4", "ach_desc_busy_day_4", self._check_busy_day, 30),
         ]
 
     def check_all(self, silent=False):
         if not self.storage:
             return
 
-        # Pobieramy listę odblokowanych osiągnięć z bazy SQL
         unlocked_ids = self.storage.get_achievements()
         new_unlocks = []
 
@@ -106,7 +130,6 @@ class AchievementManager:
             is_unlocked = check_func(threshold) if threshold is not None else check_func()
 
             if is_unlocked:
-                # Zapisujemy nowe osiągnięcie w bazie SQL
                 self.storage.add_achievement(ach_id)
                 new_unlocks.append((icon, title_key, desc_key))
 
@@ -121,10 +144,8 @@ class AchievementManager:
         if self.is_showing_popup or not self.notification_queue:
             return
 
-        # --- ODTWARZANIE DŹWIĘKU ---
         if self.storage:
             play_event_sound(self.storage, "sound_achievement")
-        # ---------------------------
 
         self.is_showing_popup = True
         icon, title_key, desc_key = self.notification_queue.pop(0)
@@ -140,10 +161,9 @@ class AchievementManager:
         self.is_showing_popup = False
         self.parent.after(200, self.process_queue)
 
+    # --- METRYKI (DLA POSTĘPU) ---
     def get_current_metric(self, check_func):
-        if not self.storage:
-            return 0
-
+        if not self.storage: return 0
         stats = self.storage.get_global_stats()
 
         if check_func == self._check_first_step:
@@ -163,15 +183,106 @@ class AchievementManager:
         elif check_func == self._check_strategist:
             return self._get_max_strategy_days()
         elif check_func == self._check_daily_hours:
-            sec = stats.get("daily_study_time", 0)
-            return round(sec / 3600, 1)
+            return round(stats.get("daily_study_time", 0) / 3600, 1)
         elif check_func == self._check_total_hours:
-            sec = stats.get("total_study_time", 0)
-            return int(sec / 3600)
+            return int(stats.get("total_study_time", 0) / 3600)
         elif check_func == self._check_new_record:
             return 1 if self._check_new_record() else 0
+        elif check_func == self._check_busy_day:
+            return self._calculate_busy_day_score()
         else:
             return 0
+
+    # --- LOGIKA NOWYCH OSIĄGNIĘĆ ---
+
+    def _convert_to_grade_scale(self, val):
+        if val <= 5.0: return val
+        if val >= 90: return 5.0
+        if val >= 80: return 4.5
+        if val >= 70: return 4.0
+        if val >= 60: return 3.5
+        if val >= 50: return 3.0
+        return 2.0
+
+    def _check_grade_specific(self, target_grade):
+        grades = self.storage.get_grades()
+        for g in grades:
+            val = g["value"]
+            converted = self._convert_to_grade_scale(val)
+            if converted == target_grade:
+                return True
+        return False
+
+    def _check_gpa(self, threshold):
+        # FIX: Konwertujemy obiekty Row na dict, aby użyć .get() lub bezpiecznie iterować
+        # subjects zwracane przez storage to lista sqlite3.Row
+        subjects = [dict(s) for s in self.storage.get_subjects()]
+        if not subjects: return False
+
+        total_ects = 0
+        weighted_sum = 0
+
+        for sub in subjects:
+            grades = self.storage.get_grades(sub["id"])
+            if not grades: continue
+
+            w_sum = sum(g["value"] * g["weight"] for g in grades)
+            w_total = sum(g["weight"] for g in grades)
+            if w_total == 0: continue
+
+            avg = w_sum / w_total
+            grade_val = self._convert_to_grade_scale(avg)
+
+            # Teraz możemy bezpiecznie użyć .get() bo sub jest słownikiem
+            ects = sub.get("weight", 1.0)
+            weighted_sum += grade_val * ects
+            total_ects += ects
+
+        if total_ects == 0: return False
+        gpa = weighted_sum / total_ects
+        return gpa >= threshold
+
+    def _check_grade_limit_breaker(self):
+        grades = self.storage.get_grades()
+        for g in grades:
+            if g["value"] > 100: return True
+        return False
+
+    def _check_comeback_king(self):
+        grades = self.storage.get_grades()
+        subj_map = {}
+        for g in grades:
+            sid = g["subject_id"]
+            if sid not in subj_map: subj_map[sid] = []
+            subj_map[sid].append(self._convert_to_grade_scale(g["value"]))
+
+        for sid, g_list in subj_map.items():
+            if 2.0 in g_list and 5.0 in g_list:
+                return True
+        return False
+
+    def _check_gradebook(self):
+        grades = self.storage.get_grades()
+        return len(grades) > 0
+
+    def _calculate_busy_day_score(self):
+        today_str = str(date.today())
+
+        # FIX: Konwersja na słowniki dla bezpieczeństwa metod .get()
+        daily_tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+
+        count_tasks = sum(1 for t in daily_tasks if t.get("date") == today_str and t["status"] == "done")
+
+        # FIX: Konwersja na słowniki
+        topics = [dict(t) for t in self.storage.get_topics()]
+        count_topics = sum(1 for t in topics if str(t.get("scheduled_date")) == today_str and t["status"] == "done")
+
+        return count_tasks + count_topics
+
+    def _check_busy_day(self, threshold):
+        return self._calculate_busy_day_score() >= threshold
+
+    # --- STARE METODY (POPRAWIONE KONWERSJE) ---
 
     def _check_first_step(self, threshold):
         stats = self.storage.get_global_stats()
@@ -179,15 +290,16 @@ class AchievementManager:
 
     def _check_clean_sheet(self):
         today = date.today()
-        # Pobieramy dane z SQL
-        exams = self.storage.get_exams()
-        topics = self.storage.get_topics()
+        # FIX: Konwersja topics na dict, exams na dict
+        exams = [dict(e) for e in self.storage.get_exams()]
+        topics = [dict(t) for t in self.storage.get_topics()]
         stats = self.storage.get_global_stats()
 
         active_exams_ids = {e["id"] for e in exams if date_format(e["date"]) >= today}
         overdue_count = 0
 
         for t in topics:
+            # Teraz bezpieczne .get()
             if t.get("scheduled_date") and date_format(t["scheduled_date"]) < today:
                 if t["status"] == "todo" and t["exam_id"] in active_exams_ids:
                     overdue_count += 1
@@ -195,7 +307,6 @@ class AchievementManager:
         had_overdue = stats.get("had_overdue", False)
         if overdue_count > 0:
             if not had_overdue:
-                # Aktualizujemy flagę w SQL
                 self.storage.update_global_stat("had_overdue", True)
             return False
         else:
@@ -239,7 +350,7 @@ class AchievementManager:
 
     def _get_max_strategy_days(self):
         today = date.today()
-        exams = self.storage.get_exams()
+        exams = [dict(e) for e in self.storage.get_exams()]  # Dla pewności konwersja
         max_days = 0
         for e in exams:
             diff = (date_format(e["date"]) - today).days
@@ -263,8 +374,5 @@ class AchievementManager:
         stats = self.storage.get_global_stats()
         current = stats.get("daily_study_time", 0)
         best = stats.get("all_time_best_time", 0)
-
-        if best == 0:
-            return False
-
+        if best == 0: return False
         return current > best and current > 60

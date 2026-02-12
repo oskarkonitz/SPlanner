@@ -662,9 +662,9 @@ class AddGradePanel(ctk.CTkFrame):
                                    self.txt.get("msg_grade_num_error", "Grade and Weight must be numbers."))
             return
 
-        if self.grade_mode == "percentage" and (val < 0 or val > 100):
+        if self.grade_mode == "percentage" and val < 0:
             messagebox.showwarning(self.txt.get("title_error", "Error"),
-                                   self.txt.get("msg_grade_perc_error", "Grade % must be 0-100."))
+                                   self.txt.get("msg_grade_perc_error", "Grade % must be positive."))
             return
 
         module_id = None

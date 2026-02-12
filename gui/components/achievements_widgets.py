@@ -24,7 +24,8 @@ class StaticAchievementItem(ctk.CTkFrame):
 
         ctk.CTkLabel(text_frame, text=title, font=("Arial", 14, "bold"), text_color=status_color, anchor="w").pack(
             fill="x")
-        ctk.CTkLabel(text_frame, text=desc, font=("Arial", 12), text_color=desc_color, anchor="w", wraplength=350).pack(
+        # ZMIANA: wraplength=300 (zamiast 350), justify="left"
+        ctk.CTkLabel(text_frame, text=desc, font=("Arial", 12), text_color=desc_color, anchor="w", wraplength=300, justify="left").pack(
             fill="x")
 
         # --- NOWOŚĆ: Wyświetlanie tekstu w prawym górnym rogu ---
@@ -110,5 +111,6 @@ class AccordionItem(ctk.CTkFrame):
             ctk.CTkLabel(row, text=icon, width=30).pack(side="left")
             ctk.CTkLabel(row, text=d_title, font=("Arial", 12, "bold"), text_color=col, anchor="w", width=150).pack(
                 side="left")
-            ctk.CTkLabel(row, text=d_desc, font=("Arial", 12), text_color="gray", anchor="w", wraplength=250).pack(
+            # ZMIANA: wraplength=170 (zamiast 250), justify="left"
+            ctk.CTkLabel(row, text=d_desc, font=("Arial", 12), text_color="gray", anchor="w", wraplength=170, justify="left").pack(
                 side="left", fill="x", expand=True)
