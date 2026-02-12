@@ -1,10 +1,8 @@
-import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
 from tkcalendar import DateEntry
-from datetime import datetime, date
 import uuid
-from gui.windows.color_picker import ColorPickerWindow
+from gui.dialogs.color_picker import ColorPickerWindow
 
 
 class SubjectsManagerWindow:

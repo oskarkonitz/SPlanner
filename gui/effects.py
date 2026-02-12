@@ -2,6 +2,7 @@ import tkinter as tk
 import customtkinter as ctk
 import random
 import math as import_math
+import math
 
 
 # --- KLASA BAZOWA ---
@@ -223,3 +224,30 @@ class FireworksEffect(BaseFadingEffect):
             self.window.after(30, self.animate)
         else:
             self.start_fade_out()
+
+
+class Particle:
+    def __init__(self, canvas, x, y, color_palette):
+        self.canvas = canvas
+        self.x = x
+        self.y = y
+        self.color = random.choice(color_palette)
+        self.size = random.randint(2, 5)
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(2, 7)
+        self.vx = math.cos(angle) * speed
+        self.vy = math.sin(angle) * speed
+        self.gravity = 0.15
+        self.life = random.randint(80, 150)
+        self.id = self.canvas.create_oval(x - self.size, y - self.size, x + self.size, y + self.size,
+                                          fill=self.color, outline="")
+
+    def update(self):
+        self.vy += self.gravity
+        self.x += self.vx
+        self.y += self.vy
+        self.canvas.coords(self.id, self.x - self.size, self.y - self.size, self.x + self.size, self.y + self.size)
+        self.life -= 1
+        if self.life < 20: self.size *= 0.9
+
+    def is_alive(self): return self.life > 0

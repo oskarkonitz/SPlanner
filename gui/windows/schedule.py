@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
 from datetime import datetime, timedelta, date
-from gui.windows.subjects_manager import SubjectsManagerWindow
+from gui.dialogs.subjects_manager import SubjectsManagerWindow
 
 # Stałe konfiguracyjne
 START_HOUR = 7  # Początek osi czasu (7:00)

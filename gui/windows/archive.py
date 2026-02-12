@@ -3,7 +3,7 @@ from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date
 from core.planner import date_format
-from gui.windows.notebook import NotebookWindow
+from gui.dialogs.notebook import NotebookWindow
 
 
 class ArchiveWindow:

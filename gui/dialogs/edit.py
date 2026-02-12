@@ -5,7 +5,6 @@ from tkcalendar import DateEntry
 import uuid
 import random
 from datetime import datetime, timedelta
-from gui.windows.color_picker import ColorPickerWindow
 
 
 # funkcja sprawdzajaca czy zaznaczony element jest egzaminem czy tematem

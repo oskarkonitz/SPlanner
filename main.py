@@ -1,23 +1,23 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import customtkinter as ctk
 from datetime import date, datetime
 from core.storage import StorageManager, DB_PATH, load_language
 from core.planner import date_format
 from gui.windows.plan import PlanWindow
-from gui.windows.manual import ManualWindow
+from gui.dialogs.manual import ManualWindow
 from gui.theme_manager import apply_theme, THEMES
-from gui.windows.blocked_days import BlockedDaysWindow
+from gui.dialogs.blocked_days import BlockedDaysWindow
 from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 import threading
 from core.updater import check_for_updates
-from gui.windows.plan import ToolsDrawer
+from gui.components.drawers import ToolsDrawer
 from gui.windows.todo import TodoWindow
-from gui.windows.subjects_manager import SubjectsManagerWindow
+from gui.dialogs.subjects_manager import SubjectsManagerWindow
 from gui.windows.schedule import SchedulePanel
 from gui.windows.grades import GradesWindow
 from gui.windows.settings import SettingsWindow
