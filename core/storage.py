@@ -59,7 +59,7 @@ DEFAULT_DATA = {
         "sound_all_done": "def_fanfare",      # Domyślnie Fanfare
         # NOWE: GŁOŚNOŚĆ I WYCISZENIE
         "sound_enabled": True,
-        "sound_volume": 0.5  # Wartość od 0.0 do 1.0
+        "sound_volume": 0.5
     },
     "global_stats": {
         "topics_done": 0,
@@ -77,7 +77,7 @@ DEFAULT_DATA = {
     "stats": {"pomodoro_count": 0}
 }
 
-# --- NOWOŚĆ: DOMYŚLNE DŹWIĘKI (PRESETY) ---
+# --- DOMYŚLNE DŹWIĘKI (PRESETY) ---
 DEFAULT_SOUNDS = [
     {
         "id": "def_coin",

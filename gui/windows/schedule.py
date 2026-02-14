@@ -126,9 +126,9 @@ class SchedulePanel(ctk.CTkFrame):
             lbl.configure(text=f"{day_name} {day_date.strftime('%d.%m')}")
 
             if day_date == today:
-                lbl.configure(font=("Arial", 12, "bold", "underline"))
+                lbl.configure(font=("Arial", 12, "bold", "underline"), text_color="violet")
             else:
-                lbl.configure(font=("Arial", 12, "bold"))
+                lbl.configure(font=("Arial", 12, "bold"), text_color=("black", "white"))
 
     def prev_week(self):
         self.current_week_monday -= timedelta(days=7)

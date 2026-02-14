@@ -4,7 +4,7 @@ import customtkinter as ctk
 # --- KLASA PANELU BOCZNEGO (NOTATKI - LEGACY) ---
 class NoteDrawer(ctk.CTkFrame):
     def __init__(self, parent, txt, btn_style, save_callback):
-        super().__init__(parent, corner_radius=0, fg_color=("gray90", "gray20"))
+        super().__init__(parent, corner_radius=20, border_width=1 , border_color=("black", "white"), fg_color=("gray90", "gray20"))
         self.txt = txt
         self.save_callback = save_callback
         self.current_item_data = None
@@ -13,7 +13,7 @@ class NoteDrawer(ctk.CTkFrame):
 
         # Pozycja startowa (poza ekranem z prawej strony)
         self.target_x = 1.05
-        self.place(relx=self.target_x, rely=0, relwidth=0.3, relheight=1.0)
+        self.place(relx=self.target_x, rely=0.02, relwidth=0.3, relheight=0.96)
 
         # --- UI PANELU ---
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -79,7 +79,7 @@ class NoteDrawer(ctk.CTkFrame):
         self.is_open = True
         self.tkraise()
         self.lift()
-        self.animate(0.7)
+        self.animate(0.69)
 
     def close_panel(self):
         self.stop_animation()
@@ -111,7 +111,7 @@ class NoteDrawer(ctk.CTkFrame):
 # --- KLASA: LEWA SZUFLADKA ---
 class ToolsDrawer(ctk.CTkFrame):
     def __init__(self, parent, txt, btn_style, callbacks):
-        super().__init__(parent, width=220, corner_radius=20, fg_color=("gray90", "gray20"))
+        super().__init__(parent, width=220, corner_radius=20, border_width=1 , border_color=("black", "white"), fg_color=("gray90", "gray20"))
         self.txt = txt
         self.callbacks = callbacks
         self.is_open = False
@@ -153,7 +153,7 @@ class ToolsDrawer(ctk.CTkFrame):
         add_btn("win_achievements", self.callbacks["achievements"], "violet")
         add_btn("menu_days_off", self.callbacks["days_off"], "#5dade2")
         add_btn("menu_subjects", self.callbacks["subjects"], "#e67e22")
-        add_btn("menu_grades", self.callbacks["grades"], "#9b59b6")
+        add_btn("menu_grades", self.callbacks["grades"], "#00b800")
 
         ctk.CTkFrame(content_frame, height=2, fg_color="gray80").pack(fill="x", pady=10)
         add_btn("btn_gen_full", self.callbacks["gen_full"])
@@ -199,7 +199,7 @@ class ToolsDrawer(ctk.CTkFrame):
 class ContentDrawer(ctk.CTkFrame):
     def __init__(self, parent):
         # TŁO: gray20 (ciemne, takie jak notes drawer)
-        super().__init__(parent, corner_radius=0, fg_color=("gray90", "gray20"))
+        super().__init__(parent, corner_radius=20, border_width=1 , border_color=("black", "white"), fg_color=("gray90", "gray20"))
 
         self.is_open = False
         self.animation_id = None
@@ -207,7 +207,7 @@ class ContentDrawer(ctk.CTkFrame):
 
         # START: relx=1.0 (prawa krawędź), x=1000 (przesunięte w prawo poza ekran)
         # anchor="ne" sprawia, że punkt odniesienia to prawy górny róg szuflady
-        self.place(relx=1.0, rely=0, relheight=1.0, x=2000, anchor="ne")
+        self.place(relx=1.0, rely=0.02, relheight=0.96, x=2000, anchor="ne")
 
         # NAGŁÓWEK
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
@@ -260,7 +260,7 @@ class ContentDrawer(ctk.CTkFrame):
 
         # Animujemy 'x' (offset).
         # x=0 oznacza: prawy róg szuflady w relx=1.0 (krawędź okna) -> WIDOCZNE
-        self.animate(target_x=0)
+        self.animate(target_x=-20)
 
     def close_panel(self):
         self.stop_animation()

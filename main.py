@@ -27,7 +27,7 @@ from gui.dialogs.add_exam import AddExamPanel
 from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 
-VERSION = "2.0.2"
+VERSION = "2.0.3"
 
 
 class GUI:
@@ -78,7 +78,7 @@ class GUI:
 
         #  Konfiguracja okna
         self.root.title(self.txt["app_title"])
-        self.root.geometry("1200x650")
+        self.root.geometry("1600x850")
 
         # Uklad grid
         self.root.columnconfigure(1, weight=1)
@@ -580,10 +580,6 @@ class GUI:
             existing_blocked = self.storage.get_blocked_dates()
             for d in existing_blocked:
                 self.storage.remove_blocked_date(d)
-
-            # Usuwanie osiągnięć nie jest wprost wspierane metodą delete_all,
-            # ale możemy zresetować statystyki, co zablokuje zdobywanie nowych na chwilę
-            # (W pełnym SQL można by zrobić TRUNCATE achievements, tu zostawiamy tak jak jest w logice biznesowej)
 
             # 2. Resetowanie Statystyk globalnych w Bazie
             reset_stats = {

@@ -15,10 +15,9 @@ from packaging import version
 # --- KONFIGURACJA ---
 REPO_OWNER = "oskarkonitz"
 REPO_NAME = "SPlanner"
-CURRENT_VERSION = "2.0.2"
+CURRENT_VERSION = "2.0.3"
 
 
-# Dodano argument 'txt' do funkcji
 def check_for_updates(txt, silent=True):
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
     try:
