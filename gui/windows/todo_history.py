@@ -5,7 +5,8 @@ import uuid
 
 
 class TodoHistoryPanel(ctk.CTkFrame):
-    def __init__(self, parent, txt, btn_style, storage, close_callback=None, refresh_main_callback=None, open_note_callback=None):
+    def __init__(self, parent, txt, btn_style, storage, close_callback=None, refresh_main_callback=None,
+                 open_note_callback=None):
         super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
@@ -13,6 +14,9 @@ class TodoHistoryPanel(ctk.CTkFrame):
         self.close_callback = close_callback
         self.refresh_main_callback = refresh_main_callback
         self.open_note_callback = open_note_callback
+
+        # Słownik do mapowania list zadań
+        self.list_names = {}
 
         # --- NAGŁÓWEK ---
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -79,6 +83,11 @@ class TodoHistoryPanel(ctk.CTkFrame):
             widget.destroy()
 
         if not self.storage: return
+
+        # Ładujemy nazwy list
+        lists_db = self.storage.get_task_lists()
+        self.list_names = {l["id"]: l["name"] for l in lists_db}
+        self.list_names["general"] = self.txt.get("list_general", "General")
 
         # Pobieramy historię
         tasks = [dict(t) for t in self.storage.get_task_history()]
@@ -152,9 +161,22 @@ class TodoHistoryPanel(ctk.CTkFrame):
         bottom_section = ctk.CTkFrame(row, fg_color="transparent", height=30)
         bottom_section.pack(fill="x", padx=8, pady=(5, 8))
 
-        # Data (po lewej, mała, szara)
-        date_str = task.get("date", "???")
-        ctk.CTkLabel(bottom_section, text=date_str, font=("Arial", 11),
+        # Data i Nazwa Listy (po lewej, mała, szara)
+        date_str = task.get("date", "")
+        if not date_str:
+            date_str = self.txt.get("lbl_no_date", "No Date")
+
+        l_id = task.get("list_id")
+        list_str = ""
+
+        if l_id and l_id in self.list_names:
+            list_str = f" | {self.list_names[l_id]}"
+        elif l_id == "general":
+            list_str = f" | {self.txt.get('list_general', 'General')}"
+        elif date_str != self.txt.get("lbl_no_date", "No Date"):
+            list_str = f" | {self.txt.get('list_scheduled', 'Scheduled')}"
+
+        ctk.CTkLabel(bottom_section, text=date_str + list_str, font=("Arial", 11),
                      text_color="gray", anchor="w").pack(side="left", padx=5)
 
         # PRZYCISKI AKCJI (po prawej)
@@ -199,7 +221,8 @@ class TodoHistoryPanel(ctk.CTkFrame):
             "status": "todo",
             "created_at": str(date.today()),
             "date": str(date.today()),
-            "color": task.get("color")
+            "color": task.get("color"),
+            "list_id": task.get("list_id")
         }
         self.storage.add_daily_task(new_task)
         if self.refresh_main_callback: self.refresh_main_callback()

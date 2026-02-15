@@ -916,7 +916,7 @@ class GUI:
             self.badge_plan.place_forget()
 
         t_overdue = sum(1 for t in daily_tasks
-                        if t.get("date", "") < today_str and t["status"] == "todo")
+                        if t.get("date", "") != "" and t.get("date", "") < today_str and t["status"] == "todo")
         t_today_todo = sum(1 for t in daily_tasks
                            if t.get("date", "") == today_str and t["status"] == "todo")
         t_today_done = sum(1 for t in daily_tasks

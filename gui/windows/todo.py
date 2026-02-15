@@ -23,19 +23,60 @@ class TodoWindow:
         draw_target = drawer_parent if drawer_parent else self.parent
         self.note_drawer = NoteDrawer(draw_target, self.txt, self.btn_style, self.save_data_from_drawer)
 
-        self.current_color = None
+        self.current_list_id = "scheduled"  # Domyślny widok
         self.selected_task_id = None
+        self.current_color = None
 
-        # --- GÓRNY PASEK ---
-        self.top_frame = ctk.CTkFrame(self.parent, fg_color="transparent")
-        self.top_frame.pack(fill="x", padx=5, pady=(5, 5))
+        # --- RAMKA Z BIAŁYM OBRAMOWANIEM I PADDINGIEM ---
+        self.border_frame = ctk.CTkFrame(self.parent, fg_color="transparent",
+                                         border_width=1, border_color=("gray70", "white"), corner_radius=2)
+        self.border_frame.pack(fill="both", expand=True, padx=(0, 10), pady=8)
+
+        # --- PANED WINDOW (UKŁAD MASTER-DETAIL) ---
+        self.paned = tk.PanedWindow(
+            self.border_frame,
+            orient="horizontal",
+            sashwidth=10,
+            bg="#2b2b2b",
+            bd=0,
+            sashrelief="groove",
+            handlesize=35,
+        )
+        self.paned.pack(fill="both", expand=True, padx=1, pady=(1, 2))
+
+        # LEWY PANEL (Nawigacja List)
+        self.left_panel = ctk.CTkFrame(self.paned, corner_radius=0, fg_color="transparent")
+        self.paned.add(self.left_panel, minsize=200, stretch="never")
+
+        # PRAWY PANEL (Zadania)
+        self.right_panel = ctk.CTkFrame(self.paned, corner_radius=0, fg_color="transparent")
+        self.paned.add(self.right_panel, minsize=400, stretch="always")
+
+        # --- LEWY PANEL ZAWARTOŚĆ ---
+        self.scroll_lists = ctk.CTkScrollableFrame(self.left_panel, fg_color="transparent")
+        self.scroll_lists.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.btn_add_list = ctk.CTkButton(self.left_panel, text=self.txt.get("btn_add_list", "+ Add List"),
+                                          command=self.add_custom_list, **self.btn_style)
+        self.btn_add_list.configure(fg_color="transparent", border_width=1, border_color="gray",
+                                    text_color=("gray10", "gray90"))
+        self.btn_add_list.pack(pady=10, padx=10, fill="x")
+
+        # --- PRAWY PANEL ZAWARTOŚĆ ---
+        self.lbl_list_title = ctk.CTkLabel(self.right_panel, text=self.txt.get("list_scheduled", "Scheduled"),
+                                           font=("Arial", 20, "bold"))
+        self.lbl_list_title.pack(anchor="w", padx=15, pady=(10, 0))
+
+        # --- GÓRNY PASEK (WPROWADZANIE DANYCH) ---
+        self.top_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        self.top_frame.pack(fill="x", padx=10, pady=(5, 5))
 
         # Pole Zadania
         placeholder = self.txt.get("todo_placeholder", "Enter task...")
         self.entry_task = ctk.CTkEntry(self.top_frame, placeholder_text=placeholder, height=35)
         self.entry_task.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        # Data
+        # Data (Ramka)
         self.date_frame = ctk.CTkFrame(self.top_frame, fg_color="transparent")
         self.date_frame.pack(side="left", padx=(0, 5))
 
@@ -68,8 +109,8 @@ class TodoWindow:
         self.btn_action.pack(side="left")
 
         # --- TABELA ---
-        self.table_frame = ctk.CTkFrame(self.parent, fg_color="transparent")
-        self.table_frame.pack(fill="both", expand=True, padx=0, pady=8)
+        self.table_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        self.table_frame.pack(fill="both", expand=True, padx=5, pady=8)
 
         columns = ("status", "task")
         self.tree = ttk.Treeview(self.table_frame, columns=columns, show="tree", selectmode="browse")
@@ -120,8 +161,112 @@ class TodoWindow:
         else:
             self.tree.bind("<Button-3>", self.show_context_menu)
 
+        self.refresh_lists()
         self.refresh_table()
 
+    # --- LOGIKA LIST ZADAŃ ---
+    def refresh_lists(self):
+        for widget in self.scroll_lists.winfo_children():
+            widget.destroy()
+
+        if not self.storage: return
+
+        # Obliczanie ilości zadań
+        all_tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+        counts = {"scheduled": 0, "general": 0}
+        custom_counts = {}
+
+        for t in all_tasks:
+            if t["status"] == "done": continue
+            lid = t.get("list_id")
+            if t.get("date", "") != "":
+                counts["scheduled"] += 1
+            if t.get("date", "") == "" and (lid is None or lid == "general"):
+                counts["general"] += 1
+            if lid and lid not in ["general", "scheduled"]:
+                custom_counts[lid] = custom_counts.get(lid, 0) + 1
+
+        # SYSTEMOWE
+        ctk.CTkLabel(self.scroll_lists, text=self.txt.get("lbl_sys_lists", "System Lists"), font=("Arial", 12, "bold"),
+                     text_color="gray").pack(anchor="w", pady=(5, 2))
+
+        self.create_list_btn("scheduled", self.txt.get("list_scheduled", "Scheduled"), counts["scheduled"])
+        self.create_list_btn("general", self.txt.get("list_general", "General"), counts["general"])
+
+        # UŻYTKOWNIKA
+        custom_lists = self.storage.get_task_lists()
+        if custom_lists:
+            ctk.CTkLabel(self.scroll_lists, text=self.txt.get("lbl_my_lists", "My Lists"), font=("Arial", 12, "bold"),
+                         text_color="gray").pack(anchor="w", pady=(15, 2))
+
+            for lst in custom_lists:
+                c = custom_counts.get(lst["id"], 0)
+                self.create_list_btn(lst["id"], lst["name"], c)
+
+    def create_list_btn(self, list_id, list_name, count):
+        is_active = (self.current_list_id == list_id)
+        bg_color = ("gray75", "gray25") if is_active else "transparent"
+        text_color = ("black", "white") if is_active else ("gray20", "gray80")
+
+        display_text = f"{list_name}  ({count})" if count > 0 else list_name
+
+        btn = ctk.CTkButton(self.scroll_lists, text=display_text, fg_color=bg_color, text_color=text_color,
+                            anchor="w", height=32, command=lambda: self.select_list(list_id, list_name))
+        btn.pack(fill="x", pady=1)
+
+        # Menu kontekstowe (Usuwanie listy customowej)
+        if list_id not in ["scheduled", "general"]:
+            if self.parent.tk.call('tk', 'windowingsystem') == 'aqua':
+                btn.bind("<Button-2>", lambda e: self.show_list_menu(e, list_id))
+            else:
+                btn.bind("<Button-3>", lambda e: self.show_list_menu(e, list_id))
+
+    def select_list(self, list_id, list_name):
+        self.current_list_id = list_id
+        self.lbl_list_title.configure(text=list_name)
+
+        if list_id == "general":
+            self.date_frame.pack_forget()
+            self.entry_date.delete(0, "end")
+        elif list_id == "scheduled":
+            self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
+            self.entry_date.delete(0, "end")
+            self.entry_date.insert(0, str(date.today()))
+        else:
+            self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
+            self.entry_date.delete(0, "end")
+
+        self.refresh_lists()
+        self.refresh_table()
+
+    def add_custom_list(self):
+        dialog = ctk.CTkInputDialog(text=self.txt.get("form_list_name", "List Name:"),
+                                    title=self.txt.get("win_add_list", "Add New List"))
+        name = dialog.get_input()
+        if name:
+            new_list = {"id": f"list_{uuid.uuid4().hex[:8]}", "name": name, "icon": ""}
+            if self.storage:
+                self.storage.add_task_list(new_list)
+            self.refresh_lists()
+
+    def show_list_menu(self, event, list_id):
+        menu = tk.Menu(self.parent, tearoff=0)
+        menu.add_command(label=self.txt.get("btn_delete", "Delete"), command=lambda: self.delete_list(list_id))
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def delete_list(self, list_id):
+        if messagebox.askyesno(self.txt.get("btn_delete", "Delete"),
+                               self.txt.get("msg_confirm_del_list", "Delete this list and ALL tasks inside it?")):
+            if self.storage:
+                self.storage.delete_task_list(list_id)
+            if self.current_list_id == list_id:
+                self.select_list("scheduled", self.txt.get("list_scheduled", "Scheduled"))
+            else:
+                self.refresh_lists()
+                self.refresh_table()
+            if self.dashboard_callback: self.dashboard_callback()
+
+    # --- LOGIKA OGÓLNA ---
     def open_calendar_popup(self):
         try:
             current_date_str = self.entry_date.get()
@@ -156,19 +301,28 @@ class TodoWindow:
 
     def save_task(self):
         content = self.entry_task.get().strip()
-        date_val = self.entry_date.get().strip()
+        date_val = self.entry_date.get().strip() if self.date_frame.winfo_ismapped() else ""
 
         if not content: return
 
-        if self.selected_task_id:
-            # EDYCJA: Pobieramy aktualne zadanie z bazy (Szybki SQL)
-            target_task = self.storage.get_daily_task(self.selected_task_id)
+        # Logika przydzielania Listy i Daty
+        if self.current_list_id == "scheduled":
+            if not date_val: date_val = str(date.today())
+            list_id = None
+        elif self.current_list_id == "general":
+            date_val = ""
+            list_id = "general"
+        else:
+            list_id = self.current_list_id
 
+        if self.selected_task_id:
+            # EDYCJA
+            target_task = self.storage.get_daily_task(self.selected_task_id)
             if target_task:
                 target_task["content"] = content
                 target_task["date"] = date_val
                 target_task["color"] = self.current_color
-
+                # Celowo nie ruszamy list_id aby przy edycji nie wywalało zadania z listy do innej
                 if self.storage:
                     self.storage.update_daily_task(target_task)
 
@@ -182,7 +336,8 @@ class TodoWindow:
                 "created_at": str(date.today()),
                 "date": date_val,
                 "color": self.current_color,
-                "note": ""
+                "note": "",
+                "list_id": list_id
             }
 
             if self.storage:
@@ -193,6 +348,7 @@ class TodoWindow:
             self.btn_color.configure(fg_color="transparent")
 
         self.refresh_table()
+        self.refresh_lists()
         if self.dashboard_callback: self.dashboard_callback()
 
     def on_select(self, event):
@@ -200,7 +356,6 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobranie on-demand (Szybki SQL)
         task = self.storage.get_daily_task(item_id)
 
         if task:
@@ -240,7 +395,10 @@ class TodoWindow:
 
         self.entry_task.delete(0, "end")
         self.entry_date.delete(0, "end")
-        self.entry_date.insert(0, str(date.today()))
+
+        if self.current_list_id == "scheduled":
+            self.entry_date.insert(0, str(date.today()))
+
         self.current_color = None
         self.btn_color.configure(fg_color="transparent")
         self.btn_action.configure(text="+")
@@ -278,9 +436,22 @@ class TodoWindow:
         if not self.storage:
             return
 
-        # POBIERANIE DANYCH ON-DEMAND (Pure SQL)
-        # FIX: Rzutujemy na dict, aby działała metoda .get(), której używasz później
         tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+        filtered_tasks = []
+
+        # --- FILTROWANIE KONTEKSTOWE ---
+        for t in tasks:
+            lid = t.get("list_id")
+            t_date = t.get("date", "")
+
+            if self.current_list_id == "scheduled":
+                if t_date == "": continue
+            elif self.current_list_id == "general":
+                if t_date != "" or (lid is not None and lid != "general"): continue
+            else:
+                if lid != self.current_list_id: continue
+
+            filtered_tasks.append(t)
 
         sel_id = self.selected_task_id
 
@@ -289,7 +460,7 @@ class TodoWindow:
 
         self.tree.insert("", "end", values=("", ""), tags=("default",))
 
-        if not tasks:
+        if not filtered_tasks:
             self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
             self.lbl_empty.lift()
             return
@@ -299,7 +470,7 @@ class TodoWindow:
         overdue_tasks = []
         upcoming_tasks = []
 
-        for t in tasks:
+        for t in filtered_tasks:
             t_date = t.get("date", "")
             if not t_date:
                 upcoming_tasks.append(t)
@@ -308,7 +479,6 @@ class TodoWindow:
             if t_date < today_str and t["status"] != "done":
                 overdue_tasks.append(t)
             elif t_date >= today_str or t["status"] == "done":
-                # Ukrywanie zrobionych zadań z przeszłości (chyba że to dzisiaj)
                 if t["status"] == "done" and t_date < today_str:
                     continue
                 upcoming_tasks.append(t)
@@ -330,15 +500,19 @@ class TodoWindow:
 
                 if not day_tasks: continue
 
-                display_date = day if day else self.txt.get("lbl_no_date", "No Date")
-                if day == today_str:
-                    display_date += f" ({self.txt.get('tag_today', 'Today')})"
-                    self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("today_color",))
-                else:
-                    self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
+                if self.current_list_id != "general":
+                    display_date = day if day else self.txt.get("lbl_no_date", "No Date")
+                    if day == today_str:
+                        display_date += f" ({self.txt.get('tag_today', 'Today')})"
+                        self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("today_color",))
+                    else:
+                        self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
+
                 for t in day_tasks:
                     self._insert_task_row(t)
-                self.tree.insert("", "end", values=("", ""), tags=("default",))
+
+                if self.current_list_id != "general":
+                    self.tree.insert("", "end", values=("", ""), tags=("default",))
 
         if sel_id and self.tree.exists(sel_id):
             self.tree.selection_set(sel_id)
@@ -375,9 +549,7 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobieranie on-demand (Szybki SQL)
         task = self.storage.get_daily_task(item_id)
-
         if not task: return
 
         tomorrow = date.today() + timedelta(days=1)
@@ -387,6 +559,7 @@ class TodoWindow:
             self.storage.update_daily_task(task)
 
         self.refresh_table()
+        self.refresh_lists()
         if self.dashboard_callback: self.dashboard_callback()
 
     def toggle_status(self, event=None):
@@ -394,16 +567,15 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Pobieranie on-demand (Szybki SQL)
         target_task = self.storage.get_daily_task(item_id)
 
         if target_task:
             target_task["status"] = "done" if target_task["status"] == "todo" else "todo"
-
             if self.storage:
                 self.storage.update_daily_task(target_task)
 
         self.refresh_table()
+        self.refresh_lists()
         if self.dashboard_callback: self.dashboard_callback()
 
     def delete_task(self, event=None):
@@ -411,7 +583,6 @@ class TodoWindow:
         if not selected: return
         item_id = selected[0]
 
-        # Sprawdzenie czy zadanie istnieje w bazie (Szybki SQL)
         if not self.storage.get_daily_task(item_id): return
 
         title = self.txt.get("btn_delete", "Delete")
@@ -423,6 +594,7 @@ class TodoWindow:
 
             self.deselect_all()
             self.refresh_table()
+            self.refresh_lists()
             if self.dashboard_callback: self.dashboard_callback()
 
     def show_context_menu(self, event):
@@ -446,7 +618,7 @@ class TodoWindow:
                 btn_style=self.btn_style,
                 storage=self.storage,
                 close_callback=self.drawer.close_panel,
-                refresh_main_callback=lambda: [self.refresh_table(), self.dashboard_callback()],
+                refresh_main_callback=lambda: [self.refresh_table(), self.refresh_lists(), self.dashboard_callback()],
                 open_note_callback=self.open_note_from_history
             )
         else:

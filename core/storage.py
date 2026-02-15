@@ -202,6 +202,16 @@ class StorageManager:
                     FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE
                 )
             """)
+
+            # NOWA TABELA: LISTY ZADAŃ
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS task_lists (
+                    id TEXT PRIMARY KEY,
+                    name TEXT,
+                    icon TEXT
+                )
+            """)
+
             conn.execute("""
                          CREATE TABLE IF NOT EXISTS daily_tasks
                          (
@@ -220,12 +230,19 @@ class StorageManager:
                              created_at
                              TEXT,
                              note
+                             TEXT,
+                             list_id
                              TEXT
                          )
                          """)
 
             try:
                 conn.execute("ALTER TABLE daily_tasks ADD COLUMN note TEXT")
+            except sqlite3.OperationalError:
+                pass  # Kolumna już istnieje
+
+            try:
+                conn.execute("ALTER TABLE daily_tasks ADD COLUMN list_id TEXT")
             except sqlite3.OperationalError:
                 pass  # Kolumna już istnieje
 
@@ -456,7 +473,7 @@ class StorageManager:
             subject_map = {}
 
             for name in unique_subjects:
-                existing_subj = conn.execute("SELECT id FROM subjects WHERE name=?", (name,)).fetchone()
+                existing_subj = conn.execute("SELECT id FROM subjects WHERE name=? ", (name,)).fetchone()
                 if existing_subj:
                     subject_map[name] = existing_subj[0]
                 else:
@@ -660,10 +677,10 @@ class StorageManager:
                          INSERT INTO exams (id, subject_id, subject, title, date, time, note, ignore_barrier, color)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                          """, (
-                             exam_dict["id"], subj_id, exam_dict["subject"], exam_dict["title"], exam_dict["date"],
-                             exam_dict.get("time"),  # Dodana godzina
-                             exam_dict.get("note", ""), 1 if exam_dict.get("ignore_barrier") else 0,
-                             exam_dict.get("color")))
+                exam_dict["id"], subj_id, exam_dict["subject"], exam_dict["title"], exam_dict["date"],
+                exam_dict.get("time"),  # Dodana godzina
+                exam_dict.get("note", ""), 1 if exam_dict.get("ignore_barrier") else 0,
+                exam_dict.get("color")))
             conn.commit()
 
     def update_exam(self, exam_dict):
@@ -709,9 +726,9 @@ class StorageManager:
                          INSERT INTO topics (id, exam_id, name, status, scheduled_date, locked, note)
                          VALUES (?, ?, ?, ?, ?, ?, ?)
                          """, (
-                             topic_dict["id"], topic_dict["exam_id"], topic_dict["name"], topic_dict["status"],
-                             topic_dict.get("scheduled_date"), 1 if topic_dict.get("locked") else 0,
-                             topic_dict.get("note", "")))
+                topic_dict["id"], topic_dict["exam_id"], topic_dict["name"], topic_dict["status"],
+                topic_dict.get("scheduled_date"), 1 if topic_dict.get("locked") else 0,
+                topic_dict.get("note", "")))
             conn.commit()
 
     def update_topic(self, topic_dict):
@@ -732,6 +749,23 @@ class StorageManager:
             conn.execute("DELETE FROM topics WHERE id=?", (topic_id,))
             conn.commit()
 
+    # --- API (TASK LISTS) ---
+    def get_task_lists(self):
+        with self._get_conn() as conn:
+            return conn.execute("SELECT * FROM task_lists").fetchall()
+
+    def add_task_list(self, list_dict):
+        with self._get_conn() as conn:
+            conn.execute("INSERT INTO task_lists (id, name, icon) VALUES (?, ?, ?)",
+                         (list_dict["id"], list_dict["name"], list_dict.get("icon", "")))
+            conn.commit()
+
+    def delete_task_list(self, list_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM task_lists WHERE id=?", (list_id,))
+            conn.execute("DELETE FROM daily_tasks WHERE list_id=?", (list_id,))
+            conn.commit()
+
     # --- API (DAILY TASKS) ---
 
     def get_daily_task(self, task_id):
@@ -746,12 +780,12 @@ class StorageManager:
     def add_daily_task(self, task_dict):
         with self._get_conn() as conn:
             conn.execute("""
-                         INSERT INTO daily_tasks (id, content, status, date, color, created_at, note)
-                         VALUES (?, ?, ?, ?, ?, ?, ?)
+                         INSERT INTO daily_tasks (id, content, status, date, color, created_at, note, list_id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                          """, (
                              task_dict["id"], task_dict["content"], task_dict["status"],
                              task_dict["date"], task_dict.get("color"), task_dict.get("created_at"),
-                             task_dict.get("note", "")))
+                             task_dict.get("note", ""), task_dict.get("list_id")))
             conn.commit()
 
     def update_daily_task(self, task_dict):
@@ -763,12 +797,13 @@ class StorageManager:
                              date=?,
                              color=?,
                              created_at=?,
-                             note=?
+                             note=?,
+                             list_id=?
                          WHERE id = ?
                          """, (
                              task_dict["content"], task_dict["status"], task_dict["date"],
                              task_dict.get("color"), task_dict.get("created_at"), task_dict.get("note", ""),
-                             task_dict["id"]))
+                             task_dict.get("list_id"), task_dict["id"]))
             conn.commit()
 
     def delete_daily_task(self, task_id):

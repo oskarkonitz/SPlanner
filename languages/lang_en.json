@@ -555,5 +555,14 @@
     "set_sch_name_full": "Full Name",
     "set_sch_details": "Details",
     "set_sch_show_time": "Show Start/End Time",
-    "set_sch_show_room": "Show Room Number"
+    "set_sch_show_room": "Show Room Number",
+
+    "lbl_sys_lists": "System Lists",
+    "lbl_my_lists": "My Lists",
+    "list_scheduled": "Scheduled",
+    "list_general": "General",
+    "btn_add_list": "+ Add List",
+    "win_add_list": "Add New List",
+    "form_list_name": "List Name:",
+    "msg_confirm_del_list": "Delete this list and ALL tasks inside it?"
 }
