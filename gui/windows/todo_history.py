@@ -5,13 +5,14 @@ import uuid
 
 
 class TodoHistoryPanel(ctk.CTkFrame):
-    def __init__(self, parent, txt, btn_style, storage, close_callback=None, refresh_main_callback=None):
+    def __init__(self, parent, txt, btn_style, storage, close_callback=None, refresh_main_callback=None, open_note_callback=None):
         super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
         self.storage = storage
         self.close_callback = close_callback
         self.refresh_main_callback = refresh_main_callback
+        self.open_note_callback = open_note_callback
 
         # --- NAGŁÓWEK ---
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -175,6 +176,14 @@ class TodoHistoryPanel(ctk.CTkFrame):
                       text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"),
                       font=("Arial", 16, "bold"),
                       command=lambda t=task: self.restore_task(t)).pack(side="right", padx=2)
+
+        # 0. Open Note (Ołówek) - tylko jeśli zadanie ma notatkę
+        has_note = (task.get("note") or "").strip()
+        if has_note and self.open_note_callback:
+            ctk.CTkButton(bottom_section, text="✎", width=30, height=28, fg_color="transparent",
+                          text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"),
+                          font=("Arial", 16, "bold"),
+                          command=lambda t=task: self.open_note_callback(t)).pack(side="right", padx=2)
 
     def restore_task(self, task):
         task["status"] = "todo"

@@ -43,7 +43,7 @@ class NoteDrawer(ctk.CTkFrame):
         self.stop_animation()
         self.current_item_data = item_data
         self.lbl_item_name.configure(text=item_name)
-        note_content = item_data.get("note", "")
+        note_content = item_data.get("note") or ""
 
         self.textbox.delete("0.0", "end")
         self.textbox.insert("0.0", note_content)
@@ -59,7 +59,7 @@ class NoteDrawer(ctk.CTkFrame):
     def save_note(self):
         if self.current_item_data is not None:
             new_text = self.textbox.get("0.0", "end-1c")
-            old_text = self.current_item_data.get("note", "").strip()
+            old_text = (self.current_item_data.get("note") or "").strip()
             is_new = (not old_text and new_text.strip() != "")
             self.current_item_data["note"] = new_text
             self.save_callback(is_new_note=is_new)

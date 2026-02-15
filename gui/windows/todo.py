@@ -6,16 +6,22 @@ from datetime import date, timedelta, datetime
 import uuid
 from tkcalendar import Calendar
 from gui.windows.todo_history import TodoHistoryPanel
+from gui.components.drawers import NoteDrawer
 
 
 class TodoWindow:
-    def __init__(self, parent, txt, btn_style, dashboard_callback, storage=None, drawer=None):
+    def __init__(self, parent, txt, btn_style, dashboard_callback, selection_callback=None, drawer_parent=None,
+                 storage=None, drawer=None):
         self.parent = parent
         self.txt = txt
         self.btn_style = btn_style
         self.dashboard_callback = dashboard_callback
+        self.selection_callback = selection_callback
         self.storage = storage
         self.drawer = drawer  # ZAPISUJEMY DRAWER
+
+        draw_target = drawer_parent if drawer_parent else self.parent
+        self.note_drawer = NoteDrawer(draw_target, self.txt, self.btn_style, self.save_data_from_drawer)
 
         self.current_color = None
         self.selected_task_id = None
@@ -94,7 +100,7 @@ class TodoWindow:
                                       font=("Arial", 16, "bold"),
                                       text_color="gray")
 
-        self.tree.bind("<Double-1>", self.toggle_status)
+        self.tree.bind("<Double-1>", self.on_double_click)
         self.tree.bind("<Delete>", self.delete_task)
         self.tree.bind("<Button-1>", self.on_click)
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
@@ -175,7 +181,8 @@ class TodoWindow:
                 "status": "todo",
                 "created_at": str(date.today()),
                 "date": date_val,
-                "color": self.current_color
+                "color": self.current_color,
+                "note": ""
             }
 
             if self.storage:
@@ -211,11 +218,26 @@ class TodoWindow:
 
             self.btn_action.configure(text="✓")
 
+            if self.selection_callback:
+                if task["status"] == "done":
+                    self.selection_callback("todo_restore", "todo_delete", "disabled")
+                else:
+                    self.selection_callback("todo_complete", "todo_delete", "disabled")
+        else:
+            if self.selection_callback:
+                self.selection_callback("idle", "idle", "idle")
+            self.selected_task_id = None
+            self.btn_action.configure(text="+")
+
     def deselect_all(self):
         selection = self.tree.selection()
         if selection:
             self.tree.selection_remove(selection)
         self.selected_task_id = None
+
+        if hasattr(self, 'note_drawer') and self.note_drawer.is_open:
+            self.note_drawer.close_panel()
+
         self.entry_task.delete(0, "end")
         self.entry_date.delete(0, "end")
         self.entry_date.insert(0, str(date.today()))
@@ -224,10 +246,33 @@ class TodoWindow:
         self.btn_action.configure(text="+")
         self.parent.focus_set()
 
+        if self.selection_callback:
+            self.selection_callback("idle", "idle", "idle")
+
     def on_click(self, event):
         item = self.tree.identify_row(event.y)
         if not item:
             self.deselect_all()
+        else:
+            task = self.storage.get_daily_task(item)
+            if not task:
+                self.deselect_all()
+
+    def on_double_click(self, event):
+        selected = self.tree.selection()
+        if not selected: return
+        item_id = selected[0]
+
+        task = self.storage.get_daily_task(item_id)
+        if task:
+            self.note_drawer.load_note(task, task["content"])
+
+    def save_data_from_drawer(self, is_new_note=False):
+        if self.storage and self.note_drawer.current_item_data:
+            item = self.note_drawer.current_item_data
+            self.storage.update_daily_task(item)
+        self.refresh_table()
+        if self.dashboard_callback: self.dashboard_callback()
 
     def refresh_table(self):
         if not self.storage:
@@ -306,6 +351,9 @@ class TodoWindow:
 
     def _insert_task_row(self, t):
         status_icon = "☑" if t["status"] == "done" else "☐"
+        has_note = (t.get("note") or "").strip()
+        marks = " ✎" if has_note else ""
+
         tags = []
         if t["status"] == "done":
             tags.append("done")
@@ -319,7 +367,7 @@ class TodoWindow:
                 tags.append("default")
 
         self.tree.insert("", "end", iid=t["id"],
-                         values=(f"  {status_icon}", t["content"]),
+                         values=(f"  {status_icon}{marks}", t["content"]),
                          tags=tuple(tags))
 
     def move_to_tomorrow(self):
@@ -386,6 +434,10 @@ class TodoWindow:
             finally:
                 self.context_menu.grab_release()
 
+    def open_note_from_history(self, task):
+        if hasattr(self, 'note_drawer'):
+            self.note_drawer.load_note(task, task["content"])
+
     def open_history(self):
         if self.drawer:
             self.drawer.set_content(
@@ -394,7 +446,8 @@ class TodoWindow:
                 btn_style=self.btn_style,
                 storage=self.storage,
                 close_callback=self.drawer.close_panel,
-                refresh_main_callback=lambda: [self.refresh_table(), self.dashboard_callback()]
+                refresh_main_callback=lambda: [self.refresh_table(), self.dashboard_callback()],
+                open_note_callback=self.open_note_from_history
             )
         else:
             messagebox.showinfo("Info", "Drawer not available in this view context.")

@@ -342,6 +342,8 @@ class GUI:
                                     storage=self.storage,
                                     btn_style=self.btn_style,
                                     dashboard_callback=self.refresh_dashboard,
+                                    selection_callback=self.update_sidebar_buttons,
+                                    drawer_parent=self.root,
                                     drawer=self.right_drawer)
 
         # --- ZAKLADKA 3: SCHEDULE ---
@@ -731,6 +733,22 @@ class GUI:
                 text = self.txt.get("btn_unblock_gen", "Unblock & Gen.")
                 cmd = lambda: self.plan_view.toggle_status(generate=True)
                 color = COL_GREEN
+            # --- ZAKŁADKA TODO ---
+            elif mode == "todo_complete":
+                text = self.txt.get("tag_done", "Done")
+                cmd = self.todo_view.toggle_status
+                color = COL_GREEN
+            elif mode == "todo_restore":
+                text = self.txt.get("btn_restore", "Restore")
+                cmd = self.todo_view.toggle_status
+                if self.current_theme == "dark":
+                    color = "#ffffff"
+                else:
+                    color = "gray"
+            elif mode == "todo_delete":
+                text = self.txt["btn_delete"]
+                cmd = self.todo_view.delete_task
+                color = COL_RED
 
             btn.configure(text=text, command=cmd)
 

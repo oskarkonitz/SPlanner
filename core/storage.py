@@ -54,9 +54,9 @@ DEFAULT_DATA = {
             "pass_threshold": 50
         },
         # NOWE: Domyślne przypisania dźwięków (ID dźwięku lub None)
-        "sound_timer_finish": "def_level_up", # Domyślnie Level Up
-        "sound_achievement": "def_coin",      # Domyślnie Coin
-        "sound_all_done": "def_fanfare",      # Domyślnie Fanfare
+        "sound_timer_finish": "def_level_up",  # Domyślnie Level Up
+        "sound_achievement": "def_coin",  # Domyślnie Coin
+        "sound_all_done": "def_fanfare",  # Domyślnie Fanfare
         # NOWE: GŁOŚNOŚĆ I WYCISZENIE
         "sound_enabled": True,
         "sound_volume": 0.5
@@ -91,21 +91,21 @@ DEFAULT_SOUNDS = [
         "id": "def_level_up",
         "name": "Level Up!",
         "steps": [
-            {"freq": 523, "dur": 0.1, "type": "Square"},   # C5
-            {"freq": 659, "dur": 0.1, "type": "Square"},   # E5
-            {"freq": 784, "dur": 0.1, "type": "Square"},   # G5
+            {"freq": 523, "dur": 0.1, "type": "Square"},  # C5
+            {"freq": 659, "dur": 0.1, "type": "Square"},  # E5
+            {"freq": 784, "dur": 0.1, "type": "Square"},  # G5
             {"freq": 1046, "dur": 0.1, "type": "Square"},  # C6
-            {"freq": 784, "dur": 0.1, "type": "Square"},   # G5
-            {"freq": 1046, "dur": 0.4, "type": "Square"}   # C6
+            {"freq": 784, "dur": 0.1, "type": "Square"},  # G5
+            {"freq": 1046, "dur": 0.4, "type": "Square"}  # C6
         ]
     },
     {
         "id": "def_game_over",
         "name": "Game Over",
         "steps": [
-            {"freq": 784, "dur": 0.3, "type": "Sawtooth"}, # G5
-            {"freq": 740, "dur": 0.3, "type": "Sawtooth"}, # F#5
-            {"freq": 698, "dur": 0.3, "type": "Sawtooth"}, # F5
+            {"freq": 784, "dur": 0.3, "type": "Sawtooth"},  # G5
+            {"freq": 740, "dur": 0.3, "type": "Sawtooth"},  # F#5
+            {"freq": 698, "dur": 0.3, "type": "Sawtooth"},  # F5
             {"freq": 622, "dur": 0.8, "type": "Sawtooth"}  # D#5
         ]
     },
@@ -146,7 +146,7 @@ DEFAULT_SOUNDS = [
             {"freq": 523, "dur": 0.15, "type": "Square"},  # C5
             {"freq": 659, "dur": 0.15, "type": "Square"},  # E5
             {"freq": 784, "dur": 0.15, "type": "Square"},  # G5
-            {"freq": 1046, "dur": 0.6, "type": "Square"}   # C6
+            {"freq": 1046, "dur": 0.6, "type": "Square"}  # C6
         ]
     }
 ]
@@ -161,7 +161,7 @@ class StorageManager:
         self.db_path = db_path
         self._init_db()
         self._check_migrations()
-        self._ensure_default_sounds() # Dodanie domyślnych dźwięków
+        self._ensure_default_sounds()  # Dodanie domyślnych dźwięków
 
     def _get_conn(self):
         """Pomocnicza funkcja zwracająca połączenie z row_factory (używać wewnątrz with)."""
@@ -203,15 +203,32 @@ class StorageManager:
                 )
             """)
             conn.execute("""
-                CREATE TABLE IF NOT EXISTS daily_tasks (
-                    id TEXT PRIMARY KEY,
-                    content TEXT,
-                    status TEXT,
-                    date TEXT,
-                    color TEXT,
-                    created_at TEXT
-                )
-            """)
+                         CREATE TABLE IF NOT EXISTS daily_tasks
+                         (
+                             id
+                             TEXT
+                             PRIMARY
+                             KEY,
+                             content
+                             TEXT,
+                             status
+                             TEXT,
+                             date
+                             TEXT,
+                             color
+                             TEXT,
+                             created_at
+                             TEXT,
+                             note
+                             TEXT
+                         )
+                         """)
+
+            try:
+                conn.execute("ALTER TABLE daily_tasks ADD COLUMN note TEXT")
+            except sqlite3.OperationalError:
+                pass  # Kolumna już istnieje
+
             conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
             conn.execute("CREATE TABLE IF NOT EXISTS global_stats (key TEXT PRIMARY KEY, value TEXT)")
             conn.execute("CREATE TABLE IF NOT EXISTS blocked_dates (date TEXT PRIMARY KEY)")
@@ -386,9 +403,9 @@ class StorageManager:
                 if "daily_tasks" in data:
                     for dt in data["daily_tasks"]:
                         conn.execute(
-                            "INSERT INTO daily_tasks (id, content, status, date, color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            "INSERT INTO daily_tasks (id, content, status, date, color, created_at, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
                             (dt.get("id"), dt.get("content"), dt.get("status"), dt.get("date"), dt.get("color"),
-                             dt.get("created_at")))
+                             dt.get("created_at"), dt.get("note", "")))
                 if "blocked_dates" in data:
                     for d in data["blocked_dates"]:
                         conn.execute("INSERT OR IGNORE INTO blocked_dates (date) VALUES (?)", (d,))
@@ -729,22 +746,28 @@ class StorageManager:
     def add_daily_task(self, task_dict):
         with self._get_conn() as conn:
             conn.execute("""
-                         INSERT INTO daily_tasks (id, content, status, date, color, created_at)
-                         VALUES (?, ?, ?, ?, ?, ?)
+                         INSERT INTO daily_tasks (id, content, status, date, color, created_at, note)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)
                          """, (
                              task_dict["id"], task_dict["content"], task_dict["status"],
-                             task_dict["date"], task_dict.get("color"), task_dict.get("created_at")))
+                             task_dict["date"], task_dict.get("color"), task_dict.get("created_at"),
+                             task_dict.get("note", "")))
             conn.commit()
 
     def update_daily_task(self, task_dict):
         with self._get_conn() as conn:
             conn.execute("""
                          UPDATE daily_tasks
-                         SET content=?, status=?, date=?, color=?, created_at=?
+                         SET content=?,
+                             status=?,
+                             date=?,
+                             color=?,
+                             created_at=?,
+                             note=?
                          WHERE id = ?
                          """, (
                              task_dict["content"], task_dict["status"], task_dict["date"],
-                             task_dict.get("color"), task_dict.get("created_at"),
+                             task_dict.get("color"), task_dict.get("created_at"), task_dict.get("note", ""),
                              task_dict["id"]))
             conn.commit()
 
@@ -951,6 +974,7 @@ class StorageManager:
                 conn.commit()
 
             return count
+
 
 # Inicjalizacja Managera (Singleton w obrębie modułu)
 manager = StorageManager(DB_PATH)
