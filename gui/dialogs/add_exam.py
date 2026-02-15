@@ -5,7 +5,7 @@ from tkcalendar import DateEntry
 from datetime import datetime, timedelta
 import uuid
 import random
-
+import re
 
 class AddExamPanel(ctk.CTkFrame):
     def __init__(self, parent, txt, btn_style, callback=None, storage=None, close_callback=None, initial_date=None,
@@ -103,6 +103,31 @@ class AddExamPanel(ctk.CTkFrame):
 
         self.text_topics = ctk.CTkTextbox(self.center_box, height=120)
         self.text_topics.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 20), sticky="ew")
+
+        # --- DODANA AUTOMATYCZNA NUMERACJA ---
+        def on_focus(event):
+            if not self.text_topics.get("1.0", "end-1c").strip():
+                self.text_topics.insert("1.0", "1. ")
+
+        def on_enter(event):
+            line_start = self.text_topics.index("insert linestart")
+            line_end = self.text_topics.index("insert lineend")
+            current_line = self.text_topics.get(line_start, line_end)
+
+            match = re.match(r"^(\d+)\.\s*(.*)", current_line)
+            if match:
+                # Jeśli wciśniemy Enter na pustym punkcie, usuwamy go
+                if not match.group(2).strip():
+                    self.text_topics.delete(line_start, line_end)
+                    return "break"
+                next_num = int(match.group(1)) + 1
+                self.text_topics.insert("insert", f"\n{next_num}. ")
+                return "break"
+            return None
+
+        self.text_topics.bind("<FocusIn>", on_focus)
+        self.text_topics.bind("<Return>", on_enter)
+        # ------------------------------------
 
         # PRZYCISKI
         btn_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
@@ -219,7 +244,12 @@ class AddExamPanel(ctk.CTkFrame):
         curr_exams = global_stats.get("exams_added", 0)
         self.storage.update_global_stat("exams_added", curr_exams + 1)
 
-        topics_list = [t.strip() for t in topics_raw.split('\n') if t.strip()]
+        topics_list = []
+        for t in topics_raw.split('\n'):
+            # Usuwa numeracje z początku (np. "1. ", "12. ")
+            clean_t = re.sub(r"^\d+\.\s*", "", t.strip())
+            if clean_t:
+                topics_list.append(clean_t)
         for topic in topics_list:
             new_topic = {
                 "id": f"topic_{uuid.uuid4().hex[:8]}", "exam_id": exam_id, "name": topic,

@@ -35,7 +35,15 @@ class ArchivePanel(ctk.CTkFrame):
         self.border_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # --- PANED WINDOW ---
-        self.paned = tk.PanedWindow(self.border_frame, orient="horizontal", sashwidth=6, bg="#2b2b2b", bd=0)
+        self.paned = tk.PanedWindow(
+            self.border_frame,
+            orient="horizontal",
+            sashwidth=10,  # Szerszy suwak, by zarys "||" był lepiej widoczny
+            bg="#2b2b2b",
+            bd=0,
+            sashrelief="groove",  # Tworzy wyżłobione linie przypominające "||"
+            handlesize=35,  # Rozmiar pionowy uchwytu
+        )
         self.paned.pack(fill="both", expand=True, padx=2, pady=2)
 
         # LEWY PANEL (Lista Egzaminów)

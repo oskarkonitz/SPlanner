@@ -5,7 +5,7 @@ from tkcalendar import DateEntry
 import uuid
 import random
 from datetime import datetime, timedelta
-
+import re
 
 def select_edit_item(parent, txt, tree, btn_style, callback=None, storage=None, drawer=None):
     selected_item = tree.selection()
@@ -132,10 +132,35 @@ class EditExamPanel(ctk.CTkFrame):
         self.txt_topics = ctk.CTkTextbox(self.center_box, height=120)
         self.txt_topics.grid(row=8, column=0, columnspan=2, padx=10, pady=(0, 20), sticky="ew")
 
+        # Ładowanie tematów z bazy Z DODANIEM NUMERACJI
         if self.storage:
             topics_rows = self.storage.get_topics(exam_id=exam_data["id"])
-            for t in topics_rows:
-                self.txt_topics.insert("end", t["name"] + "\n")
+            for idx, t in enumerate(topics_rows, 1):
+                self.txt_topics.insert("end", f"{idx}. {t['name']}\n")
+
+        # --- DODANA AUTOMATYCZNA NUMERACJA ---
+        def on_focus(event):
+            if not self.txt_topics.get("1.0", "end-1c").strip():
+                self.txt_topics.insert("1.0", "1. ")
+
+        def on_enter(event):
+            line_start = self.txt_topics.index("insert linestart")
+            line_end = self.txt_topics.index("insert lineend")
+            current_line = self.txt_topics.get(line_start, line_end)
+
+            match = re.match(r"^(\d+)\.\s*(.*)", current_line)
+            if match:
+                if not match.group(2).strip():
+                    self.txt_topics.delete(line_start, line_end)
+                    return "break"
+                next_num = int(match.group(1)) + 1
+                self.txt_topics.insert("insert", f"\n{next_num}. ")
+                return "break"
+            return None
+
+        self.txt_topics.bind("<FocusIn>", on_focus)
+        self.txt_topics.bind("<Return>", on_enter)
+        # ------------------------------------
 
         # PRZYCISKI
         btn_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
@@ -242,7 +267,11 @@ class EditExamPanel(ctk.CTkFrame):
         }
         self.storage.update_exam(updated_exam)
 
-        new_names_lines = [line.strip() for line in self.txt_topics.get("0.0", "end").split("\n") if line.strip()]
+        new_names_lines = []
+        for line in self.txt_topics.get("0.0", "end").split("\n"):
+            clean_line = re.sub(r"^\d+\.\s*", "", line.strip())
+            if clean_line:
+                new_names_lines.append(clean_line)
         current_db_topics = self.storage.get_topics(self.exam_data["id"])
         existing_map = {t["name"]: dict(t) for t in current_db_topics}
         kept_ids = []

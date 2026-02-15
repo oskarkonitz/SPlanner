@@ -1,7 +1,7 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date, datetime
 from core.storage import StorageManager, DB_PATH, load_language
@@ -370,6 +370,7 @@ class GUI:
 
         # Aplikowanie motywu i start
         apply_theme(self, self.current_theme)
+        self.fix_treeview_colors()
         self.refresh_dashboard()
 
         # --- AUTO-UPDATE ---
@@ -624,6 +625,7 @@ class GUI:
         self.storage.update_setting("theme", theme_name)
         self.current_theme = theme_name
         apply_theme(self, theme_name)
+        self.fix_treeview_colors()
 
     def open_blocked_days(self):
         # ZMIANA: Zamiast Window -> ContentDrawer
@@ -1118,6 +1120,37 @@ class GUI:
                 if not messagebox.askyesno(self.txt["msg_warning"], msg):
                     return
         self.root.quit()
+
+    def fix_treeview_colors(self):
+        style = ttk.Style()
+        style.theme_use("clam")  # Odcina systemowe wymuszanie kolorów!
+
+        is_dark = self.current_theme == "dark"
+
+        # Kolory dopasowane do CustomTkinter
+        bg_color = "#2b2b2b" if is_dark else "#f0f0f0"
+        text_color = "white" if is_dark else "black"
+        sel_bg = "#404040" if is_dark else "#d9d9d9"
+        header_bg = "#3a3a3a" if is_dark else "#e5e5e5"
+
+        # Globalna konfiguracja tabeli
+        style.configure("Treeview",
+                        background=bg_color,
+                        fieldbackground=bg_color,
+                        foreground=text_color,
+                        borderwidth=0)
+
+        style.map("Treeview",
+                  background=[("selected", sel_bg)],
+                  foreground=[]  # Teraz to GWARANTUJE zachowanie kolorów tagów!
+                  )
+
+        # Dopasowanie nagłówków tabel
+        style.configure("Treeview.Heading",
+                        background=header_bg,
+                        foreground=text_color,
+                        borderwidth=0)
+        style.map("Treeview.Heading", background=[("active", sel_bg)])
 
 
 if __name__ == "__main__":
