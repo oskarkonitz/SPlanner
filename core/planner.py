@@ -212,5 +212,8 @@ def plan(storage, only_unscheduled=False):
 
     # Krok C: Commit zmian do StorageManager
     # Aktualizujemy wszystkie tematy, aby odzwierciedlić zarówno nowe daty, jak i resety (None)
-    for topic in all_topics:
-        storage.update_topic(topic)
+    if hasattr(storage, 'update_topics_bulk'):
+        storage.update_topics_bulk(all_topics)
+    else:
+        for topic in all_topics:
+            storage.update_topic(topic)

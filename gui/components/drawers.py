@@ -198,18 +198,21 @@ class ToolsDrawer(ctk.CTkFrame):
 # --- NOWA KLASA: CONTENT DRAWER (SZEROKA, WYŚRODKOWANA, PRZYKLEJONA DO PRAWEJ) ---
 class ContentDrawer(ctk.CTkFrame):
     def __init__(self, parent):
-        # TŁO: gray20 (ciemne, takie jak notes drawer)
-        super().__init__(parent, corner_radius=20, border_width=1 , border_color=("black", "white"), fg_color=("gray90", "gray20"))
+        super().__init__(parent, corner_radius=20, border_width=1, border_color=("black", "white"),
+                         fg_color=("gray90", "gray20"))
 
         self.is_open = False
         self.animation_id = None
         self.current_content = None
 
-        # START: relx=1.0 (prawa krawędź), x=1000 (przesunięte w prawo poza ekran)
-        # anchor="ne" sprawia, że punkt odniesienia to prawy górny róg szuflady
+        # Startowa pozycja poza ekranem
         self.place(relx=1.0, rely=0.02, relheight=0.96, x=2000, anchor="ne")
 
-        # NAGŁÓWEK
+        # Tworzymy szkielet RAZ przy inicjalizacji
+        self._build_skeleton()
+
+    def _build_skeleton(self):
+        # NAGŁÓWEK (zostaje na zawsze)
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         self.header_frame.pack(fill="x", padx=15, pady=10)
 
@@ -218,15 +221,17 @@ class ContentDrawer(ctk.CTkFrame):
                                        command=self.close_panel)
         self.btn_close.pack(side="right")
 
-        # KONTENER
+        # KONTENER (to do niego wkładamy panele)
         self.content_container = ctk.CTkFrame(self, fg_color="transparent")
         self.content_container.pack(fill="both", expand=True, padx=5, pady=5)
 
     def set_content(self, content_class, **kwargs):
+        # Czyścimy TYLKO zawartość kontenera, a nie sam kontener!
         for child in self.content_container.winfo_children():
             child.destroy()
 
         try:
+            # Tworzymy nowy panel wewnątrz nienaruszonego kontenera
             self.current_content = content_class(self.content_container, **kwargs)
             self.current_content.pack(fill="both", expand=True)
             self.open_panel()
@@ -241,37 +246,36 @@ class ContentDrawer(ctk.CTkFrame):
     def open_panel(self):
         self.stop_animation()
         self.is_open = True
+
+        # Kluczowe dla Windows: odśwież geometrię
+        self.winfo_toplevel().update_idletasks()
+
         self.tkraise()
         self.lift()
 
-        # Obliczanie szerokości (600px lub 95% ekranu)
+        # Obliczanie szerokości
         try:
             win_w = self.winfo_toplevel().winfo_width()
+            if win_w <= 1: win_w = 1000
         except:
             win_w = 1000
 
-        desired_width = 600
-        if win_w < 650:
-            drawer_width = int(win_w * 0.95)
-        else:
-            drawer_width = desired_width
-
+        drawer_width = 600 if win_w >= 650 else int(win_w * 0.95)
         self.configure(width=drawer_width)
 
-        # Animujemy 'x' (offset).
-        # x=0 oznacza: prawy róg szuflady w relx=1.0 (krawędź okna) -> WIDOCZNE
+        # Wymuś przyjęcie szerokości przed animacją
+        self.update_idletasks()
         self.animate(target_x=-20)
 
     def close_panel(self):
         self.stop_animation()
         self.is_open = False
-        # x=width oznacza: przesunięte w prawo o całą szerokość -> SCHOWANE
         width = self.winfo_width()
-        self.animate(target_x=width)
+        if width <= 1: width = 600
+        self.animate(target_x=width + 50)
 
     def animate(self, target_x):
         try:
-            # Pobieramy obecny offset x
             current_x = int(self.place_info().get('x', 0))
         except:
             return
@@ -281,7 +285,6 @@ class ContentDrawer(ctk.CTkFrame):
             self.animation_id = None
             return
 
-        # Płynne domykanie
         diff = target_x - current_x
         step = diff * 0.25
         if abs(step) < 1: step = 1 if diff > 0 else -1

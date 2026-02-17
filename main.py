@@ -4,7 +4,10 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
 from datetime import date, datetime
-from core.storage import StorageManager, DB_PATH, load_language
+from core.storage import manager, DB_PATH, load_language
+from PIL import Image, ImageTk, ImageDraw
+import time
+import math
 from core.planner import date_format
 from gui.windows.plan import PlanWindow
 from gui.dialogs.manual import ManualWindow
@@ -27,7 +30,226 @@ from gui.dialogs.add_exam import AddExamPanel
 from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 
-VERSION = "2.0.3"
+VERSION = "2.1.0"
+
+
+def show_cloud_onboarding():
+    # Pobieramy flagę bezpośrednio z obiektu config w managerze
+    if manager.config.get("cloud_onboarding_shown", False):
+        return
+
+    onboarding = ctk.CTkToplevel(root)
+    onboarding.title("Cloud Database Update")
+    onboarding.geometry("500x420")
+    onboarding.attributes("-topmost", True)
+    onboarding.resizable(False, False)
+
+    # UI
+    ctk.CTkLabel(onboarding, text="☁️ Cloud Sync is Here!", font=("Arial", 24, "bold")).pack(pady=20)
+
+    msg = (
+        "✨ StudyPlanner is now even better with Cloud Sync!\n\n"
+        "To sync data with your iPhone:\n"
+        "1. Log in to Supabase and create a new project.\n"
+        "2. Click 'Open Config Folder' below.\n"
+        "3. Open 'schema.sql', copy all content, and paste it into Supabase SQL Editor.\n"
+        "4. Fill in URL and API Key in 'config.json' and click Migrate.\n\n"
+        "The SQL file is already waiting for you in the folder!"
+    )
+
+    ctk.CTkLabel(onboarding, text=msg, wraplength=400, justify="left").pack(pady=10, padx=40)
+
+    btn_frame = ctk.CTkFrame(onboarding, fg_color="transparent")
+    btn_frame.pack(fill="x", side="bottom", pady=30, padx=20)
+
+    def open_config():
+        import os
+        import platform
+        import subprocess
+        from core.storage import CONFIG_PATH
+        config_dir = CONFIG_PATH.parent
+
+        try:
+            if platform.system() == "Windows":
+                os.startfile(config_dir)
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", config_dir])
+            else:
+                subprocess.Popen(["xdg-open", config_dir])
+        except Exception as e:
+            print(f"Error opening folder: {e}")
+
+    def continue_local():
+        # Zapisujemy flagę do pliku config.json
+        manager.mark_onboarding_done()
+        onboarding.destroy()
+
+    def start_migration():
+        # Pokazujemy okno ładowania
+        progress_popup = ctk.CTkToplevel(onboarding)
+        progress_popup.title("Migrating...")
+        progress_popup.geometry("300x150")
+        progress_popup.attributes("-topmost", True)
+
+        lbl_status = ctk.CTkLabel(progress_popup, text="Connecting...")
+        lbl_status.pack(pady=20)
+
+        progress_bar = ctk.CTkProgressBar(progress_popup)
+        progress_bar.pack(padx=20, fill="x")
+        progress_bar.set(0)
+
+        def run():
+            # Wywołujemy migrację z StorageManagera
+            success, message = manager.perform_cloud_migration(
+                progress_callback=lambda m: lbl_status.configure(text=m)
+            )
+
+            if success:
+                messagebox.showinfo("Success", "Migration complete! Restart the app to work in Cloud Mode.")
+                onboarding.destroy()
+                root.quit()  # Zalecany restart
+            else:
+                messagebox.showerror("Migration Error", f"Something went wrong.\n\nError: {message}")
+                progress_popup.destroy()
+
+        import threading
+        threading.Thread(target=run, daemon=True).start()
+
+    ctk.CTkButton(btn_frame, text="🚀 Migrate Data to Cloud",
+                  command=start_migration, fg_color="#27ae60", hover_color="#219150").pack(side="top", fill="x", pady=5)
+
+    ctk.CTkButton(btn_frame, text="Continue Locally", fg_color="transparent",
+                  border_width=1, command=continue_local).pack(side="left", expand=True, padx=10)
+
+    ctk.CTkButton(btn_frame, text="Open Config Folder 📂",
+                  command=open_config).pack(side="right", expand=True, padx=10)
+
+class SplashScreen(ctk.CTkToplevel):
+    def __init__(self, parent, on_finish_callback):
+        super().__init__(parent)
+        self.on_finish_callback = on_finish_callback
+
+        self.overrideredirect(True)
+        # Zwiększyłem nieco okno, żeby zmieścić logo nad napisem
+        self.w, self.h = 450, 320
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        self.geometry(f"{self.w}x{self.h}+{(screen_w - self.w) // 2}+{(screen_h - self.h) // 2}")
+
+        # Standardowy kolor tła CustomTkinter (szary)
+        self.bg_color = "#2b2b2b"
+        self.configure(fg_color=self.bg_color)
+
+        # Parametry animacji i logo
+        self.start_time = time.time()
+
+        # --- POPRAWKA ŚCIEŻKI ---
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(base_path, "_dev_tools", "source_icon.png")
+        # ------------------------
+
+        self.logo_size = (120, 120)
+        self.corner_radius = 30
+        try:
+            # Wstępne przygotowanie logo z zaokrąglonymi rogami
+            raw_img = Image.open(icon_path).convert("RGBA")
+            self.orig_img = raw_img.resize(self.logo_size, Image.Resampling.LANCZOS)
+            self.orig_img = self.add_corners(self.orig_img, self.corner_radius)
+        except Exception as e:
+            print(f"Błąd ładowania ikony: {e}")
+            self.orig_img = None
+
+        # Canvas dla animowanego logo (przezroczysty, na górze)
+        self.canvas = tk.Canvas(self, width=self.w, height=180, bg=self.bg_color, highlightthickness=0)
+        self.canvas.pack(pady=(0, 20))
+
+        # Wewnątrz __init__, po stworzeniu self.canvas:
+        self.logo_id = self.canvas.create_image(self.w // 2, 110, image=None, tags="logo")
+
+        # Napis i pasek (teraz spakowane pod logo)
+        self.lbl_status = ctk.CTkLabel(
+            self,
+            text="Inicjalizacja...",
+            font=("Arial", 13, "bold"),
+            text_color="white",
+            height=5
+        )
+        self.lbl_status.pack(pady=(20, 5))
+
+        self.progress = ctk.CTkProgressBar(
+            self,
+            mode="indeterminate",
+            width=320,
+            height=6,
+            progress_color="#3498db"
+        )
+        self.progress.pack(pady=(0, 20))
+        self.progress.start()
+
+        self.animate()
+        threading.Thread(target=self.run_sync, daemon=True).start()
+
+    def add_corners(self, im, rad):
+        """Tworzy maskę dla zaokrąglonych rogów i nakłada ją na obraz."""
+        mask = Image.new('L', im.size, 0)
+        draw = ImageDraw.Draw(mask)
+        # Rysujemy wypełniony biały zaokrąglony prostokąt na czarnej masce
+        draw.rounded_rectangle((0, 0, im.size[0], im.size[1]), radius=rad, fill=255)
+
+        # Tworzymy wynikowy obraz z przezroczystym tłem
+        out = Image.new('RGBA', im.size, (0, 0, 0, 0))
+        out.paste(im, (0, 0), mask)
+        return out
+
+    def animate(self):
+        if not self.winfo_exists(): return
+
+        t = time.time() - self.start_time
+
+        # Parametry ruchu
+        angle = math.sin(t * 1.5) * 6
+        zoom = 1.0 + math.cos(t * 2.0) * 0.05
+        y_bounce = math.sin(t * 3.0) * 5
+
+        if self.orig_img:
+            # 1. Rotacja (używamy expand=True, żeby nie ucięło rogów)
+            # Resampling.BICUBIC zapewnia lepszą jakość krawędzi przy obrocie
+            rotated_img = self.orig_img.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
+
+            # 2. Skalowanie
+            nw = int(rotated_img.size[0] * zoom)
+            nh = int(rotated_img.size[1] * zoom)
+            final_img = rotated_img.resize((nw, nh), Image.Resampling.LANCZOS)
+
+            # 3. AKTUALIZACJA ZAMIAST TWORZENIA
+            self.tk_img = ImageTk.PhotoImage(final_img)
+
+            # Podmieniamy samą grafikę w istniejącym obiekcie
+            self.canvas.itemconfig(self.logo_id, image=self.tk_img)
+
+            # Aktualizujemy współrzędne (środek x, góra-dół y)
+            # Dziękicoords() Tkinter nie musi przeliczać całej warstwy od zera
+            self.canvas.coords(self.logo_id, self.w // 2, 110 + y_bounce)
+
+        # 16ms odpowiada ~60 FPS, co daje największą płynność na większości monitorów
+        self.after(16, self.animate)
+
+    def run_sync(self):
+        from core.storage import manager
+        if manager.mode == "cloud":
+            manager.sync_down(status_callback=lambda t: self.after(0, lambda: self.lbl_status.configure(
+                text=t) if self.winfo_exists() else None))
+
+        time.sleep(1.0)
+        self.after(0, self.finish)
+
+    def finish(self):
+        try:
+            self.progress.stop()
+        except:
+            pass
+        self.destroy()
+        self.on_finish_callback()
 
 
 class GUI:
@@ -39,7 +261,7 @@ class GUI:
 
         # --- INICJALIZACJA STORAGE MANAGER ---
         # Źródło prawdy: Baza Danych SQLite
-        self.storage = StorageManager(DB_PATH)
+        self.storage = manager
 
         # --- INICJALIZACJA USTAWIEŃ I JĘZYKA ---
         # Pobieramy ustawienia bezpośrednio z bazy
@@ -1155,5 +1377,16 @@ class GUI:
 
 if __name__ == "__main__":
     root = ctk.CTk()
-    app = GUI(root)
+    root.withdraw()
+
+
+    def start_main_app():
+        app = GUI(root)
+        root.deiconify()
+
+        # WYWOŁANIE: sekundę po starcie głównej aplikacji
+        root.after(1000, show_cloud_onboarding)
+
+
+    splash = SplashScreen(root, on_finish_callback=start_main_app)
     root.mainloop()

@@ -66,6 +66,7 @@ def build_app():
         '--windowed',
         '--noconsole',
         f'--add-data={os.path.join(project_root, "languages")}{separator}languages',
+        f'--add-data={os.path.join(script_dir, "source_icon.png")}{separator}_dev_tools',
         '--clean',
         f'--distpath={dist_dir}',
         f'--workpath={work_dir}',

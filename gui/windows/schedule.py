@@ -6,6 +6,8 @@ from gui.dialogs.subjects_manager import SubjectsManagerPanel
 from gui.dialogs.add_exam import AddExamPanel
 from gui.dialogs.blocked_days import BlockedDaysPanel
 from gui.dialogs.edit import EditExamPanel
+# ZMIANA: Importujemy również ManageEventsPanel!
+from gui.dialogs.custom_events import ManageListsPanel, AddCustomEventPanel, ManageEventsPanel
 
 # Stałe konfiguracyjne
 START_HOUR = 7  # Początek osi czasu (7:00)
@@ -31,6 +33,12 @@ class SchedulePanel(ctk.CTkFrame):
         self.subjects_cache = {}
         self.cancellations = set()
 
+        # Zmienne do zaawansowanego filtrowania (Puste = pokazuj wszystko)
+        self.selected_semesters = set()
+        self.selected_lists = set()
+        self.filter_vars = {}
+        self.event_lists = []
+
         # Oblicz start bieżącego tygodnia
         today = date.today()
         self.current_week_monday = today - timedelta(days=today.weekday())
@@ -42,8 +50,11 @@ class SchedulePanel(ctk.CTkFrame):
         ctk.CTkLabel(self.top_frame, text=self.txt.get("lbl_schedule", "Schedule"),
                      font=("Arial", 20, "bold")).pack(side="left", padx=5)
 
-        self.combo_sem = ctk.CTkComboBox(self.top_frame, width=180, command=self.on_semester_change)
-        self.combo_sem.pack(side="left", padx=10)
+        self.btn_filters = ctk.CTkButton(self.top_frame, text="Filters ⚙️", width=90,
+                                         fg_color="transparent", border_width=1, border_color="gray",
+                                         text_color=("gray10", "gray90"),
+                                         command=self.open_filters_menu)
+        self.btn_filters.pack(side="left", padx=10)
 
         nav_frame = ctk.CTkFrame(self.top_frame, fg_color="transparent")
         nav_frame.pack(side="left", padx=20)
@@ -64,11 +75,10 @@ class SchedulePanel(ctk.CTkFrame):
         ctk.CTkButton(nav_frame, text=self.txt.get("btn_today", "Today"), width=60, height=28,
                       command=self.go_to_today).pack(side="left", padx=10)
 
-        ctk.CTkButton(self.top_frame, text=self.txt.get("btn_edit_subjects", "Edit Subjects"),
-                      command=self.open_subjects_manager,
-                      width=120, height=30,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="right",
-                                                                                                    padx=5)
+        self.btn_more = ctk.CTkButton(self.top_frame, text="•••", width=40, height=30,
+                                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90"),
+                                      command=self.open_more_menu)
+        self.btn_more.pack(side="right", padx=5)
 
         self.border_frame = ctk.CTkFrame(self, fg_color="transparent",
                                          border_width=1,
@@ -94,7 +104,6 @@ class SchedulePanel(ctk.CTkFrame):
         self.grid_area = ctk.CTkFrame(self.scroll_frame, height=total_height, fg_color="transparent")
         self.grid_area.pack(fill="x", expand=True)
 
-        # Obsługa PPM na siatce
         self.grid_area.bind("<Button-3>", self.on_grid_right_click)
         if self._tk_ws() == "aqua":
             self.grid_area.bind("<Button-2>", self.on_grid_right_click)
@@ -146,54 +155,125 @@ class SchedulePanel(ctk.CTkFrame):
     def load_data(self):
         self.semesters = [dict(s) for s in self.storage.get_semesters()]
         self.semesters.sort(key=lambda x: not x["is_current"])
+        self.event_lists = self.storage.get_event_lists()
+        self.refresh_schedule()
 
-        all_label = self.txt.get("val_all", "All")
-        sem_names = [s["name"] for s in self.semesters]
-        values = [all_label] + sem_names
+    # ==========================================
+    # MENU I FILTROWANIE
+    # ==========================================
+    def open_filters_menu(self):
+        self.load_data()
+        menu = tk.Menu(self, tearoff=0, font=("Arial", 11))
 
-        self.combo_sem.configure(values=values)
+        menu.add_command(label="--- SEMESTERS ---", state="disabled")
+        for sem in self.semesters:
+            v_name = f"sem_{sem['id']}"
+            if v_name not in self.filter_vars:
+                self.filter_vars[v_name] = tk.BooleanVar(value=(sem['id'] in self.selected_semesters))
 
-        if self.semesters:
-            if not self.current_semester_id:
-                self.current_semester_id = self.semesters[0]["id"]
-                self.combo_sem.set(self.semesters[0]["name"])
-            elif self.current_semester_id == "ALL":
-                self.combo_sem.set(all_label)
-            else:
-                current_name = next((s["name"] for s in self.semesters if s["id"] == self.current_semester_id), None)
-                if current_name:
-                    self.combo_sem.set(current_name)
+            def toggle_sem(s_id=sem['id'], var_name=v_name):
+                if self.filter_vars[var_name].get():
+                    self.selected_semesters.add(s_id)
                 else:
-                    self.current_semester_id = self.semesters[0]["id"]
-                    self.combo_sem.set(self.semesters[0]["name"])
-        else:
-            self.combo_sem.set(all_label)
-            self.current_semester_id = "ALL"
+                    self.selected_semesters.discard(s_id)
+                self.refresh_schedule()
 
-        self.refresh_schedule()
+            menu.add_checkbutton(label=sem['name'], variable=self.filter_vars[v_name], command=toggle_sem)
 
-    def on_semester_change(self, choice):
-        all_label = self.txt.get("val_all", "All")
+        menu.add_command(label="--- CATEGORIES ---", state="disabled")
+        for lst in self.event_lists:
+            v_name = f"lst_{lst['id']}"
+            if v_name not in self.filter_vars:
+                self.filter_vars[v_name] = tk.BooleanVar(value=(lst['id'] in self.selected_lists))
 
-        if choice == all_label:
-            self.current_semester_id = "ALL"
-        else:
-            sem = next((s for s in self.semesters if s["name"] == choice), None)
-            if sem:
-                self.current_semester_id = sem["id"]
+            def toggle_lst(l_id=lst['id'], var_name=v_name):
+                if self.filter_vars[var_name].get():
+                    self.selected_lists.add(l_id)
+                else:
+                    self.selected_lists.discard(l_id)
+                self.refresh_schedule()
 
-        self.refresh_schedule()
+            menu.add_checkbutton(label=lst['name'], variable=self.filter_vars[v_name], command=toggle_lst)
+
+        x = self.btn_filters.winfo_rootx()
+        y = self.btn_filters.winfo_rooty() + self.btn_filters.winfo_height()
+        menu.tk_popup(x, y)
+
+    def open_more_menu(self):
+        menu = tk.Menu(self, tearoff=0, font=("Arial", 11))
+        menu.add_command(label="🗓️ Add Event", command=self.open_add_event)
+        menu.add_command(label="📝 Manage Events", command=self.open_manage_events)  # NOWOŚĆ
+        menu.add_command(label="📋 Manage Lists", command=self.open_manage_lists)
+        menu.add_separator()
+        menu.add_command(label=self.txt.get("btn_edit_subjects", "🏫 Edit Subjects"), command=self.open_subjects_manager)
+        menu.add_command(label="🚫 Blocked Days", command=self.open_blocked_days)
+
+        x = self.btn_more.winfo_rootx() - 100
+        y = self.btn_more.winfo_rooty() + self.btn_more.winfo_height()
+        menu.tk_popup(x, y)
+
+    # ==========================================
+    # OTWIERANIE PANELI W SZUFLADZIE
+    # ==========================================
+    def open_add_event(self):
+        if self.drawer:
+            self.drawer.set_content(AddCustomEventPanel, txt=self.txt, btn_style=self.btn_style, storage=self.storage,
+                                    refresh_callback=self.full_refresh, close_callback=self.drawer.close_panel)
+
+    def open_manage_events(self):  # NOWOŚĆ
+        if self.drawer:
+            self.drawer.set_content(ManageEventsPanel, txt=self.txt, btn_style=self.btn_style, storage=self.storage,
+                                    refresh_callback=self.full_refresh, close_callback=self.drawer.close_panel,
+                                    drawer=self.drawer)
+
+    def open_manage_lists(self):
+        if self.drawer:
+            self.drawer.set_content(ManageListsPanel, txt=self.txt, btn_style=self.btn_style, storage=self.storage,
+                                    refresh_callback=self.full_refresh, close_callback=self.drawer.close_panel)
 
     def open_subjects_manager(self):
         if self.subjects_callback:
             self.subjects_callback()
         else:
-            top = ctk.CTkToplevel(self)
-            top.title(self.txt.get("win_subj_man_title", "Subjects"))
-            top.geometry("1000x700")
-            SubjectsManagerPanel(top, self.txt, self.btn_style, self.storage,
-                                 refresh_callback=self.load_data).pack(fill="both", expand=True)
+            if self.drawer:
+                self.drawer.set_content(SubjectsManagerPanel, txt=self.txt, btn_style=self.btn_style,
+                                        storage=self.storage, refresh_callback=self.load_data,
+                                        close_callback=self.drawer.close_panel, drawer=self.drawer)
+            else:
+                top = ctk.CTkToplevel(self)
+                top.title(self.txt.get("win_subj_man_title", "Subjects"))
+                top.geometry("1000x700")
+                SubjectsManagerPanel(top, self.txt, self.btn_style, self.storage,
+                                     refresh_callback=self.load_data).pack(fill="both", expand=True)
 
+    def open_blocked_days(self):
+        if not self.drawer: return
+        self.drawer.set_content(BlockedDaysPanel,
+                                txt=self.txt,
+                                btn_style=self.btn_style,
+                                callback=self.refresh_schedule,
+                                refresh_callback=self.refresh_schedule,
+                                storage=self.storage,
+                                close_callback=self.drawer.close_panel)
+
+    def open_add_exam_at(self, date_obj, time_str):
+        if not self.drawer: return
+        self.drawer.set_content(AddExamPanel,
+                                txt=self.txt,
+                                btn_style=self.btn_style,
+                                storage=self.storage,
+                                callback=self.refresh_schedule,
+                                close_callback=self.drawer.close_panel,
+                                initial_date=date_obj,
+                                initial_time=time_str)
+
+    def full_refresh(self):
+        self.load_data()
+        self.refresh_schedule()
+
+    # ==========================================
+    # LOGIKA HARMONOGRAMU
+    # ==========================================
     def refresh_schedule(self):
         self.update_week_label()
 
@@ -203,12 +283,7 @@ class SchedulePanel(ctk.CTkFrame):
                             getattr(widget, "is_marker", False) or getattr(widget, "is_block", False))):
                 widget.destroy()
 
-        if not self.current_semester_id: return
-
-        if self.current_semester_id == "ALL":
-            raw_subjects = self.storage.get_subjects(None)
-        else:
-            raw_subjects = self.storage.get_subjects(self.current_semester_id)
+        raw_subjects = self.storage.get_subjects(None)
 
         self.subjects_cache = {s["id"]: dict(s) for s in raw_subjects}
         semester_subj_ids = set(self.subjects_cache.keys())
@@ -216,16 +291,24 @@ class SchedulePanel(ctk.CTkFrame):
         raw_cancels = self.storage.get_schedule_cancellations()
         self.cancellations = {(c["entry_id"], c["date"]) for c in raw_cancels}
 
+        # 1. RYSOWANIE ZAJĘĆ (PLAN)
         all_schedule = [dict(x) for x in self.storage.get_schedule()]
-
         for entry in all_schedule:
+            sub = self.subjects_cache.get(entry["subject_id"])
+            if sub and self.selected_semesters and sub.get("semester_id") not in self.selected_semesters:
+                continue
             self._process_and_draw_entry(entry)
 
+        # 2. RYSOWANIE EGZAMINÓW
         all_exams = [dict(e) for e in self.storage.get_exams()]
         week_end = self.current_week_monday + timedelta(days=6)
 
         for exam in all_exams:
             if exam.get("subject_id") not in semester_subj_ids:
+                continue
+
+            sub = self.subjects_cache.get(exam.get("subject_id"))
+            if sub and self.selected_semesters and sub.get("semester_id") not in self.selected_semesters:
                 continue
 
             try:
@@ -235,6 +318,44 @@ class SchedulePanel(ctk.CTkFrame):
 
             if self.current_week_monday <= exam_date <= week_end:
                 self._draw_exam_block(exam, exam_date)
+
+        # 3. RYSOWANIE WYDARZEŃ Z GRAFIKU (CUSTOM EVENTS)
+        custom_events = self.storage.get_custom_events()
+        for ev in custom_events:
+            if self.selected_lists and ev.get("list_id") not in self.selected_lists:
+                continue
+
+            is_rec = ev.get("is_recurring", False)
+            day_idx = -1
+            target_date_str = None
+
+            if not is_rec:
+                date_str = ev.get("date")
+                if date_str:
+                    try:
+                        ev_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                        if self.current_week_monday <= ev_date <= week_end:
+                            day_idx = ev_date.weekday()
+                            target_date_str = date_str
+                    except:
+                        pass
+            else:
+                ev_day = ev.get("day_of_week")
+                if ev_day is not None and 0 <= ev_day <= 6:
+                    target_date = self.current_week_monday + timedelta(days=ev_day)
+                    target_date_str = str(target_date)
+
+                    valid = True
+                    s_date = ev.get("start_date")
+                    e_date = ev.get("end_date")
+
+                    if s_date and target_date_str < s_date: valid = False
+                    if e_date and target_date_str > e_date: valid = False
+
+                    if valid: day_idx = ev_day
+
+            if 0 <= day_idx <= 6 and target_date_str:
+                self._draw_custom_event_block(ev, target_date_str, day_idx)
 
         self._draw_current_time_indicator()
 
@@ -388,8 +509,6 @@ class SchedulePanel(ctk.CTkFrame):
         # --- LOGIKA TEKSTU DLA EGZAMINÓW ---
         settings = self.storage.get_settings()
         show_full_name = settings.get("schedule_use_full_name", False)
-        # show_times i show_room zazwyczaj nie mają sensu dla egzaminu w tym widoku,
-        # ale nazwę przedmiotu warto respektować.
 
         subj_text = subject['name'] if show_full_name else subject['short_name']
         text = f"{subj_text}\n\n{exam['title']}"
@@ -426,6 +545,86 @@ class SchedulePanel(ctk.CTkFrame):
         rel_x = 0.06 + (day_idx * rel_w)
         container.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
         container.lift()
+
+    def _draw_custom_event_block(self, ev, date_str, day_idx):
+        try:
+            start_h, start_m = map(int, ev.get("start_time", "00:00").split(":"))
+            end_h, end_m = map(int, ev.get("end_time", "00:00").split(":"))
+        except:
+            return
+
+        start_val = start_h + start_m / 60.0
+        end_val = end_h + end_m / 60.0
+        duration = end_val - start_val
+
+        if start_val < START_HOUR: start_val = START_HOUR
+        if end_val > END_HOUR: end_val = END_HOUR
+        if duration <= 0: return
+
+        y_pos = (start_val - START_HOUR) * PX_PER_HOUR
+        height = duration * PX_PER_HOUR
+
+        color = ev.get("color", "#e67e22")
+
+        lines = []
+        lines.append(ev.get("title", "Event"))
+        lines.append(f"{ev.get('start_time', '')} - {ev.get('end_time', '')}")
+
+        text = "\n".join(lines)
+        tint_color = self._get_tinted_color(color)
+
+        container = ctk.CTkFrame(
+            self.grid_area,
+            fg_color=tint_color,
+            border_color=color,
+            border_width=2,
+            corner_radius=6,
+            height=int(height - 2)
+        )
+        container.is_block = True
+
+        white_border = ctk.CTkFrame(container, fg_color="transparent", corner_radius=5)
+        white_border.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.88)
+
+        lbl = ctk.CTkLabel(white_border, text=text,
+                           fg_color="transparent",
+                           text_color=("black", "white"),
+                           font=("Arial", 11, "bold"),
+                           wraplength=85)
+        lbl.pack(expand=True, fill="both", padx=2, pady=2)
+
+        # NOWOŚĆ: Edycja pod prawym przyciskiem!
+        def show_ev_menu(e, ev_data=ev):
+            menu = tk.Menu(self, tearoff=0)
+            menu.add_command(label=self.txt.get("btn_edit", "Edit"),
+                             command=lambda: self.edit_custom_event(ev_data))
+            menu.add_command(label=self.txt.get("btn_delete", "Delete"),
+                             command=lambda: self.delete_custom_event(ev_data["id"]))
+            try:
+                menu.tk_popup(e.x_root, e.y_root)
+            finally:
+                menu.grab_release()
+
+        for widget in [container, white_border, lbl]:
+            widget.bind("<Button-3>", show_ev_menu)
+            if self._tk_ws() == "aqua":
+                widget.bind("<Button-2>", show_ev_menu)
+
+        rel_w = (1.0 - 0.06) / 7
+        rel_x = 0.06 + (day_idx * rel_w)
+        container.place(relx=rel_x, y=y_pos, relwidth=rel_w - 0.005)
+        container.lift()
+
+    def edit_custom_event(self, ev_data):
+        if self.drawer:
+            self.drawer.set_content(AddCustomEventPanel, txt=self.txt, btn_style=self.btn_style, storage=self.storage,
+                                    refresh_callback=self.full_refresh, close_callback=self.drawer.close_panel,
+                                    event_data=ev_data)
+
+    def delete_custom_event(self, ev_id):
+        if messagebox.askyesno(self.txt.get("msg_warning", "Warning"), "Delete this event?"):
+            self.storage.delete_custom_event(ev_id)
+            self.refresh_schedule()
 
     def show_context_menu(self, event, entry_id, date_str):
         menu = tk.Menu(self, tearoff=0)
@@ -528,27 +727,6 @@ class SchedulePanel(ctk.CTkFrame):
             self.storage.remove_blocked_date(date_str)
 
         self.refresh_schedule()
-
-    def open_add_exam_at(self, date_obj, time_str):
-        if not self.drawer: return
-        self.drawer.set_content(AddExamPanel,
-                                txt=self.txt,
-                                btn_style=self.btn_style,
-                                storage=self.storage,
-                                callback=self.refresh_schedule,
-                                close_callback=self.drawer.close_panel,
-                                initial_date=date_obj,
-                                initial_time=time_str)
-
-    def open_blocked_days(self):
-        if not self.drawer: return
-        self.drawer.set_content(BlockedDaysPanel,
-                                txt=self.txt,
-                                btn_style=self.btn_style,
-                                callback=self.refresh_schedule,
-                                refresh_callback=self.refresh_schedule,
-                                storage=self.storage,
-                                close_callback=self.drawer.close_panel)
 
     def cancel_class_instance(self, entry_id, date_str):
         if messagebox.askyesno(self.txt["msg_confirm"],
