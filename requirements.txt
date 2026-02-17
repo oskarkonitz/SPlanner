@@ -4,3 +4,4 @@ platformdirs
 customtkinter
 requests
 packaging
+pillow
