@@ -30,7 +30,7 @@ from gui.dialogs.add_exam import AddExamPanel
 from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 
 
 def show_cloud_onboarding():
