@@ -247,25 +247,26 @@ class ContentDrawer(ctk.CTkFrame):
         self.stop_animation()
         self.is_open = True
 
-        # Kluczowe dla Windows: odśwież geometrię
         self.winfo_toplevel().update_idletasks()
-
         self.tkraise()
         self.lift()
 
-        # Obliczanie szerokości
-        try:
-            win_w = self.winfo_toplevel().winfo_width()
-            if win_w <= 1: win_w = 1000
-        except:
-            win_w = 1000
+        # Pobierz realną szerokość okna
+        win_w = self.winfo_toplevel().winfo_width()
 
-        drawer_width = 600 if win_w >= 650 else int(win_w * 0.95)
+        # Jeśli okno jest bardzo małe (np. mała rozdzielczość na Win11),
+        # nie pozwól szufladzie być szerszą niż okno
+        if win_w < 650:
+            drawer_width = int(win_w * 0.90)  # 90% szerokości okna
+        else:
+            drawer_width = 600
+
         self.configure(width=drawer_width)
-
-        # Wymuś przyjęcie szerokości przed animacją
         self.update_idletasks()
-        self.animate(target_x=-20)
+
+        # KLUCZOWA ZMIANA: Zamiast sztywnego -20, dajemy margines
+        # zależny od szerokości, aby szuflada zawsze była "przyklejona"
+        self.animate(target_x=-10)
 
     def close_panel(self):
         self.stop_animation()
@@ -276,17 +277,20 @@ class ContentDrawer(ctk.CTkFrame):
 
     def animate(self, target_x):
         try:
-            current_x = int(self.place_info().get('x', 0))
+            # Użyjemy float dla precyzji przy skalowaniu DPI,
+            # ale zaokrąglimy przy porównaniu
+            info = self.place_info()
+            current_x = float(info.get('x', 0))
         except:
             return
 
-        if abs(target_x - current_x) < 2:
+        if abs(target_x - current_x) < 1.0: # Mniejszy próg tolerancji
             self.place(relx=1.0, x=target_x, anchor="ne")
             self.animation_id = None
             return
 
         diff = target_x - current_x
-        step = diff * 0.25
+        step = diff * 0.3 # Nieco szybszy krok dla Win11
         if abs(step) < 1: step = 1 if diff > 0 else -1
 
         self.place(relx=1.0, x=current_x + step, anchor="ne")

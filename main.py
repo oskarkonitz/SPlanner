@@ -29,6 +29,20 @@ from gui.windows.archive import ArchivePanel
 from gui.dialogs.add_exam import AddExamPanel
 from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
+import platform
+import ctypes
+
+# Dodaj to przed utworzeniem root = ctk.CTk()
+if platform.system() == "Windows":
+    try:
+        # Ustawienie świadomości DPI dla Windows 8.1 i nowszych
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        try:
+            # Ustawienie świadomości DPI dla starszych systemów Windows
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
 
 VERSION = "2.1.1"
 
