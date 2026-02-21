@@ -2105,7 +2105,7 @@ class StorageManager:
         self._bg_cloud_sync("delete_event_list", lst_id)
 
     def add_custom_event(self, ev_dict):
-        self.local.add_custom_event(ev_dict);
+        self.local.add_custom_event(ev_dict)
         self._bg_cloud_sync("add_custom_event", ev_dict)
 
     def delete_custom_event(self, ev_id):

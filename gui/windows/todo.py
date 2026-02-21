@@ -427,8 +427,24 @@ class TodoWindow:
 
     def save_data_from_drawer(self, is_new_note=False):
         if self.storage and self.note_drawer.current_item_data:
+            # --- POPRAWKA: Bezpieczne zwiększanie licznika statystyk ---
+            if is_new_note:
+                stats = self.storage.get_global_stats()
+                raw_val = stats.get("notes_added", 0)
+
+                # Obsługa błędu typu (String vs Int) przy pobieraniu z Supabase
+                try:
+                    curr = int(raw_val)
+                except (ValueError, TypeError):
+                    curr = 0
+
+                self.storage.update_global_stat("notes_added", curr + 1)
+
+            # Zapisanie samej treści zadania/notatki w bazie danych
             item = self.note_drawer.current_item_data
             self.storage.update_daily_task(item)
+
+        # Odświeżenie widoku i dashboardu
         self.refresh_table()
         if self.dashboard_callback: self.dashboard_callback()
 

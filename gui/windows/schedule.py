@@ -6,12 +6,11 @@ from gui.dialogs.subjects_manager import SubjectsManagerPanel
 from gui.dialogs.add_exam import AddExamPanel
 from gui.dialogs.blocked_days import BlockedDaysPanel
 from gui.dialogs.edit import EditExamPanel
-# ZMIANA: Importujemy również ManageEventsPanel!
 from gui.dialogs.custom_events import ManageListsPanel, AddCustomEventPanel, ManageEventsPanel
 
 # Stałe konfiguracyjne
 START_HOUR = 7  # Początek osi czasu (7:00)
-END_HOUR = 22  # Koniec osi czasu (22:00)
+END_HOUR = 23  # Koniec osi czasu (22:00)
 PX_PER_HOUR = 60  # Wysokość jednej godziny w pikselach
 EXAM_DURATION_HOURS = 1.5  # Domyślny czas trwania kafelka egzaminu (dla wizualizacji)
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -50,7 +49,7 @@ class SchedulePanel(ctk.CTkFrame):
         ctk.CTkLabel(self.top_frame, text=self.txt.get("lbl_schedule", "Schedule"),
                      font=("Arial", 20, "bold")).pack(side="left", padx=5)
 
-        self.btn_filters = ctk.CTkButton(self.top_frame, text="Filters ⚙️", width=90,
+        self.btn_filters = ctk.CTkButton(self.top_frame, text="Filters", width=90,
                                          fg_color="transparent", border_width=1, border_color="gray",
                                          text_color=("gray10", "gray90"),
                                          command=self.open_filters_menu)
@@ -201,12 +200,12 @@ class SchedulePanel(ctk.CTkFrame):
 
     def open_more_menu(self):
         menu = tk.Menu(self, tearoff=0, font=("Arial", 11))
-        menu.add_command(label="🗓️ Add Event", command=self.open_add_event)
-        menu.add_command(label="📝 Manage Events", command=self.open_manage_events)  # NOWOŚĆ
-        menu.add_command(label="📋 Manage Lists", command=self.open_manage_lists)
+        menu.add_command(label="Add Event", command=self.open_add_event)
+        menu.add_command(label="Manage Events", command=self.open_manage_events)
+        menu.add_command(label="Manage Lists", command=self.open_manage_lists)
         menu.add_separator()
-        menu.add_command(label=self.txt.get("btn_edit_subjects", "🏫 Edit Subjects"), command=self.open_subjects_manager)
-        menu.add_command(label="🚫 Blocked Days", command=self.open_blocked_days)
+        menu.add_command(label=self.txt.get("btn_edit_subjects", "Edit Subjects"), command=self.open_subjects_manager)
+        menu.add_command(label="Blocked Days", command=self.open_blocked_days)
 
         x = self.btn_more.winfo_rootx() - 100
         y = self.btn_more.winfo_rooty() + self.btn_more.winfo_height()
@@ -220,7 +219,7 @@ class SchedulePanel(ctk.CTkFrame):
             self.drawer.set_content(AddCustomEventPanel, txt=self.txt, btn_style=self.btn_style, storage=self.storage,
                                     refresh_callback=self.full_refresh, close_callback=self.drawer.close_panel)
 
-    def open_manage_events(self):  # NOWOŚĆ
+    def open_manage_events(self):
         if self.drawer:
             self.drawer.set_content(ManageEventsPanel, txt=self.txt, btn_style=self.btn_style, storage=self.storage,
                                     refresh_callback=self.full_refresh, close_callback=self.drawer.close_panel,
@@ -319,24 +318,29 @@ class SchedulePanel(ctk.CTkFrame):
             if self.current_week_monday <= exam_date <= week_end:
                 self._draw_exam_block(exam, exam_date)
 
-        # 3. RYSOWANIE WYDARZEŃ Z GRAFIKU (CUSTOM EVENTS)
+        # 3. RYSOWANIE WYDARZEŃ Z GRAFIKU (CUSTOM EVENTS) - Zmodyfikowane pod wydarzenia wielodniowe
         custom_events = self.storage.get_custom_events()
         for ev in custom_events:
             if self.selected_lists and ev.get("list_id") not in self.selected_lists:
                 continue
 
             is_rec = ev.get("is_recurring", False)
-            day_idx = -1
-            target_date_str = None
 
             if not is_rec:
-                date_str = ev.get("date")
-                if date_str:
+                start_date_str = ev.get("date") or ev.get("start_date")
+                end_date_str = ev.get("end_date") or start_date_str
+                if start_date_str:
                     try:
-                        ev_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                        if self.current_week_monday <= ev_date <= week_end:
-                            day_idx = ev_date.weekday()
-                            target_date_str = date_str
+                        s_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                        e_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+
+                        # Iterujemy po wszystkich dniach trwania wydarzenia
+                        curr_date = s_date
+                        while curr_date <= e_date:
+                            if self.current_week_monday <= curr_date <= week_end:
+                                day_idx = curr_date.weekday()
+                                self._draw_custom_event_block(ev, str(curr_date), day_idx)
+                            curr_date += timedelta(days=1)
                     except:
                         pass
             else:
@@ -352,10 +356,8 @@ class SchedulePanel(ctk.CTkFrame):
                     if s_date and target_date_str < s_date: valid = False
                     if e_date and target_date_str > e_date: valid = False
 
-                    if valid: day_idx = ev_day
-
-            if 0 <= day_idx <= 6 and target_date_str:
-                self._draw_custom_event_block(ev, target_date_str, day_idx)
+                    if valid:
+                        self._draw_custom_event_block(ev, target_date_str, ev_day)
 
         self._draw_current_time_indicator()
 
@@ -548,52 +550,69 @@ class SchedulePanel(ctk.CTkFrame):
 
     def _draw_custom_event_block(self, ev, date_str, day_idx):
         try:
-            start_h, start_m = map(int, ev.get("start_time", "00:00").split(":"))
-            end_h, end_m = map(int, ev.get("end_time", "00:00").split(":"))
-        except:
+            ev_start_date = ev.get("date") or ev.get("start_date")
+            ev_end_date = ev.get("end_date") or ev_start_date
+
+            start_time_str = ev.get("start_time", "00:00")
+            end_time_str = ev.get("end_time", "00:00")
+
+            start_h, start_m = map(int, start_time_str.split(":"))
+            end_h, end_m = map(int, end_time_str.split(":"))
+
+            event_start_val = start_h + start_m / 60.0
+            event_end_val = end_h + end_m / 60.0
+        except Exception:
             return
 
-        start_val = start_h + start_m / 60.0
-        end_val = end_h + end_m / 60.0
-        duration = end_val - start_val
+        is_start_day = (date_str == ev_start_date)
+        is_end_day = (date_str == ev_end_date)
+        is_middle_day = (ev_start_date < date_str < ev_end_date)
 
-        if start_val < START_HOUR: start_val = START_HOUR
-        if end_val > END_HOUR: end_val = END_HOUR
+        draw_start_val = float(START_HOUR)
+        draw_end_val = float(END_HOUR)
+
+        if is_start_day:
+            draw_start_val = max(float(START_HOUR), event_start_val)
+            if is_end_day:
+                draw_end_val = min(float(END_HOUR), event_end_val)
+        elif is_end_day:
+            draw_end_val = min(float(END_HOUR), event_end_val)
+        elif not is_middle_day:
+            return
+
+        duration = draw_end_val - draw_start_val
         if duration <= 0: return
 
-        y_pos = (start_val - START_HOUR) * PX_PER_HOUR
+        y_pos = (draw_start_val - START_HOUR) * PX_PER_HOUR
         height = duration * PX_PER_HOUR
 
+        display_end = self.txt.get("label_end_of_day", "End of the day") if end_time_str in ["23:59",
+                                                                                             "00:00"] else end_time_str
+
+        if is_start_day and is_end_day:
+            time_text = f"{start_time_str} - {display_end}"
+        elif is_start_day:
+            time_text = f"{start_time_str} -> ..."
+        elif is_end_day:
+            time_text = f"... -> {display_end}"
+        else:
+            time_text = self.txt.get("label_all_day", "Full day")
+
         color = ev.get("color", "#e67e22")
+        text = f"{ev.get('title', 'Event')}\n{time_text}"
 
-        lines = []
-        lines.append(ev.get("title", "Event"))
-        lines.append(f"{ev.get('start_time', '')} - {ev.get('end_time', '')}")
-
-        text = "\n".join(lines)
         tint_color = self._get_tinted_color(color)
-
-        container = ctk.CTkFrame(
-            self.grid_area,
-            fg_color=tint_color,
-            border_color=color,
-            border_width=2,
-            corner_radius=6,
-            height=int(height - 2)
-        )
+        container = ctk.CTkFrame(self.grid_area, fg_color=tint_color, border_color=color, border_width=2,
+                                 corner_radius=6, height=int(height - 2))
         container.is_block = True
 
         white_border = ctk.CTkFrame(container, fg_color="transparent", corner_radius=5)
         white_border.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.88)
 
-        lbl = ctk.CTkLabel(white_border, text=text,
-                           fg_color="transparent",
-                           text_color=("black", "white"),
-                           font=("Arial", 11, "bold"),
-                           wraplength=85)
+        lbl = ctk.CTkLabel(white_border, text=text, fg_color="transparent", text_color=("black", "white"),
+                           font=("Arial", 11, "bold"), wraplength=85)
         lbl.pack(expand=True, fill="both", padx=2, pady=2)
 
-        # NOWOŚĆ: Edycja pod prawym przyciskiem!
         def show_ev_menu(e, ev_data=ev):
             menu = tk.Menu(self, tearoff=0)
             menu.add_command(label=self.txt.get("btn_edit", "Edit"),

@@ -5,3 +5,4 @@ customtkinter
 requests
 packaging
 pillow
+supabase

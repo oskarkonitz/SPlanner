@@ -318,7 +318,15 @@ class AchievementManager:
 
     def _check_scribe(self, threshold):
         stats = self.storage.get_global_stats()
-        return stats.get("notes_added", 0) >= threshold
+        raw_val = stats.get("notes_added", 0)
+
+        # Bezpieczna konwersja do porównania
+        try:
+            current_notes = int(raw_val)
+        except (ValueError, TypeError):
+            current_notes = 0
+
+        return current_notes >= threshold
 
     def _check_encyclopedia(self, threshold):
         stats = self.storage.get_global_stats()

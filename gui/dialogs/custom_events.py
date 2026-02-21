@@ -19,21 +19,15 @@ class ManageListsPanel(ctk.CTkFrame):
 
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", pady=(0, 20))
-        ctk.CTkLabel(header, text=self.txt.get("win_manage_lists", "Manage Event Lists"),
-                     font=("Arial", 20, "bold")).pack(side="left")
+        ctk.CTkLabel(header, text=self.txt.get("win_manage_lists", "Manage Event Lists"), font=("Arial", 20, "bold")).pack(side="left", padx=10)
 
         self.form_frame = ctk.CTkFrame(self)
-        self.form_frame.pack(fill="x", pady=10)
+        self.form_frame.pack(fill="x", pady=10, padx=10)
 
         self.name_var = tk.StringVar()
         self.color_var = tk.StringVar(value="#e67e22")
 
-        ctk.CTkEntry(self.form_frame, textvariable=self.name_var, placeholder_text="Name (e.g. Work)").pack(side="left",
-                                                                                                            fill="x",
-                                                                                                            expand=True,
-                                                                                                            padx=(10,
-                                                                                                                  5),
-                                                                                                            pady=10)
+        ctk.CTkEntry(self.form_frame, textvariable=self.name_var, placeholder_text="Name (e.g. Work)").pack(side="left", fill="x", expand=True, padx=(10, 5), pady=10)
 
         self.btn_color = ctk.CTkButton(self.form_frame, text="", width=30, fg_color=self.color_var.get(),
                                        hover_color=self.color_var.get(), command=self.pick_color, corner_radius=6)
@@ -46,15 +40,12 @@ class ManageListsPanel(ctk.CTkFrame):
                                              fg_color="transparent", border_width=1, text_color=("gray10", "gray90"))
 
         self.list_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.list_frame.pack(fill="both", expand=True, pady=10)
+        self.list_frame.pack(fill="both", expand=True, pady=10, padx=10)
         self.load_lists()
 
         footer = ctk.CTkFrame(self, fg_color="transparent")
         footer.pack(fill="x", pady=20, side="bottom")
-        ctk.CTkButton(footer, text=self.txt.get("btn_close", "Close"), command=self.close_panel,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="right",
-                                                                                                    fill="x",
-                                                                                                    expand=True)
+        ctk.CTkButton(footer, text=self.txt.get("btn_close", "Close"), command=self.close_panel, **self.btn_style).pack(side="right", expand=True)
 
     def pick_color(self):
         color_code = colorchooser.askcolor(title="Choose color", initialcolor=self.color_var.get())[1]
@@ -138,7 +129,6 @@ class AddCustomEventPanel(ctk.CTkFrame):
         self.refresh_callback = refresh_callback
         self.close_callback = close_callback
 
-        # NOWOŚĆ: Pamiętamy edytowane dane
         self.event_data = event_data
 
         self.event_lists = self.storage.get_event_lists()
@@ -148,49 +138,66 @@ class AddCustomEventPanel(ctk.CTkFrame):
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", pady=(0, 20))
         title_text = "Edit Event" if self.event_data else "Add Event"
-        ctk.CTkLabel(header, text=self.txt.get("win_add_event", title_text), font=("Arial", 20, "bold")).pack(
-            side="left")
+        ctk.CTkLabel(header, text=self.txt.get("win_add_event", title_text), font=("Arial", 20, "bold")).pack(side="left", padx=10)
 
-        content = ctk.CTkFrame(self, fg_color="transparent")
-        content.pack(fill="both", expand=True)
+        # Zamiana CTkFrame na CTkScrollableFrame, aby wszystko się zmieściło
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll_frame.pack(fill="both", expand=True)
 
-        ctk.CTkLabel(content, text="Event Title:", font=("Arial", 14, "bold")).pack(anchor="w")
+        ctk.CTkLabel(self.scroll_frame, text="Event Title:", font=("Arial", 14, "bold")).pack(anchor="w")
         self.title_var = tk.StringVar()
-        ctk.CTkEntry(content, textvariable=self.title_var, placeholder_text="e.g. Morning Shift").pack(fill="x",
-                                                                                                       pady=(5, 15))
+        ctk.CTkEntry(self.scroll_frame, textvariable=self.title_var, placeholder_text="e.g. Morning Shift").pack(
+            fill="x", pady=(5, 15))
 
-        ctk.CTkLabel(content, text="Category / List:", font=("Arial", 14, "bold")).pack(anchor="w")
+        ctk.CTkLabel(self.scroll_frame, text="Category / List:", font=("Arial", 14, "bold")).pack(anchor="w")
         self.list_var = tk.StringVar(value="None (Standalone)")
-        ctk.CTkOptionMenu(content, variable=self.list_var, values=self.list_names).pack(fill="x", pady=(5, 20))
+        ctk.CTkOptionMenu(self.scroll_frame, variable=self.list_var, values=self.list_names).pack(fill="x",
+                                                                                                  pady=(5, 20))
 
         self.is_recurring_var = tk.BooleanVar(value=False)
-        ctk.CTkSwitch(content, text="Repeats Weekly?", variable=self.is_recurring_var, command=self.toggle_recurring,
+        ctk.CTkSwitch(self.scroll_frame, text="Repeats Weekly?", variable=self.is_recurring_var,
+                      command=self.toggle_recurring,
                       font=("Arial", 14, "bold")).pack(anchor="w", pady=(0, 15))
 
-        self.date_frame = ctk.CTkFrame(content, fg_color=("gray90", "gray15"), corner_radius=8)
+        self.date_frame = ctk.CTkFrame(self.scroll_frame, fg_color=("gray90", "gray15"), corner_radius=8)
         self.date_frame.pack(fill="x", pady=5)
 
-        # Puste zmienne dla build_date_frame
         self.day_var = tk.StringVar(value="Monday")
 
-        time_frame = ctk.CTkFrame(content, fg_color="transparent")
-        time_frame.pack(fill="x", pady=20)
+        # --- SEKCJIA CZASU (UKŁAD PIONOWY) ---
+        time_container = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        time_container.pack(fill="x", pady=20)
 
-        ctk.CTkLabel(time_frame, text="Start Time:", font=("Arial", 14, "bold")).grid(row=0, column=0, sticky="w",
-                                                                                      padx=5)
+        ctk.CTkLabel(time_container, text="Start Time:", font=("Arial", 14, "bold")).grid(row=0, column=0, sticky="w",
+                                                                                          padx=5)
         self.start_time_var = tk.StringVar(value="14:00")
-        ctk.CTkEntry(time_frame, textvariable=self.start_time_var, width=80).grid(row=0, column=1, padx=5)
+        ctk.CTkEntry(time_container, textvariable=self.start_time_var, width=120).grid(row=1, column=0, padx=5,
+                                                                                       pady=(0, 15), sticky="w")
 
-        ctk.CTkLabel(time_frame, text="End Time:", font=("Arial", 14, "bold")).grid(row=0, column=2, sticky="w",
-                                                                                    padx=(20, 5))
+        ctk.CTkLabel(time_container, text="End Time:", font=("Arial", 14, "bold")).grid(row=2, column=0, sticky="w",
+                                                                                        padx=5)
         self.end_time_var = tk.StringVar(value="16:00")
-        ctk.CTkEntry(time_frame, textvariable=self.end_time_var, width=80).grid(row=0, column=3, padx=5)
+        self.end_time_entry = ctk.CTkEntry(time_container, textvariable=self.end_time_var, width=120)
+        self.end_time_entry.grid(row=3, column=0, padx=5, sticky="w")
+
+        # Checkbox "End of the Day" pod polami
+        self.is_end_of_day_var = tk.BooleanVar(value=False)
+        self.check_end_of_day = ctk.CTkCheckBox(self.scroll_frame,
+                                                text=self.txt.get("label_end_of_day", "Until End of the Day"),
+                                                variable=self.is_end_of_day_var,
+                                                command=self.toggle_end_of_day)
+        self.check_end_of_day.pack(anchor="w", pady=(10, 0))
 
         # --- UZUPEŁNIANIE DANYCH (EDYCJA) ---
         if self.event_data:
             self.title_var.set(self.event_data.get("title", ""))
             self.start_time_var.set(self.event_data.get("start_time", "14:00"))
-            self.end_time_var.set(self.event_data.get("end_time", "16:00"))
+            e_t = self.event_data.get("end_time", "16:00")
+            self.end_time_var.set(e_t)
+
+            if e_t in ["23:59", "00:00"]:
+                self.is_end_of_day_var.set(True)
+                self.end_time_entry.configure(state="disabled")
 
             l_id = self.event_data.get("list_id")
             if l_id:
@@ -201,10 +208,9 @@ class AddCustomEventPanel(ctk.CTkFrame):
 
             self.is_recurring_var.set(self.event_data.get("is_recurring", False))
 
-        # Budujemy ramkę z kalendarzami bazując na `is_recurring_var`
         self.build_date_frame()
 
-        # Reszta uzupełniania dat po zbudowaniu widżetów
+        # Reszta uzupełniania dat
         if self.event_data:
             if self.event_data.get("is_recurring"):
                 day_idx = self.event_data.get("day_of_week", 0)
@@ -227,22 +233,37 @@ class AddCustomEventPanel(ctk.CTkFrame):
                         self.cal_single.set_date(datetime.strptime(d_str, "%Y-%m-%d").date())
                     except:
                         pass
+                if end_d_str := self.event_data.get("end_date"):
+                    try:
+                        self.cal_single_end.set_date(datetime.strptime(end_d_str, "%Y-%m-%d").date())
+                    except:
+                        pass
 
         # --- STOPKA Z PRZYCISKAMI ---
         footer = ctk.CTkFrame(self, fg_color="transparent")
         footer.pack(fill="x", pady=20, side="bottom")
 
-        ctk.CTkButton(footer, text=self.txt.get("btn_cancel", "Cancel"), command=self.close_panel,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="left",
-                                                                                                    padx=10, fill="x",
-                                                                                                    expand=True)
+        ctk.CTkButton(footer, text=self.txt.get("btn_cancel", "Cancel"), command=self.close_panel, **self.btn_style).pack(side="left", padx=10, fill="x", expand=True)
         btn_save_text = "Save Changes" if self.event_data else "Save Event"
-        ctk.CTkButton(footer, text=self.txt.get("btn_save", btn_save_text), command=self.save_event,
-                      **self.btn_style).pack(side="right", padx=10, fill="x", expand=True)
+        ctk.CTkButton(footer, text=self.txt.get("btn_save", btn_save_text), command=self.save_event, **self.btn_style).pack(side="right", padx=10, fill="x", expand=True)
 
     def close_panel(self):
         if self.close_callback:
             self.close_callback()
+
+    def toggle_end_of_day(self):
+        if self.is_end_of_day_var.get():
+            self.end_time_var.set("23:59")
+            self.end_time_entry.configure(state="disabled")
+        else:
+            self.end_time_entry.configure(state="normal")
+
+    def set_until_tomorrow(self):
+        try:
+            current_start = self.cal_single.get_date()
+            self.cal_single_end.set_date(current_start + timedelta(days=1))
+        except:
+            pass
 
     def build_date_frame(self):
         for w in self.date_frame.winfo_children(): w.destroy()
@@ -269,10 +290,23 @@ class AddCustomEventPanel(ctk.CTkFrame):
             self.date_frame.grid_columnconfigure(1, weight=1)
 
         else:
-            ctk.CTkLabel(self.date_frame, text="Specific Date:").pack(side="left", padx=15, pady=15)
+            ctk.CTkLabel(self.date_frame, text="Start Date:").grid(row=0, column=0, padx=15, pady=(15, 5), sticky="w")
             self.cal_single = DateEntry(self.date_frame, width=12, background='darkblue', foreground='white',
                                         borderwidth=2, date_pattern='yyyy-mm-dd')
-            self.cal_single.pack(side="right", padx=15, pady=15, expand=True, fill="x")
+            self.cal_single.grid(row=0, column=1, padx=15, pady=(15, 5), sticky="ew")
+
+            ctk.CTkLabel(self.date_frame, text="End Date:").grid(row=1, column=0, padx=15, pady=5, sticky="w")
+            self.cal_single_end = DateEntry(self.date_frame, width=12, background='darkblue', foreground='white',
+                                            borderwidth=2, date_pattern='yyyy-mm-dd')
+            self.cal_single_end.grid(row=1, column=1, padx=15, pady=5, sticky="ew")
+
+            ctk.CTkButton(self.date_frame, text="+1 Day (Tomorrow)", height=24, font=("Arial", 11),
+                          fg_color="transparent", border_width=1, command=self.set_until_tomorrow).grid(row=2, column=1,
+                                                                                                        padx=15,
+                                                                                                        pady=(0, 15),
+                                                                                                        sticky="e")
+
+            self.date_frame.grid_columnconfigure(1, weight=1)
 
     def toggle_recurring(self):
         self.build_date_frame()
@@ -313,6 +347,7 @@ class AddCustomEventPanel(ctk.CTkFrame):
             ev_dict["end_date"] = str(self.cal_end.get_date())
         else:
             ev_dict["date"] = str(self.cal_single.get_date())
+            ev_dict["end_date"] = str(self.cal_single_end.get_date())
 
         self.storage.add_custom_event(ev_dict)
         if self.refresh_callback: self.refresh_callback()
@@ -334,22 +369,18 @@ class ManageEventsPanel(ctk.CTkFrame):
 
         # --- NAGŁÓWEK ---
         header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", pady=(0, 20))
-        ctk.CTkLabel(header, text=self.txt.get("win_manage_events", "Manage Events"), font=("Arial", 20, "bold")).pack(
-            side="left")
+        header.pack(fill="x", pady=(0, 20), padx=10)
+        ctk.CTkLabel(header, text=self.txt.get("win_manage_events", "Manage Events"), font=("Arial", 20, "bold")).pack(side="left")
 
         # --- LISTA UTWORZONYCH WYDARZEŃ ---
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.list_frame.pack(fill="both", expand=True, pady=10)
+        self.list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent", width=400)
+        self.list_frame.pack(fill="both", expand=True, pady=10, padx=(10, 5))
         self.load_events()
 
         # --- PRZYCISK ZAMYKANIA ---
         footer = ctk.CTkFrame(self, fg_color="transparent")
         footer.pack(fill="x", pady=20, side="bottom")
-        ctk.CTkButton(footer, text=self.txt.get("btn_close", "Close"), command=self.close_panel,
-                      fg_color="transparent", border_width=1, text_color=("gray10", "gray90")).pack(side="right",
-                                                                                                    fill="x",
-                                                                                                    expand=True)
+        ctk.CTkButton(footer, text=self.txt.get("btn_close", "Close"), command=self.close_panel, **self.btn_style).pack(side="right", expand=True)
 
     def close_panel(self):
         if self.close_callback:
@@ -376,14 +407,22 @@ class ManageEventsPanel(ctk.CTkFrame):
 
             ctk.CTkLabel(info_frame, text=ev["title"], font=("Arial", 14, "bold"), anchor="w").pack(fill="x")
 
-            times_txt = f"{ev.get('start_time', '')} - {ev.get('end_time', '')}"
+            e_t = ev.get('end_time', '')
+            display_end = self.txt.get("label_end_of_day", "End of the day") if e_t in ["23:59", "00:00"] else e_t
+            times_txt = f"{ev.get('start_time', '')} - {display_end}"
+
             if ev.get("is_recurring"):
                 days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                 d_idx = ev.get("day_of_week", 0)
                 d_name = days[d_idx] if 0 <= d_idx < 7 else ""
                 times_txt += f" | {d_name} (Weekly)"
             else:
-                times_txt += f" | {ev.get('date', '')}"
+                s_d = ev.get('date', '')
+                e_d = ev.get('end_date', '')
+                if s_d == e_d or not e_d:
+                    times_txt += f" | {s_d}"
+                else:
+                    times_txt += f" | {s_d} to {e_d}"
 
             ctk.CTkLabel(info_frame, text=times_txt, font=("Arial", 11), text_color="gray", anchor="w").pack(fill="x")
 

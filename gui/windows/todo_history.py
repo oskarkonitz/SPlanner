@@ -15,8 +15,11 @@ class TodoHistoryPanel(ctk.CTkFrame):
         self.refresh_main_callback = refresh_main_callback
         self.open_note_callback = open_note_callback
 
-        # Słownik do mapowania list zadań
         self.list_names = {}
+
+        self.groups = {}
+        self.date_frames = {}
+        self.expanded_date = None
 
         # --- NAGŁÓWEK ---
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -29,38 +32,23 @@ class TodoHistoryPanel(ctk.CTkFrame):
         self.actions_frame = ctk.CTkFrame(self, fg_color=("gray90", "gray20"), corner_radius=10)
         self.actions_frame.pack(fill="x", padx=10, pady=(0, 15))
 
-        # Kolory dla stylu "Quick Access" (outline)
         COL_ORANGE = "#e67e22"
         COL_RED = "#e74c3c"
         HOVER_BG = ("gray85", "gray30")
 
-        # Przycisk "Przywróć zaległe"
         self.btn_restore_all = ctk.CTkButton(
-            self.actions_frame,
-            text=self.txt.get("btn_restore_overdue", "Restore Overdue"),
-            command=self.restore_all_overdue,
-            height=35,
-            fg_color="transparent",
-            border_width=2,
-            border_color=COL_ORANGE,
-            text_color=COL_ORANGE,
-            hover_color=HOVER_BG,
-            font=("Arial", 13, "bold")
+            self.actions_frame, text=self.txt.get("btn_restore_overdue", "Restore Overdue"),
+            command=self.restore_all_overdue, height=35, fg_color="transparent",
+            border_width=2, border_color=COL_ORANGE, text_color=COL_ORANGE,
+            hover_color=HOVER_BG, font=("Arial", 13, "bold")
         )
         self.btn_restore_all.pack(side="left", fill="x", padx=10, pady=(5, 5))
 
-        # Przycisk "Wyczyść historię"
         self.btn_clear_all = ctk.CTkButton(
-            self.actions_frame,
-            text=self.txt.get("btn_clear_history", "Clear History"),
-            command=self.clear_history,
-            height=35,
-            fg_color="transparent",
-            border_width=2,
-            border_color=COL_RED,
-            text_color=COL_RED,
-            hover_color=HOVER_BG,
-            font=("Arial", 13, "bold")
+            self.actions_frame, text=self.txt.get("btn_clear_history", "Clear History"),
+            command=self.clear_history, height=35, fg_color="transparent",
+            border_width=2, border_color=COL_RED, text_color=COL_RED,
+            hover_color=HOVER_BG, font=("Arial", 13, "bold")
         )
         self.btn_clear_all.pack(side="left", fill="x", padx=10, pady=(5, 5))
 
@@ -84,12 +72,10 @@ class TodoHistoryPanel(ctk.CTkFrame):
 
         if not self.storage: return
 
-        # Ładujemy nazwy list
         lists_db = self.storage.get_task_lists()
         self.list_names = {l["id"]: l["name"] for l in lists_db}
         self.list_names["general"] = self.txt.get("list_general", "General")
 
-        # Pobieramy historię
         tasks = [dict(t) for t in self.storage.get_task_history()]
 
         if not tasks:
@@ -97,71 +83,129 @@ class TodoHistoryPanel(ctk.CTkFrame):
                          text_color="gray", font=("Arial", 14)).pack(pady=50)
             return
 
-        # Grupowanie
-        today = date.today()
-        groups = {
-            "yesterday": [],
-            "last_7": [],
-            "older": []
-        }
-
+        # 1. Grupowanie po dacie
+        self.groups = {}
         for t in tasks:
-            t_date_str = t.get("date", "")
-            if not t_date_str:
-                groups["older"].append(t)
-                continue
+            d_str = t.get("date", "")
+            if not d_str: d_str = "No Date"
 
-            try:
-                t_date = datetime.strptime(t_date_str, "%Y-%m-%d").date()
-                delta = (today - t_date).days
+            if d_str not in self.groups:
+                self.groups[d_str] = []
+            self.groups[d_str].append(t)
 
-                if delta == 1:
-                    groups["yesterday"].append(t)
-                elif 1 < delta <= 7:
-                    groups["last_7"].append(t)
-                else:
-                    groups["older"].append(t)
-            except:
-                groups["older"].append(t)
+        sorted_dates = sorted([d for d in self.groups.keys() if d != "No Date"], reverse=True)
+        if "No Date" in self.groups:
+            sorted_dates.append("No Date")
 
-        self._render_group(groups["yesterday"], self.txt.get("lbl_yesterday", "Yesterday"))
-        self._render_group(groups["last_7"], self.txt.get("lbl_last_7", "Last 7 Days"))
-        self._render_group(groups["older"], self.txt.get("lbl_older", "Older"))
+        self.date_frames = {}
+        self.expanded_date = None
 
-    def _render_group(self, task_list, title):
-        if not task_list: return
+        # 2. Budowanie struktury Akordeonu
+        for date_key in sorted_dates:
+            label_text = self._format_date_label(date_key)
+            task_count = len(self.groups[date_key])
 
-        ctk.CTkLabel(self.scroll_frame, text=title, font=("Arial", 12, "bold"),
-                     text_color=("gray50", "gray70"), anchor="w").pack(fill="x", padx=10, pady=(15, 5))
+            # Główny kontener na dany dzień (Przycisk + Treść)
+            # To zapewnia, że po spakowaniu/rozpakowaniu treści lista nie zgubi kolejności
+            group_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+            group_frame.pack(fill="x", padx=5, pady=2)
 
-        for t in task_list:
-            self._render_row(t)
+            # Przycisk nagłówka
+            btn = ctk.CTkButton(
+                group_frame,
+                text=f"▶ {label_text} ({task_count})",
+                anchor="w", fg_color=("gray85", "gray30"), text_color=("black", "white"),
+                hover_color=("gray75", "gray40"), font=("Arial", 14, "bold"),
+                command=lambda d=date_key: self.toggle_group(d)
+            )
+            btn.pack(fill="x")
 
-    def _render_row(self, task):
-        # KARTA ZADANIA
-        row = ctk.CTkFrame(self.scroll_frame, fg_color=("gray95", "gray25"), corner_radius=8)
+            # Kontener na zadania (Domyślnie NIE SPAKOWANY)
+            content_f = ctk.CTkFrame(group_frame, fg_color="transparent")
+
+            self.date_frames[date_key] = {
+                "btn": btn,
+                "content": content_f,
+                "label": label_text,
+                "count": task_count
+            }
+
+        # 3. Automatyczne rozwinięcie pierwszego elementu
+        if sorted_dates:
+            self.toggle_group(sorted_dates[0])
+
+    def _format_date_label(self, date_str):
+        if date_str == "No Date": return self.txt.get("lbl_no_date", "No Date")
+        try:
+            d = datetime.strptime(date_str, "%Y-%m-%d").date()
+            today = date.today()
+            if d == today: return self.txt.get("lbl_today", "Today")
+            if d == today - timedelta(days=1): return self.txt.get("lbl_yesterday", "Yesterday")
+            return date_str
+        except:
+            return date_str
+
+    def toggle_group(self, date_key):
+        if self.expanded_date == date_key:
+            self._close_group(date_key)
+            self.expanded_date = None
+            return
+
+        if self.expanded_date:
+            self._close_group(self.expanded_date)
+
+        self.expanded_date = date_key
+        self._open_group(date_key)
+
+    def _close_group(self, date_key):
+        frame_data = self.date_frames[date_key]
+        btn = frame_data["btn"]
+        content_f = frame_data["content"]
+        label = frame_data["label"]
+        count = frame_data["count"]
+
+        btn.configure(text=f"▶ {label} ({count})")
+
+        # KEY FIX: Usuwamy frame całkowicie z układu, elementy "lecą do góry"
+        content_f.pack_forget()
+
+        for widget in content_f.winfo_children():
+            widget.destroy()
+
+    def _open_group(self, date_key):
+        frame_data = self.date_frames[date_key]
+        btn = frame_data["btn"]
+        content_f = frame_data["content"]
+        label = frame_data["label"]
+        count = frame_data["count"]
+
+        btn.configure(text=f"▼ {label} ({count})")
+
+        # Przywracamy frame do układu POD przyciskiem
+        content_f.pack(fill="x", pady=(5, 10))
+
+        for t in self.groups[date_key]:
+            self._render_row(t, parent_frame=content_f)
+
+    def _render_row(self, task, parent_frame):
+        row = ctk.CTkFrame(parent_frame, fg_color=("gray95", "gray25"), corner_radius=8)
         row.pack(fill="x", padx=5, pady=4)
 
-        # --- CZĘŚĆ GÓRNA (IKONA + TEKST) ---
         top_section = ctk.CTkFrame(row, fg_color="transparent")
         top_section.pack(fill="x", padx=8, pady=(8, 0))
 
-        # 1. Ikona (Status) - zakotwiczona do góry
         icon = "✓" if task["status"] == "done" else "✗"
         icon_color = "#2ecc71" if task["status"] == "done" else "#e74c3c"
 
         ctk.CTkLabel(top_section, text=icon, text_color=icon_color,
                      font=("Arial", 16, "bold"), width=25).pack(side="left", anchor="n", pady=(2, 0))
 
-        # 2. Tekst Zadania (z zawijaniem)
         ctk.CTkLabel(top_section, text=task["content"], font=("Arial", 13),
                      anchor="w", justify="left", wraplength=240).pack(side="left", fill="x", expand=True, padx=5)
 
-        # --- CZĘŚĆ DOLNA (DATA + PRZYCISKI) ---
         bottom_section = ctk.CTkFrame(row, fg_color="transparent", height=30)
         bottom_section.pack(fill="x", padx=8, pady=(5, 8))
 
-        # Data i Nazwa Listy (po lewej, mała, szara)
         date_str = task.get("date", "")
         if not date_str:
             date_str = self.txt.get("lbl_no_date", "No Date")
@@ -179,32 +223,22 @@ class TodoHistoryPanel(ctk.CTkFrame):
         ctk.CTkLabel(bottom_section, text=date_str + list_str, font=("Arial", 11),
                      text_color="gray", anchor="w").pack(side="left", padx=5)
 
-        # PRZYCISKI AKCJI (po prawej)
-
-        # 3. Delete (Kosz)
         ctk.CTkButton(bottom_section, text="🗑", width=30, height=28, fg_color="transparent",
-                      text_color="#e74c3c", hover_color=("gray85", "gray35"),
-                      font=("Arial", 14),
+                      text_color="#e74c3c", hover_color=("gray85", "gray35"), font=("Arial", 14),
                       command=lambda id=task["id"]: self.delete_single(id)).pack(side="right", padx=2)
 
-        # 2. Copy (Plus)
         ctk.CTkButton(bottom_section, text="+", width=30, height=28, fg_color="transparent",
-                      text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"),
-                      font=("Arial", 16, "bold"),
+                      text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"), font=("Arial", 16, "bold"),
                       command=lambda t=task: self.copy_task(t)).pack(side="right", padx=2)
 
-        # 1. Restore (Strzałka)
         ctk.CTkButton(bottom_section, text="↺", width=30, height=28, fg_color="transparent",
-                      text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"),
-                      font=("Arial", 16, "bold"),
+                      text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"), font=("Arial", 16, "bold"),
                       command=lambda t=task: self.restore_task(t)).pack(side="right", padx=2)
 
-        # 0. Open Note (Ołówek) - tylko jeśli zadanie ma notatkę
         has_note = (task.get("note") or "").strip()
         if has_note and self.open_note_callback:
             ctk.CTkButton(bottom_section, text="✎", width=30, height=28, fg_color="transparent",
-                          text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"),
-                          font=("Arial", 16, "bold"),
+                          text_color=("gray10", "gray90"), hover_color=("gray85", "gray35"), font=("Arial", 16, "bold"),
                           command=lambda t=task: self.open_note_callback(t)).pack(side="right", padx=2)
 
     def restore_task(self, task):

@@ -108,21 +108,31 @@ class PlanWindow:
                                            command=self.toggle_exam_barrier)
 
     def save_data_from_drawer(self, is_new_note=False):
-        if is_new_note:
-            stats = self.storage.get_global_stats()
-            curr = stats.get("notes_added", 0)
-            self.storage.update_global_stat("notes_added", curr + 1)
-
-        # Dane zostały już zaktualizowane w pamięci (referencja self.current_item_data w drawer)
-        # Teraz musimy je zrzucić do SQL
         if self.storage and self.drawer.current_item_data:
+            # --- POPRAWKA: Bezpieczne zwiększanie licznika statystyk ---
+            if is_new_note:
+                stats = self.storage.get_global_stats()
+                raw_val = stats.get("notes_added", 0)
+
+                try:
+                    curr = int(raw_val)
+                except (ValueError, TypeError):
+                    curr = 0
+
+                self.storage.update_global_stat("notes_added", curr + 1)
+
+            # Pobieramy dane z panelu (NoteDrawer)
             item = self.drawer.current_item_data
-            # Rozróżniamy temat od egzaminu
+
+            # --- LOGIKA ROZRÓŻNIANIA TABEL ---
             if "exam_id" in item:
+                # Jeśli obiekt posiada exam_id, to jest to temat (Topic)
                 self.storage.update_topic(item)
             else:
+                # W przeciwnym razie aktualizujemy egzamin (Exam)
                 self.storage.update_exam(item)
 
+        # Odświeżamy tabelę z zachowaniem zaznaczenia
         self.refresh_table(preserve_selection=True)
         if self.dashboard_callback: self.dashboard_callback()
 
