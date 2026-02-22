@@ -291,7 +291,7 @@ class GradesPanel(ctk.CTkFrame):
 
         if final_percent is not None:
             grade = self._percent_to_grade(final_percent)
-            self.lbl_subj_avg.configure(text=f"{avg_label}: {final_percent:.1f}% -> {grade}")
+            self.lbl_subj_avg.configure(text=f"{avg_label}: {final_percent:.1f}% ➡ {grade}")
         else:
             self.lbl_subj_avg.configure(text=f"{avg_label}: --")
 

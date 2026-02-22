@@ -205,17 +205,27 @@ class AchievementManager:
         return 2.0
 
     def _check_grade_specific(self, target_grade):
-        grades = self.storage.get_grades()
-        for g in grades:
-            val = g["value"]
-            converted = self._convert_to_grade_scale(val)
-            if converted == target_grade:
+        subjects = [dict(s) for s in self.storage.get_subjects()]
+
+        for sub in subjects:
+            grades = self.storage.get_grades(sub["id"])
+            if not grades: continue
+
+            # Obliczanie ostatecznej oceny z tego przedmiotu
+            w_sum = sum(g["value"] * g["weight"] for g in grades)
+            w_total = sum(g["weight"] for g in grades)
+            if w_total == 0: continue
+
+            avg = w_sum / w_total
+            grade_val = self._convert_to_grade_scale(avg)
+
+            # Jeśli ostateczna ocena z jakiegokolwiek przedmiotu pasuje, odblokowujemy
+            if grade_val == target_grade:
                 return True
+
         return False
 
     def _check_gpa(self, threshold):
-        # FIX: Konwertujemy obiekty Row na dict, aby użyć .get() lub bezpiecznie iterować
-        # subjects zwracane przez storage to lista sqlite3.Row
         subjects = [dict(s) for s in self.storage.get_subjects()]
         if not subjects: return False
 
@@ -224,16 +234,19 @@ class AchievementManager:
 
         for sub in subjects:
             grades = self.storage.get_grades(sub["id"])
-            if not grades: continue
+
+            # BLOKADA: Sprawdzamy, czy ten przedmiot ma chociaż jedną ocenę
+            if not grades:
+                return False
 
             w_sum = sum(g["value"] * g["weight"] for g in grades)
             w_total = sum(g["weight"] for g in grades)
-            if w_total == 0: continue
+            if w_total == 0:
+                return False
 
             avg = w_sum / w_total
             grade_val = self._convert_to_grade_scale(avg)
 
-            # Teraz możemy bezpiecznie użyć .get() bo sub jest słownikiem
             ects = sub.get("weight", 1.0)
             weighted_sum += grade_val * ects
             total_ects += ects
