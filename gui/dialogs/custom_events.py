@@ -121,7 +121,7 @@ class ManageListsPanel(ctk.CTkFrame):
 
 
 class AddCustomEventPanel(ctk.CTkFrame):
-    def __init__(self, parent, txt, btn_style, storage, refresh_callback=None, close_callback=None, event_data=None):
+    def __init__(self, parent, txt, btn_style, storage, refresh_callback=None, close_callback=None, event_data=None, initial_date=None, initial_time=None):
         super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
@@ -130,6 +130,8 @@ class AddCustomEventPanel(ctk.CTkFrame):
         self.close_callback = close_callback
 
         self.event_data = event_data
+        self.initial_date = initial_date
+        self.initial_time = initial_time
 
         self.event_lists = self.storage.get_event_lists()
         self.list_names = ["None (Standalone)"] + [l["name"] for l in self.event_lists]
@@ -170,13 +172,30 @@ class AddCustomEventPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(time_container, text="Start Time:", font=("Arial", 14, "bold")).grid(row=0, column=0, sticky="w",
                                                                                           padx=5)
-        self.start_time_var = tk.StringVar(value="14:00")
+
+        default_start = "14:00"
+        default_end = "16:00"
+
+        # Uzupełnienie czasu z kliknięcia
+        if self.initial_time:
+            default_start = self.initial_time
+            try:
+                h, m = map(int, self.initial_time.split(":"))
+                end_h = h + 2
+                if end_h > 23:
+                    default_end = "23:59"
+                else:
+                    default_end = f"{end_h:02d}:{m:02d}"
+            except:
+                pass
+
+        self.start_time_var = tk.StringVar(value=default_start)
         ctk.CTkEntry(time_container, textvariable=self.start_time_var, width=120).grid(row=1, column=0, padx=5,
                                                                                        pady=(0, 15), sticky="w")
 
         ctk.CTkLabel(time_container, text="End Time:", font=("Arial", 14, "bold")).grid(row=2, column=0, sticky="w",
                                                                                         padx=5)
-        self.end_time_var = tk.StringVar(value="16:00")
+        self.end_time_var = tk.StringVar(value=default_end)
         self.end_time_entry = ctk.CTkEntry(time_container, textvariable=self.end_time_var, width=120)
         self.end_time_entry.grid(row=3, column=0, padx=5, sticky="w")
 
@@ -238,6 +257,12 @@ class AddCustomEventPanel(ctk.CTkFrame):
                         self.cal_single_end.set_date(datetime.strptime(end_d_str, "%Y-%m-%d").date())
                     except:
                         pass
+        elif self.initial_date:
+            try:
+                self.cal_single.set_date(self.initial_date)
+                self.cal_single_end.set_date(self.initial_date)
+            except Exception:
+                pass
 
         # --- STOPKA Z PRZYCISKAMI ---
         footer = ctk.CTkFrame(self, fg_color="transparent")

@@ -108,6 +108,12 @@ class TodoWindow:
                                         **self.btn_style)
         self.btn_action.pack(side="left")
 
+        # NOWOŚĆ: Masowe usuwanie kupionych (ukrywane jeśli to nie jest lista zakupowa)
+        self.btn_clear_bought = ctk.CTkButton(self.top_frame, text="🧹 Sweep", width=60, height=35,
+                                              fg_color="transparent", border_width=1, border_color="#e74c3c",
+                                              text_color="#e74c3c",
+                                              command=self.clear_bought)
+
         # --- TABELA ---
         self.table_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
         self.table_frame.pack(fill="both", expand=True, padx=5, pady=8)
@@ -201,14 +207,17 @@ class TodoWindow:
 
             for lst in custom_lists:
                 c = custom_counts.get(lst["id"], 0)
-                self.create_list_btn(lst["id"], lst["name"], c)
+                display_name = lst["name"]
+                # if lst.get("list_type") == "shopping":
+                #     display_name += " (Dateless)"
+                self.create_list_btn(lst["id"], display_name, c)
+
         self.parent.after(100, self._force_scroll_redraw)
 
     def _force_scroll_redraw(self):
         """Wymusza odświeżenie warstwy Canvas w lewym panelu list."""
         try:
             self.parent.update_idletasks()
-            # Pociągamy za niewidzialny sznurek scrolla w lewym panelu
             self.scroll_lists._parent_canvas.yview_scroll(1, "units")
             self.scroll_lists._parent_canvas.yview_scroll(-1, "units")
         except Exception:
@@ -234,31 +243,79 @@ class TodoWindow:
 
     def select_list(self, list_id, list_name):
         self.current_list_id = list_id
-        self.lbl_list_title.configure(text=list_name)
 
-        if list_id == "general":
+        is_shopping = False
+        if list_id not in ["scheduled", "general"]:
+            lists = self.storage.get_task_lists()
+            current_list = next((l for l in lists if l["id"] == list_id), None)
+            if current_list and current_list.get("list_type") == "shopping":
+                is_shopping = True
+
+        # Obcinamy przedrostek (Dateless) do tytułu okna, wygląda ładniej
+        clean_title = list_name.split(" (Dateless)")[0]
+        self.lbl_list_title.configure(text=clean_title)
+
+        # NOWOŚĆ: Zarządzanie UI na górnym pasku
+        if is_shopping:
             self.date_frame.pack_forget()
             self.entry_date.delete(0, "end")
+            self.btn_clear_bought.pack(side="right", padx=(5, 0))  # Pokazuje przycisk Sweep
+        elif list_id == "general":
+            self.date_frame.pack_forget()
+            self.entry_date.delete(0, "end")
+            self.btn_clear_bought.pack_forget()
         elif list_id == "scheduled":
             self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
             self.entry_date.delete(0, "end")
             self.entry_date.insert(0, str(date.today()))
+            self.btn_clear_bought.pack_forget()
         else:
             self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
             self.entry_date.delete(0, "end")
+            self.btn_clear_bought.pack_forget()
 
         self.refresh_lists()
         self.refresh_table()
 
+    # NOWOŚĆ: Przerobione okno dialogowe wyboru typu listy
     def add_custom_list(self):
-        dialog = ctk.CTkInputDialog(text=self.txt.get("form_list_name", "List Name:"),
-                                    title=self.txt.get("win_add_list", "Add New List"))
-        name = dialog.get_input()
-        if name:
-            new_list = {"id": f"list_{uuid.uuid4().hex[:8]}", "name": name, "icon": ""}
-            if self.storage:
-                self.storage.add_task_list(new_list)
-            self.refresh_lists()
+        dialog = ctk.CTkToplevel(self.parent)
+        dialog.title(self.txt.get("win_add_list", "Add New List"))
+        dialog.geometry("320x280")
+        dialog.attributes("-topmost", True)
+
+        ctk.CTkLabel(dialog, text=self.txt.get("form_list_name", "List Name:"), font=("Arial", 14, "bold")).pack(
+            pady=(20, 5))
+        entry_name = ctk.CTkEntry(dialog, width=220)
+        entry_name.pack(pady=5)
+        entry_name.focus()
+
+        ctk.CTkLabel(dialog, text=self.txt.get("form_list_type", "List Type:"), font=("Arial", 14, "bold")).pack(
+            pady=(15, 5))
+        type_var = tk.StringVar(value="")
+
+        rb_std = ctk.CTkRadioButton(dialog, text="Standard (To-Do)", variable=type_var, value="")
+        rb_std.pack(pady=5)
+
+        rb_shop = ctk.CTkRadioButton(dialog, text="Shopping / Dateless", variable=type_var, value="shopping")
+        rb_shop.pack(pady=5)
+
+        def submit():
+            name = entry_name.get().strip()
+            if name:
+                new_list = {
+                    "id": f"list_{uuid.uuid4().hex[:8]}",
+                    "name": name,
+                    "icon": "",
+                    "list_type": type_var.get()
+                }
+                if self.storage:
+                    self.storage.add_task_list(new_list)
+                self.refresh_lists()
+            dialog.destroy()
+
+        ctk.CTkButton(dialog, text=self.txt.get("btn_save", "Save"), command=submit, **self.btn_style).pack(
+            pady=(20, 10))
 
     def show_list_menu(self, event, list_id):
         menu = tk.Menu(self.parent, tearoff=0)
@@ -275,6 +332,19 @@ class TodoWindow:
             else:
                 self.refresh_lists()
                 self.refresh_table()
+            if self.dashboard_callback: self.dashboard_callback()
+
+    # NOWOŚĆ: Masowe czyszczenie wykonanych z listy zakupowej
+    def clear_bought(self):
+        tasks = [dict(t) for t in self.storage.get_daily_tasks()]
+        to_delete = [t for t in tasks if t.get("list_id") == self.current_list_id and t["status"] == "done"]
+        if not to_delete: return
+
+        if messagebox.askyesno(self.txt.get("btn_delete", "Delete"), f"Delete {len(to_delete)} finished items?"):
+            for t in to_delete:
+                self.storage.delete_daily_task(t["id"])
+            self.refresh_table()
+            self.refresh_lists()
             if self.dashboard_callback: self.dashboard_callback()
 
     # --- LOGIKA OGÓLNA ---
@@ -316,15 +386,25 @@ class TodoWindow:
 
         if not content: return
 
+        # Logika sprawdzania, czy to lista zakupowa
+        is_shopping = False
+        if self.current_list_id not in ["scheduled", "general"]:
+            lists = self.storage.get_task_lists()
+            current_list = next((l for l in lists if l["id"] == self.current_list_id), None)
+            if current_list and current_list.get("list_type") == "shopping":
+                is_shopping = True
+
         # Logika przydzielania Listy i Daty
         if self.current_list_id == "scheduled":
             if not date_val: date_val = str(date.today())
             list_id = None
         elif self.current_list_id == "general":
             date_val = ""
-            list_id = "general"
+            list_id = None
         else:
             list_id = self.current_list_id
+            if is_shopping:
+                date_val = ""
 
         if self.selected_task_id:
             # EDYCJA
@@ -333,7 +413,6 @@ class TodoWindow:
                 target_task["content"] = content
                 target_task["date"] = date_val
                 target_task["color"] = self.current_color
-                # Celowo nie ruszamy list_id aby przy edycji nie wywalało zadania z listy do innej
                 if self.storage:
                     self.storage.update_daily_task(target_task)
 
@@ -374,7 +453,7 @@ class TodoWindow:
             self.entry_task.delete(0, "end")
             self.entry_task.insert(0, task["content"])
             self.entry_date.delete(0, "end")
-            self.entry_date.insert(0, task.get("date", str(date.today())))
+            self.entry_date.insert(0, task.get("date") or str(date.today()))
 
             self.current_color = task.get("color")
             if self.current_color:
@@ -438,12 +517,10 @@ class TodoWindow:
 
     def save_data_from_drawer(self, is_new_note=False):
         if self.storage and self.note_drawer.current_item_data:
-            # --- POPRAWKA: Bezpieczne zwiększanie licznika statystyk ---
             if is_new_note:
                 stats = self.storage.get_global_stats()
                 raw_val = stats.get("notes_added", 0)
 
-                # Obsługa błędu typu (String vs Int) przy pobieraniu z Supabase
                 try:
                     curr = int(raw_val)
                 except (ValueError, TypeError):
@@ -451,11 +528,9 @@ class TodoWindow:
 
                 self.storage.update_global_stat("notes_added", curr + 1)
 
-            # Zapisanie samej treści zadania/notatki w bazie danych
             item = self.note_drawer.current_item_data
             self.storage.update_daily_task(item)
 
-        # Odświeżenie widoku i dashboardu
         self.refresh_table()
         if self.dashboard_callback: self.dashboard_callback()
 
@@ -465,6 +540,13 @@ class TodoWindow:
 
         tasks = [dict(t) for t in self.storage.get_daily_tasks()]
         filtered_tasks = []
+
+        is_shopping = False
+        if self.current_list_id not in ["scheduled", "general"]:
+            lists = self.storage.get_task_lists()
+            current_list = next((l for l in lists if l["id"] == self.current_list_id), None)
+            if current_list and current_list.get("list_type") == "shopping":
+                is_shopping = True
 
         # --- FILTROWANIE KONTEKSTOWE ---
         for t in tasks:
@@ -492,59 +574,75 @@ class TodoWindow:
             self.lbl_empty.lift()
             return
 
-        today_str = str(date.today())
+        # NOWOŚĆ: TRYB LISTY ZAKUPÓW (Bez Dat!)
+        if is_shopping:
+            to_buy = [t for t in filtered_tasks if t["status"] == "todo"]
+            bought = [t for t in filtered_tasks if t["status"] == "done"]
 
-        overdue_tasks = []
-        upcoming_tasks = []
+            if to_buy:
+                self.tree.insert("", "end", values=("●", "To Buy / To Do"), tags=("header",))
+                for t in to_buy:
+                    self._insert_task_row(t)
+                self.tree.insert("", "end", values=("", ""), tags=("default",))
 
-        for t in filtered_tasks:
-            t_date = t.get("date", "")
-            if not t_date:
-                upcoming_tasks.append(t)
-                continue
-
-            if t_date < today_str and t["status"] != "done":
-                overdue_tasks.append(t)
-            elif t_date >= today_str or t["status"] == "done":
-                if t["status"] == "done" and t_date < today_str:
-                    continue
-                upcoming_tasks.append(t)
-
-        # --- RYSOWANIE TABELI ---
-
-        if overdue_tasks:
-            overdue_label = self.txt.get("tag_overdue", "OVERDUE")
-            self.tree.insert("", "end", values=("⚠", f"{overdue_label}"), tags=("overdue_header",))
-            for t in overdue_tasks:
-                self._insert_task_row(t)
-            self.tree.insert("", "end", values=("", ""), tags=("default",))
-
-        if upcoming_tasks:
-            all_dates = sorted(list(set(t.get("date", "") for t in upcoming_tasks)))
-            for day in all_dates:
-                day_tasks = [t for t in upcoming_tasks if t.get("date", "") == day]
-                day_tasks.sort(key=lambda x: x["status"] == "done")
-
-                if not day_tasks: continue
-
-                if self.current_list_id != "general":
-                    display_date = day if day else self.txt.get("lbl_no_date", "No Date")
-                    if day == today_str:
-                        display_date += f" ({self.txt.get('tag_today', 'Today')})"
-                        self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("today_color",))
-                    else:
-                        self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
-
-                for t in day_tasks:
+            if bought:
+                self.tree.insert("", "end", values=("●", "Bought / Done"), tags=("header",))
+                for t in bought:
                     self._insert_task_row(t)
 
-                if self.current_list_id != "general":
-                    self.tree.insert("", "end", values=("", ""), tags=("default",))
+        else:
+            # KLASYCZNY TRYB Z DATAMI
+            today_str = str(date.today())
+
+            overdue_tasks = []
+            upcoming_tasks = []
+
+            for t in filtered_tasks:
+                t_date = t.get("date") or ""
+                if not t_date:
+                    upcoming_tasks.append(t)
+                    continue
+
+                if t_date < today_str and t["status"] != "done":
+                    overdue_tasks.append(t)
+                elif t_date >= today_str or t["status"] == "done":
+                    if t["status"] == "done" and t_date < today_str:
+                        continue
+                    upcoming_tasks.append(t)
+
+            if overdue_tasks:
+                overdue_label = self.txt.get("tag_overdue", "OVERDUE")
+                self.tree.insert("", "end", values=("⚠", f"{overdue_label}"), tags=("overdue_header",))
+                for t in overdue_tasks:
+                    self._insert_task_row(t)
+                self.tree.insert("", "end", values=("", ""), tags=("default",))
+
+            if upcoming_tasks:
+                all_dates = sorted(list(set((t.get("date") or "") for t in upcoming_tasks)))
+                for day in all_dates:
+                    day_tasks = [t for t in upcoming_tasks if (t.get("date") or "") == day]
+                    day_tasks.sort(key=lambda x: x["status"] == "done")
+
+                    if not day_tasks: continue
+
+                    if self.current_list_id != "general":
+                        display_date = day if day else self.txt.get("lbl_no_date", "No Date")
+                        if day == today_str:
+                            display_date += f" ({self.txt.get('tag_today', 'Today')})"
+                            self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("today_color",))
+                        else:
+                            self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
+
+                    for t in day_tasks:
+                        self._insert_task_row(t)
+
+                    if self.current_list_id != "general":
+                        self.tree.insert("", "end", values=("", ""), tags=("default",))
 
         if sel_id and self.tree.exists(sel_id):
             self.tree.selection_set(sel_id)
 
-        if not overdue_tasks and not upcoming_tasks:
+        if not filtered_tasks:
             self.lbl_empty.place(relx=0.5, rely=0.5, anchor="center")
             self.lbl_empty.lift()
         else:

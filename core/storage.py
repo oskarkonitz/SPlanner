@@ -98,153 +98,307 @@ DEFAULT_SOUNDS = [
 # --- SKRYPT SQL DLA SUPABASE ---
 SQL_SCHEMA = """
              -- 1. KONFIGURACJA I STATYSTYKI
-CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY, 
-    value JSONB
-);
+             CREATE TABLE IF NOT EXISTS settings \
+             ( \
+                 key \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 value \
+                 JSONB
+             );
 
-CREATE TABLE IF NOT EXISTS global_stats (
-    key TEXT PRIMARY KEY, 
-    value JSONB
-);
+             CREATE TABLE IF NOT EXISTS global_stats \
+             ( \
+                 key \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 value \
+                 JSONB
+             );
 
-CREATE TABLE IF NOT EXISTS stats (
-    key TEXT PRIMARY KEY, 
-    value JSONB
-);
+             CREATE TABLE IF NOT EXISTS stats \
+             ( \
+                 key \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 value \
+                 JSONB
+             );
 
-CREATE TABLE IF NOT EXISTS achievements (
-    achievement_id TEXT PRIMARY KEY, 
-    date_earned DATE
-);
+             CREATE TABLE IF NOT EXISTS achievements \
+             ( \
+                 achievement_id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 date_earned \
+                 DATE
+             );
 
-CREATE TABLE IF NOT EXISTS blocked_dates (
-    date DATE PRIMARY KEY
-);
+             CREATE TABLE IF NOT EXISTS blocked_dates \
+             ( \
+                 date \
+                 DATE \
+                 PRIMARY \
+                 KEY
+             );
 
-CREATE TABLE IF NOT EXISTS custom_sounds (
-    id TEXT PRIMARY KEY, 
-    name TEXT, 
-    steps_json JSONB
-);
+             CREATE TABLE IF NOT EXISTS custom_sounds \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 name \
+                 TEXT, \
+                 steps_json \
+                 JSONB
+             );
 
 -- 2. STRUKTURA AKADEMICKA
-CREATE TABLE IF NOT EXISTS semesters (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    start_date DATE,
-    end_date DATE,
-    is_current BOOLEAN DEFAULT FALSE
-);
+             CREATE TABLE IF NOT EXISTS semesters \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 name \
+                 TEXT, \
+                 start_date \
+                 DATE, \
+                 end_date \
+                 DATE, \
+                 is_current \
+                 BOOLEAN \
+                 DEFAULT \
+                 FALSE
+             );
 
-CREATE TABLE IF NOT EXISTS subjects (
-    id TEXT PRIMARY KEY,
-    semester_id TEXT REFERENCES semesters(id) ON DELETE CASCADE,
-    name TEXT,
-    short_name TEXT,
-    color TEXT,
-    weight REAL DEFAULT 1.0,
-    start_datetime TEXT,
-    end_datetime TEXT
-);
+             CREATE TABLE IF NOT EXISTS subjects \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 semester_id \
+                 TEXT \
+                 REFERENCES \
+                 semesters \
+             ( \
+                 id \
+             ) ON DELETE CASCADE,
+                 name TEXT,
+                 short_name TEXT,
+                 color TEXT,
+                 weight REAL DEFAULT 1.0,
+                 start_datetime TEXT,
+                 end_datetime TEXT
+                 );
 
 -- 3. GRAFIK (CUSTOM EVENTS) - TWOJA NOWOŚĆ
-CREATE TABLE IF NOT EXISTS event_lists (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    color TEXT
-);
+             CREATE TABLE IF NOT EXISTS event_lists \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 name \
+                 TEXT, \
+                 color \
+                 TEXT
+             );
 
-CREATE TABLE IF NOT EXISTS custom_events (
-    id TEXT PRIMARY KEY,
-    list_id TEXT REFERENCES event_lists(id) ON DELETE SET NULL,
-    title TEXT,
-    is_recurring BOOLEAN DEFAULT FALSE,
-    date DATE,
-    day_of_week INTEGER,
-    start_time TEXT,
-    end_time TEXT,
-    start_date DATE,
-    end_date DATE,
-    color TEXT
-);
+             CREATE TABLE IF NOT EXISTS custom_events \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 list_id \
+                 TEXT \
+                 REFERENCES \
+                 event_lists \
+             ( \
+                 id \
+             ) ON DELETE SET NULL,
+                 title TEXT,
+                 is_recurring BOOLEAN DEFAULT FALSE,
+                 date DATE,
+                 day_of_week INTEGER,
+                 start_time TEXT,
+                 end_time TEXT,
+                 start_date DATE,
+                 end_date DATE,
+                 color TEXT
+                 );
 
 -- 4. EGZAMINY I TEMATY
-CREATE TABLE IF NOT EXISTS exams (
-    id TEXT PRIMARY KEY,
-    subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
-    subject TEXT,
-    title TEXT,
-    date DATE,
-    time TEXT,
-    note TEXT,
-    ignore_barrier BOOLEAN DEFAULT FALSE,
-    color TEXT
-);
+             CREATE TABLE IF NOT EXISTS exams \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 subject_id \
+                 TEXT \
+                 REFERENCES \
+                 subjects \
+             ( \
+                 id \
+             ) ON DELETE SET NULL,
+                 subject TEXT,
+                 title TEXT,
+                 date DATE,
+                 time TEXT,
+                 note TEXT,
+                 ignore_barrier BOOLEAN DEFAULT FALSE,
+                 color TEXT
+                 );
 
-CREATE TABLE IF NOT EXISTS topics (
-    id TEXT PRIMARY KEY,
-    exam_id TEXT REFERENCES exams(id) ON DELETE CASCADE,
-    name TEXT,
-    status TEXT,
-    scheduled_date DATE,
-    locked BOOLEAN DEFAULT FALSE,
-    note TEXT
-);
+             CREATE TABLE IF NOT EXISTS topics \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 exam_id \
+                 TEXT \
+                 REFERENCES \
+                 exams \
+             ( \
+                 id \
+             ) ON DELETE CASCADE,
+                 name TEXT,
+                 status TEXT,
+                 scheduled_date DATE,
+                 locked BOOLEAN DEFAULT FALSE,
+                 note TEXT
+                 );
 
 -- 5. OCENY I MODUŁY
-CREATE TABLE IF NOT EXISTS grade_modules (
-    id TEXT PRIMARY KEY,
-    subject_id TEXT REFERENCES subjects(id) ON DELETE CASCADE,
-    name TEXT,
-    weight REAL DEFAULT 0.0
-);
+             CREATE TABLE IF NOT EXISTS grade_modules \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 subject_id \
+                 TEXT \
+                 REFERENCES \
+                 subjects \
+             ( \
+                 id \
+             ) ON DELETE CASCADE,
+                 name TEXT,
+                 weight REAL DEFAULT 0.0
+                 );
 
-CREATE TABLE IF NOT EXISTS grades (
-    id TEXT PRIMARY KEY,
-    subject_id TEXT REFERENCES subjects(id) ON DELETE CASCADE,
-    module_id TEXT REFERENCES grade_modules(id) ON DELETE SET NULL,
-    value REAL,
-    weight REAL DEFAULT 1.0,
-    desc_text TEXT,
-    date DATE
-);
+             CREATE TABLE IF NOT EXISTS grades \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 subject_id \
+                 TEXT \
+                 REFERENCES \
+                 subjects \
+             ( \
+                 id \
+             ) ON DELETE CASCADE,
+                 module_id TEXT REFERENCES grade_modules \
+             ( \
+                 id \
+             ) \
+               ON DELETE SET NULL,
+                 value REAL,
+                 weight REAL DEFAULT 1.0,
+                 desc_text TEXT,
+                 date DATE
+                 );
 
 -- 6. PLAN LEKCJI I ZADANIA CODZIENNE
-CREATE TABLE IF NOT EXISTS task_lists (
-    id TEXT PRIMARY KEY, 
-    name TEXT, 
-    icon TEXT
-);
+             CREATE TABLE IF NOT EXISTS task_lists \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 name \
+                 TEXT, \
+                 icon \
+                 TEXT, \
+                 list_type \
+                 TEXT
+             );
 
-CREATE TABLE IF NOT EXISTS daily_tasks (
-    id TEXT PRIMARY KEY,
-    content TEXT,
-    status TEXT,
-    date DATE,
-    color TEXT,
-    created_at TEXT,
-    note TEXT,
-    list_id TEXT REFERENCES task_lists(id) ON DELETE SET NULL
-);
+             CREATE TABLE IF NOT EXISTS daily_tasks \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 content \
+                 TEXT, \
+                 status \
+                 TEXT, \
+                 date \
+                 DATE, \
+                 color \
+                 TEXT, \
+                 created_at \
+                 TEXT, \
+                 note \
+                 TEXT, \
+                 list_id \
+                 TEXT \
+                 REFERENCES \
+                 task_lists \
+             ( \
+                 id \
+             ) ON DELETE SET NULL
+                 );
 
-CREATE TABLE IF NOT EXISTS schedule_entries (
-    id TEXT PRIMARY KEY,
-    subject_id TEXT REFERENCES subjects(id) ON DELETE CASCADE,
-    day_of_week INTEGER,
-    start_time TEXT,
-    end_time TEXT,
-    room TEXT,
-    type TEXT,
-    period_start DATE,
-    period_end DATE
-);
+             CREATE TABLE IF NOT EXISTS schedule_entries \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 subject_id \
+                 TEXT \
+                 REFERENCES \
+                 subjects \
+             ( \
+                 id \
+             ) ON DELETE CASCADE,
+                 day_of_week INTEGER,
+                 start_time TEXT,
+                 end_time TEXT,
+                 room TEXT,
+                 type TEXT,
+                 period_start DATE,
+                 period_end DATE
+                 );
 
-CREATE TABLE IF NOT EXISTS schedule_cancellations (
-    id TEXT PRIMARY KEY,
-    entry_id TEXT REFERENCES schedule_entries(id) ON DELETE CASCADE,
-    date DATE
-);
+             CREATE TABLE IF NOT EXISTS schedule_cancellations \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 entry_id \
+                 TEXT \
+                 REFERENCES \
+                 schedule_entries \
+             ( \
+                 id \
+             ) ON DELETE CASCADE,
+                 date DATE
+                 );
              """
 
 
@@ -308,7 +462,7 @@ class BaseProvider(ABC):
     def update_topic(self, topic_dict): pass
 
     @abstractmethod
-    def update_topics_bulk(self, topics_list): pass  # NOWOŚĆ: Hurtowa aktualizacja
+    def update_topics_bulk(self, topics_list): pass
 
     @abstractmethod
     def delete_topic(self, topic_id): pass
@@ -502,7 +656,15 @@ class SQLiteProvider(BaseProvider):
                             (
                                 id
                             ) ON DELETE CASCADE)""")
-            conn.execute("CREATE TABLE IF NOT EXISTS task_lists (id TEXT PRIMARY KEY, name TEXT, icon TEXT)")
+
+            # NOWOŚĆ: dodane list_type do tabeli lokalnej task_lists
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS task_lists (id TEXT PRIMARY KEY, name TEXT, icon TEXT, list_type TEXT)")
+            try:
+                conn.execute("ALTER TABLE task_lists ADD COLUMN list_type TEXT")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute("""CREATE TABLE IF NOT EXISTS daily_tasks
                             (
                                 id
@@ -711,7 +873,6 @@ class SQLiteProvider(BaseProvider):
                                 color
                                 TEXT
                             )""")
-
             conn.execute("""CREATE TABLE IF NOT EXISTS custom_events
                             (
                                 id
@@ -1052,7 +1213,6 @@ class SQLiteProvider(BaseProvider):
                  1 if topic_dict.get("locked") else 0, topic_dict.get("note", ""), topic_dict["id"]))
             conn.commit()
 
-    # NOWOŚĆ: Bulk update dla SQL
     def update_topics_bulk(self, topics_list):
         with self._get_conn() as conn:
             for t in topics_list:
@@ -1071,10 +1231,12 @@ class SQLiteProvider(BaseProvider):
     def get_task_lists(self):
         with self._get_conn() as conn: return [dict(r) for r in conn.execute("SELECT * FROM task_lists").fetchall()]
 
+    # NOWOŚĆ: dodano list_type (upsert)
     def add_task_list(self, list_dict):
         with self._get_conn() as conn:
-            conn.execute("INSERT INTO task_lists (id, name, icon) VALUES (?, ?, ?)",
-                         (list_dict["id"], list_dict["name"], list_dict.get("icon", "")))
+            conn.execute("INSERT OR REPLACE INTO task_lists (id, name, icon, list_type) VALUES (?, ?, ?, ?)",
+                         (list_dict["id"], list_dict["name"], list_dict.get("icon", ""),
+                          list_dict.get("list_type", "")))
             conn.commit()
 
     def delete_task_list(self, list_id):
@@ -1478,7 +1640,6 @@ class SupabaseProvider(BaseProvider):
         payload["locked"] = bool(payload.get("locked"))
         self.client.table("topics").update(payload).eq("id", topic_dict["id"]).execute()
 
-    # NOWOŚĆ: Bulk update dla Supabase (Upsert w jednym zapytaniu HTTP)
     def update_topics_bulk(self, topics_list):
         if not topics_list: return
         payloads = []
@@ -1495,7 +1656,7 @@ class SupabaseProvider(BaseProvider):
         return self.client.table("task_lists").select("*").execute().data
 
     def add_task_list(self, list_dict):
-        self.client.table("task_lists").insert(list_dict).execute()
+        self.client.table("task_lists").upsert(list_dict).execute()
 
     def delete_task_list(self, list_id):
         self.client.table("task_lists").delete().eq("id", list_id).execute()
@@ -1510,11 +1671,24 @@ class SupabaseProvider(BaseProvider):
         return self._clean_dates(data)
 
     def add_daily_task(self, task_dict):
-        self.client.table("daily_tasks").insert(task_dict).execute()
+        payload = task_dict.copy()
+        # Zabezpieczenie przed pustymi stringami w restrykcyjnych kolumnach Supabase
+        if payload.get("date") == "":
+            payload["date"] = None
+        if payload.get("list_id") == "general" or payload.get("list_id") == "":
+            payload["list_id"] = None
+
+        self.client.table("daily_tasks").insert(payload).execute()
 
     def update_daily_task(self, task_dict):
         payload = task_dict.copy()
         payload.pop("id", None)
+        # Zabezpieczenie przed pustymi stringami
+        if payload.get("date") == "":
+            payload["date"] = None
+        if payload.get("list_id") == "general" or payload.get("list_id") == "":
+            payload["list_id"] = None
+
         self.client.table("daily_tasks").update(payload).eq("id", task_dict["id"]).execute()
 
     def delete_daily_task(self, task_id):
@@ -1670,6 +1844,7 @@ class SupabaseProvider(BaseProvider):
     def delete_custom_event(self, ev_id):
         self.client.table("custom_events").delete().eq("id", ev_id).execute()
 
+
 # --- CONFIG LOADER ---
 def load_config():
     # Ścieżka do pliku SQL w tym samym folderze co config
@@ -1805,10 +1980,13 @@ class StorageManager:
                     "INSERT INTO topics (id, exam_id, name, status, scheduled_date, locked, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (tp['id'], tp['exam_id'], tp['name'], tp['status'], tp.get('scheduled_date'),
                      1 if tp.get('locked') else 0, tp.get('note')))
+
+                # ZMIANA: Zapis list uwzględniający list_type
                 conn.execute("DELETE FROM task_lists")
-                for lst in lists: conn.execute("INSERT INTO task_lists (id, name, icon) VALUES (?, ?, ?)",
-                                               (lst['id'], lst['name'], lst.get('icon')))
-                # Statystyki (Zastępujemy tylko pobrane klucze)
+                for lst in lists: conn.execute("INSERT INTO task_lists (id, name, icon, list_type) VALUES (?, ?, ?, ?)",
+                                               (lst['id'], lst['name'], lst.get('icon'), lst.get('list_type')))
+
+                # Statystyki
                 for k, v in global_stats.items():
                     conn.execute("INSERT OR REPLACE INTO global_stats (key, value) VALUES (?, ?)", (k, json.dumps(v)))
                 for k, v in other_stats.items():
@@ -1906,7 +2084,7 @@ class StorageManager:
         elif isinstance(data, dict):
             for k, v in data.items():
                 if v is None and k in ["note", "time", "content", "desc", "room", "type", "name", "title", "subject",
-                                       "short_name"]:
+                                       "short_name", "list_type"]:
                     data[k] = ""
         return data
 
@@ -2006,10 +2184,8 @@ class StorageManager:
     def update_topic(self, topic_dict):
         self.local.update_topic(topic_dict); self._bg_cloud_sync("update_topic", topic_dict)
 
-    # NOWOŚĆ: Przekierowanie do hurtowej aktualizacji tematów
     def update_topics_bulk(self, topics_list):
-        self.local.update_topics_bulk(topics_list)
-        self._bg_cloud_sync("update_topics_bulk", topics_list)
+        self.local.update_topics_bulk(topics_list); self._bg_cloud_sync("update_topics_bulk", topics_list)
 
     def delete_topic(self, topic_id):
         self.local.delete_topic(topic_id); self._bg_cloud_sync("delete_topic", topic_id)
@@ -2097,20 +2273,16 @@ class StorageManager:
         return self._sanitize_nulls(self.local.get_custom_events())
 
     def add_event_list(self, lst_dict):
-        self.local.add_event_list(lst_dict);
-        self._bg_cloud_sync("add_event_list", lst_dict)
+        self.local.add_event_list(lst_dict); self._bg_cloud_sync("add_event_list", lst_dict)
 
     def delete_event_list(self, lst_id):
-        self.local.delete_event_list(lst_id);
-        self._bg_cloud_sync("delete_event_list", lst_id)
+        self.local.delete_event_list(lst_id); self._bg_cloud_sync("delete_event_list", lst_id)
 
     def add_custom_event(self, ev_dict):
-        self.local.add_custom_event(ev_dict)
-        self._bg_cloud_sync("add_custom_event", ev_dict)
+        self.local.add_custom_event(ev_dict); self._bg_cloud_sync("add_custom_event", ev_dict)
 
     def delete_custom_event(self, ev_id):
-        self.local.delete_custom_event(ev_id);
-        self._bg_cloud_sync("delete_custom_event", ev_id)
+        self.local.delete_custom_event(ev_id); self._bg_cloud_sync("delete_custom_event", ev_id)
 
 
 manager = StorageManager(DB_PATH)

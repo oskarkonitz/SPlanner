@@ -273,6 +273,17 @@ class SchedulePanel(ctk.CTkFrame):
                                 initial_date=date_obj,
                                 initial_time=time_str)
 
+    def open_add_custom_event_at(self, date_obj, time_str):
+        if not self.drawer: return
+        self.drawer.set_content(AddCustomEventPanel,
+                                txt=self.txt,
+                                btn_style=self.btn_style,
+                                storage=self.storage,
+                                refresh_callback=self.full_refresh,
+                                close_callback=self.drawer.close_panel,
+                                initial_date=date_obj,
+                                initial_time=time_str)
+
     def full_refresh(self):
         self.load_data()
         self.refresh_schedule()
@@ -769,8 +780,11 @@ class SchedulePanel(ctk.CTkFrame):
 
         menu = tk.Menu(self, tearoff=0)
 
-        label_add = f"{self.txt.get('ctx_add_exam_at', 'Add Exam Here')} ({clicked_date.strftime('%Y-%m-%d')} {time_str})"
-        menu.add_command(label=label_add, command=lambda: self.open_add_exam_at(clicked_date, time_str))
+        label_add_exam = f"{self.txt.get('ctx_add_exam_at', 'Add Exam Here')} ({clicked_date.strftime('%Y-%m-%d')} {time_str})"
+        menu.add_command(label=label_add_exam, command=lambda: self.open_add_exam_at(clicked_date, time_str))
+
+        label_add_event = f"{self.txt.get('ctx_add_event_at', 'Add Event Here')} ({clicked_date.strftime('%Y-%m-%d')} {time_str})"
+        menu.add_command(label=label_add_event, command=lambda: self.open_add_custom_event_at(clicked_date, time_str))
 
         menu.add_separator()
 
