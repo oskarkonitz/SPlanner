@@ -9,8 +9,8 @@ from gui.dialogs.edit import EditExamPanel
 from gui.dialogs.custom_events import ManageListsPanel, AddCustomEventPanel, ManageEventsPanel
 
 # Stałe konfiguracyjne
-START_HOUR = 7  # Początek osi czasu (7:00)
-END_HOUR = 23  # Koniec osi czasu (22:00)
+START_HOUR = 0  # Początek osi czasu (00:00)
+END_HOUR = 24  # Koniec osi czasu (23:59/24:00)
 PX_PER_HOUR = 60  # Wysokość jednej godziny w pikselach
 EXAM_DURATION_HOURS = 1.5  # Domyślny czas trwania kafelka egzaminu (dla wizualizacji)
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -99,13 +99,20 @@ class SchedulePanel(ctk.CTkFrame):
         self.scroll_frame = ctk.CTkScrollableFrame(self.border_frame, corner_radius=6, fg_color=("white", "#2b2b2b"))
         self.scroll_frame.pack(fill="both", expand=True, padx=3, pady=3)
 
-        total_height = (END_HOUR - START_HOUR) * PX_PER_HOUR + 50
+        total_height = (END_HOUR - START_HOUR) * PX_PER_HOUR + 15
         self.grid_area = ctk.CTkFrame(self.scroll_frame, height=total_height, fg_color="transparent")
         self.grid_area.pack(fill="x", expand=True)
 
         self.grid_area.bind("<Button-3>", self.on_grid_right_click)
         if self._tk_ws() == "aqua":
             self.grid_area.bind("<Button-2>", self.on_grid_right_click)
+
+        self.no_events_lbl = ctk.CTkLabel(
+            self.grid_area,
+            text=self.txt.get("msg_no_events_week", "Brak wydarzeń w tym tygodniu"),
+            font=("Arial", 16, "bold"),
+            text_color=("gray60", "gray40")
+        )
 
         self._draw_grid_lines()
         self.load_data()
@@ -276,7 +283,16 @@ class SchedulePanel(ctk.CTkFrame):
     def refresh_schedule(self):
         self.update_week_label()
 
+        if hasattr(self, "no_events_lbl"):
+            self.no_events_lbl.place_forget()
+
+        self.has_events = False
+        self.earliest_hour = 24.0
+
         for widget in self.grid_area.winfo_children():
+            # Nie usuwamy etykiety informacyjnej
+            if widget == getattr(self, "no_events_lbl", None):
+                continue
             if isinstance(widget, ctk.CTkButton) or \
                     (isinstance(widget, ctk.CTkFrame) and (
                             getattr(widget, "is_marker", False) or getattr(widget, "is_block", False))):
@@ -360,7 +376,14 @@ class SchedulePanel(ctk.CTkFrame):
                         self._draw_custom_event_block(ev, target_date_str, ev_day)
 
         self._draw_current_time_indicator()
+
+        # Pokaż informację, jeśli brak eventów
+        if not self.has_events:
+            self.no_events_lbl.place(relx=0.5, rely=0.3, anchor="center")
+
         self.after(100, self._force_scroll_redraw)
+        # Odpal scrollowanie po wyrenderowaniu
+        self.after(200, self.scroll_to_earliest)
 
     def _force_scroll_redraw(self):
         """Wymusza odświeżenie warstwy Canvas przez fizyczny mikroskok."""
@@ -432,6 +455,8 @@ class SchedulePanel(ctk.CTkFrame):
             return
 
         start_val = start_h + start_m / 60.0
+        self.has_events = True
+        self.earliest_hour = min(self.earliest_hour, start_val)
         end_val = end_h + end_m / 60.0
         duration = end_val - start_val
 
@@ -511,6 +536,8 @@ class SchedulePanel(ctk.CTkFrame):
             return
 
         start_val = start_h + start_m / 60.0
+        self.has_events = True
+        self.earliest_hour = min(self.earliest_hour, start_val)
         duration = EXAM_DURATION_HOURS
 
         y_pos = (start_val - START_HOUR) * PX_PER_HOUR
@@ -593,9 +620,23 @@ class SchedulePanel(ctk.CTkFrame):
 
         duration = draw_end_val - draw_start_val
         if duration <= 0: return
+        self.has_events = True
+        if is_start_day:
+            self.earliest_hour = min(self.earliest_hour, event_start_val)
 
         y_pos = (draw_start_val - START_HOUR) * PX_PER_HOUR
         height = duration * PX_PER_HOUR
+
+        # --- KOREKTA WIZUALNA DLA WYDARZEŃ WIELODNIOWYCH ---
+        if not is_start_day:
+            # Ucięcie z góry: wypycha kafelek poza górną krawędź (ukrywa górną ramkę i zaokrąglenie)
+            y_pos -= 6
+            height += 6
+
+        if not is_end_day:
+            # Ucięcie z dołu: wypycha kafelek poza dolną krawędź ekranu (ukrywa dolną ramkę i ciągnie do końca)
+            height += 30
+        # ---------------------------------------------------
 
         display_end = self.txt.get("label_end_of_day", "End of the day") if end_time_str in ["23:59",
                                                                                              "00:00"] else end_time_str
@@ -800,3 +841,49 @@ class SchedulePanel(ctk.CTkFrame):
         dot.is_marker = True
         dot.place(x=42, y=y_pos - 3)
         dot.lift()
+
+    def scroll_to_earliest(self):
+        try:
+            canvas = self.scroll_frame._parent_canvas
+            bbox = canvas.bbox("all")
+            if not bbox: return
+
+            # Celujemy w godzinę przed pierwszym wydarzeniem (ale nie mniej niż 00:00)
+            if self.has_events and self.earliest_hour < 24.0:
+                target_hour = max(START_HOUR, self.earliest_hour - 1)
+            else:
+                target_hour = START_HOUR
+            target_y = (target_hour - START_HOUR) * PX_PER_HOUR
+
+            total_h = bbox[3] - bbox[1]
+            visible_h = canvas.winfo_height()
+
+            if total_h > visible_h:
+                # Ograniczenie, aby nie przewinąć "za daleko w dół" pustego tła
+                max_scroll_y = total_h - visible_h
+                target_y = min(target_y, max_scroll_y)
+                target_fraction = target_y / total_h
+            else:
+                target_fraction = 0.0
+
+            current_fraction = canvas.yview()[0]
+            # Uruchom płynną animację (25 kroków)
+            self._animate_scroll(current_fraction, target_fraction, steps=25, current_step=0)
+        except Exception:
+            pass
+
+    def _animate_scroll(self, start_f, end_f, steps, current_step):
+        if current_step > steps:
+            return
+
+        # Krzywa ease-in-out dla przyjemniejszego, płynnego wyhamowania
+        t = current_step / steps
+        progress = t * t * (3 - 2 * t)
+
+        current_f = start_f + (end_f - start_f) * progress
+        try:
+            self.scroll_frame._parent_canvas.yview_moveto(current_f)
+            # 16ms to około 60FPS
+            self.after(16, lambda: self._animate_scroll(start_f, end_f, steps, current_step + 1))
+        except Exception:
+            pass

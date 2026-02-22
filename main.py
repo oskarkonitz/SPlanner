@@ -805,6 +805,11 @@ class GUI:
             self.todo_view.deselect_all()
         self.update_sidebar_buttons("idle", "idle", "idle")
 
+        current_tab = self.tabview.get()
+        if current_tab == self.txt.get("lbl_schedule", "Schedule"):
+            if hasattr(self, 'schedule_view'):
+                self.root.after(100, self.schedule_view.scroll_to_earliest)
+
     def menu_clear_data(self):
         if messagebox.askyesno(self.txt.get("msg_confirm", "Confirm"),
                                self.txt.get("msg_clear_confirm", "Clear all data?")):
