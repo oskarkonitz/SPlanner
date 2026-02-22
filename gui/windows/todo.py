@@ -177,30 +177,52 @@ class TodoWindow:
 
         if not self.storage: return
 
+        # NOWOŚĆ: Pobieramy listy od razu, by wykluczyć listy zakupowe z sekcji Unscheduled
+        custom_lists = self.storage.get_task_lists()
+        shopping_list_ids = {l["id"] for l in custom_lists if l.get("list_type") == "shopping"}
+
         # Obliczanie ilości zadań
         all_tasks = [dict(t) for t in self.storage.get_daily_tasks()]
-        counts = {"scheduled": 0, "general": 0}
+        counts = {"scheduled": 0, "unscheduled": 0, "default": 0, "all": 0}
         custom_counts = {}
 
         for t in all_tasks:
             if t["status"] == "done": continue
+            counts["all"] += 1
+
             lid = t.get("list_id")
-            if t.get("date", "") != "":
+            # Bezpieczne sprawdzanie czy to główny worek (łapie None, "", "None", "general" itp.)
+            is_default = (not lid or lid == "None" or lid in ["general", "unscheduled", "default"])
+            is_shopping_task = lid in shopping_list_ids
+
+            # Bezpieczne wyciągnięcie daty
+            t_date = t.get("date")
+            if t_date is None or t_date == "None":
+                t_date = ""
+
+            if is_default:
+                counts["default"] += 1
+
+            if t_date != "":
                 counts["scheduled"] += 1
-            if t.get("date", "") == "" and (lid is None or lid == "general"):
-                counts["general"] += 1
-            if lid and lid not in ["general", "scheduled"]:
+
+            # POPRAWKA 1: Wszystkie zadania bez daty idą do unscheduled, OPRÓCZ list zakupowych
+            if t_date == "" and not is_shopping_task:
+                counts["unscheduled"] += 1
+
+            if lid and not is_default and lid != "scheduled":
                 custom_counts[lid] = custom_counts.get(lid, 0) + 1
 
         # SYSTEMOWE
         ctk.CTkLabel(self.scroll_lists, text=self.txt.get("lbl_sys_lists", "System Lists"), font=("Arial", 12, "bold"),
                      text_color="gray").pack(anchor="w", pady=(5, 2))
 
+        self.create_list_btn("all", self.txt.get("list_all", "All Tasks"), counts["all"])
+        self.create_list_btn("default", self.txt.get("list_default", "Default / Inbox"), counts["default"])
         self.create_list_btn("scheduled", self.txt.get("list_scheduled", "Scheduled"), counts["scheduled"])
-        self.create_list_btn("general", self.txt.get("list_general", "General"), counts["general"])
+        self.create_list_btn("unscheduled", self.txt.get("list_unscheduled", "Unscheduled"), counts["unscheduled"])
 
         # UŻYTKOWNIKA
-        custom_lists = self.storage.get_task_lists()
         if custom_lists:
             ctk.CTkLabel(self.scroll_lists, text=self.txt.get("lbl_my_lists", "My Lists"), font=("Arial", 12, "bold"),
                          text_color="gray").pack(anchor="w", pady=(15, 2))
@@ -235,7 +257,7 @@ class TodoWindow:
         btn.pack(fill="x", pady=1)
 
         # Menu kontekstowe (Usuwanie listy customowej)
-        if list_id not in ["scheduled", "general"]:
+        if list_id not in ["scheduled", "general", "unscheduled", "default", "all"]:
             if self.parent.tk.call('tk', 'windowingsystem') == 'aqua':
                 btn.bind("<Button-2>", lambda e: self.show_list_menu(e, list_id))
             else:
@@ -245,7 +267,7 @@ class TodoWindow:
         self.current_list_id = list_id
 
         is_shopping = False
-        if list_id not in ["scheduled", "general"]:
+        if self.current_list_id not in ["scheduled", "general", "unscheduled", "default", "all"]:
             lists = self.storage.get_task_lists()
             current_list = next((l for l in lists if l["id"] == list_id), None)
             if current_list and current_list.get("list_type") == "shopping":
@@ -260,14 +282,18 @@ class TodoWindow:
             self.date_frame.pack_forget()
             self.entry_date.delete(0, "end")
             self.btn_clear_bought.pack(side="right", padx=(5, 0))  # Pokazuje przycisk Sweep
-        elif list_id == "general":
+        elif list_id == "unscheduled":
             self.date_frame.pack_forget()
             self.entry_date.delete(0, "end")
             self.btn_clear_bought.pack_forget()
-        elif list_id == "scheduled":
+        elif list_id in ["scheduled", "all"]:
             self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
             self.entry_date.delete(0, "end")
             self.entry_date.insert(0, str(date.today()))
+            self.btn_clear_bought.pack_forget()
+        elif list_id == "default":
+            self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
+            self.entry_date.delete(0, "end")
             self.btn_clear_bought.pack_forget()
         else:
             self.date_frame.pack(side="left", padx=(0, 5), after=self.entry_task)
@@ -297,7 +323,7 @@ class TodoWindow:
         rb_std = ctk.CTkRadioButton(dialog, text="Standard (To-Do)", variable=type_var, value="")
         rb_std.pack(pady=5)
 
-        rb_shop = ctk.CTkRadioButton(dialog, text="Shopping / Dateless", variable=type_var, value="shopping")
+        rb_shop = ctk.CTkRadioButton(dialog, text="Shopping", variable=type_var, value="shopping")
         rb_shop.pack(pady=5)
 
         def submit():
@@ -396,9 +422,13 @@ class TodoWindow:
 
         # Logika przydzielania Listy i Daty
         if self.current_list_id == "scheduled":
+            # W "Scheduled" wymuszamy dzisiejszą datę przy pustym polu
             if not date_val: date_val = str(date.today())
             list_id = None
-        elif self.current_list_id == "general":
+        elif self.current_list_id in ["all", "default"]:
+            # W All i Default pozwalamy zostawić pustą datę – poleci prosto do Unscheduled!
+            list_id = None
+        elif self.current_list_id == "unscheduled":
             date_val = ""
             list_id = None
         else:
@@ -486,7 +516,7 @@ class TodoWindow:
         self.entry_task.delete(0, "end")
         self.entry_date.delete(0, "end")
 
-        if self.current_list_id == "scheduled":
+        if self.current_list_id in ["scheduled", "all"]:
             self.entry_date.insert(0, str(date.today()))
 
         self.current_color = None
@@ -541,9 +571,11 @@ class TodoWindow:
         tasks = [dict(t) for t in self.storage.get_daily_tasks()]
         filtered_tasks = []
 
+        lists = self.storage.get_task_lists()
+        shopping_list_ids = {l["id"] for l in lists if l.get("list_type") == "shopping"}
+
         is_shopping = False
-        if self.current_list_id not in ["scheduled", "general"]:
-            lists = self.storage.get_task_lists()
+        if self.current_list_id not in ["scheduled", "general", "unscheduled", "default", "all"]:
             current_list = next((l for l in lists if l["id"] == self.current_list_id), None)
             if current_list and current_list.get("list_type") == "shopping":
                 is_shopping = True
@@ -551,12 +583,24 @@ class TodoWindow:
         # --- FILTROWANIE KONTEKSTOWE ---
         for t in tasks:
             lid = t.get("list_id")
-            t_date = t.get("date", "")
+            is_default = (not lid or lid == "None" or lid in ["general", "unscheduled", "default"])
+            is_shopping_task = lid in shopping_list_ids
 
-            if self.current_list_id == "scheduled":
+            t_date = t.get("date")
+            if t_date is None or t_date == "None":
+                t_date = ""
+
+            t["date"] = t_date  # Nadpisujemy w pamięci, by kalendarz przy renderowaniu nie zgłupiał
+
+            if self.current_list_id == "all":
+                pass  # Pokazuj wszystko
+            elif self.current_list_id == "scheduled":
                 if t_date == "": continue
-            elif self.current_list_id == "general":
-                if t_date != "" or (lid is not None and lid != "general"): continue
+            elif self.current_list_id == "unscheduled":
+                # POPRAWKA 1: Pokaż tu wszystko co nie ma daty (z wyłączeniem zakupów)
+                if t_date != "" or is_shopping_task: continue
+            elif self.current_list_id == "default":
+                if not is_default: continue
             else:
                 if lid != self.current_list_id: continue
 
@@ -618,25 +662,60 @@ class TodoWindow:
                 self.tree.insert("", "end", values=("", ""), tags=("default",))
 
             if upcoming_tasks:
-                all_dates = sorted(list(set((t.get("date") or "") for t in upcoming_tasks)))
-                for day in all_dates:
-                    day_tasks = [t for t in upcoming_tasks if (t.get("date") or "") == day]
+                groups = {}
+                custom_lists = self.storage.get_task_lists() if self.storage else []
+                list_names = {l["id"]: l["name"] for l in custom_lists}
+
+                for t in upcoming_tasks:
+                    d = t.get("date") or ""
+                    lid = t.get("list_id")
+
+                    is_custom_list = lid and lid not in ["general", "unscheduled", "default", "None"]
+
+                    # POPRAWKA 2: Wyświetla nazwę listy tylko w widoku, w którym nie jesteśmy bezpośrednio w tej liście
+                    if d == "" and is_custom_list and self.current_list_id != lid:
+                        # Zadania z list własnych (np. Zakupy) bez daty oglądane globalnie
+                        l_name = list_names.get(lid, "List")
+                        key = f"list_{lid}"
+                        display = l_name
+                        sort_val = 1  # Pojawią się pod datami
+                    else:
+                        # Tradycyjne wpisy z kalendarza, worka Unscheduled lub wewnątrz konkretnej listy
+                        key = f"date_{d}"
+                        sort_val = 0  # Daty na samej górze
+                        if d == "":
+                            display = self.txt.get("lbl_no_date", "No Date")
+                            sort_val = 2  # Zwykłe "No Date" na samiuteńki dół
+                        elif d == today_str:
+                            display = f"{d} ({self.txt.get('tag_today', 'Today')})"
+                        else:
+                            display = d
+
+                    if key not in groups:
+                        groups[key] = {"display": display, "tasks": [], "sort_val": sort_val, "date_val": d}
+                    groups[key]["tasks"].append(t)
+
+                # Sortowanie grup (najpierw daty, potem specyficzne listy, a na końcu zwykłe No Date)
+                sorted_keys = sorted(groups.keys(),
+                                     key=lambda k: (groups[k]["sort_val"], groups[k]["date_val"], groups[k]["display"]))
+
+                for k in sorted_keys:
+                    g = groups[k]
+                    day_tasks = g["tasks"]
                     day_tasks.sort(key=lambda x: x["status"] == "done")
 
                     if not day_tasks: continue
 
-                    if self.current_list_id != "general":
-                        display_date = day if day else self.txt.get("lbl_no_date", "No Date")
-                        if day == today_str:
-                            display_date += f" ({self.txt.get('tag_today', 'Today')})"
-                            self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("today_color",))
+                    if self.current_list_id != "unscheduled":
+                        if "tag_today" in g["display"] or today_str in g["display"]:
+                            self.tree.insert("", "end", values=("●", g["display"]), tags=("today_color",))
                         else:
-                            self.tree.insert("", "end", values=("●", f"{display_date}"), tags=("header",))
+                            self.tree.insert("", "end", values=("●", g["display"]), tags=("header",))
 
                     for t in day_tasks:
                         self._insert_task_row(t)
 
-                    if self.current_list_id != "general":
+                    if self.current_list_id != "unscheduled":
                         self.tree.insert("", "end", values=("", ""), tags=("default",))
 
         if sel_id and self.tree.exists(sel_id):

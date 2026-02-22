@@ -166,7 +166,7 @@ class AddCustomEventPanel(ctk.CTkFrame):
 
         self.day_var = tk.StringVar(value="Monday")
 
-        # --- SEKCJIA CZASU (UKŁAD PIONOWY) ---
+        # --- SEKCJA CZASU (UKŁAD PIONOWY) ---
         time_container = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         time_container.pack(fill="x", pady=20)
 
