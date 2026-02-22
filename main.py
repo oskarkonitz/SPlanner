@@ -650,6 +650,7 @@ class GUI:
 
         self.tabview.pack(fill="both", expand=True)
         self.refresh_dashboard()
+        self.root.after(50, self.menu_refresh)
 
     def _perform_smart_startup(self):
         """

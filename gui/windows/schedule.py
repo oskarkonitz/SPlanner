@@ -360,6 +360,17 @@ class SchedulePanel(ctk.CTkFrame):
                         self._draw_custom_event_block(ev, target_date_str, ev_day)
 
         self._draw_current_time_indicator()
+        self.after(100, self._force_scroll_redraw)
+
+    def _force_scroll_redraw(self):
+        """Wymusza odświeżenie warstwy Canvas przez fizyczny mikroskok."""
+        try:
+            self.update_idletasks()
+            # Wykonujemy prawdziwy ruch o 1 jednostkę w dół i od razu wracamy
+            self.scroll_frame._parent_canvas.yview_scroll(1, "units")
+            self.scroll_frame._parent_canvas.yview_scroll(-1, "units")
+        except Exception:
+            pass
 
     # --- HELPERS DO KOLORÓW (SYMULACJA PRZEZROCZYSTOŚCI) ---
     def _hex_to_rgb(self, hex_color):

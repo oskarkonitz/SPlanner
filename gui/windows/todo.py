@@ -117,7 +117,7 @@ class TodoWindow:
         self.tree.column("#0", width=0, stretch=False)
 
         self.tree.heading("status", text=self.txt.get("col_status", "Status"))
-        self.tree.column("status", width=60, anchor="center", stretch=False)
+        self.tree.column("status", width=60, anchor="e", stretch=False)
 
         self.tree.heading("task", text=self.txt.get("col_task", "Task"))
         self.tree.column("task", width=500, anchor="w")
@@ -202,6 +202,17 @@ class TodoWindow:
             for lst in custom_lists:
                 c = custom_counts.get(lst["id"], 0)
                 self.create_list_btn(lst["id"], lst["name"], c)
+        self.parent.after(100, self._force_scroll_redraw)
+
+    def _force_scroll_redraw(self):
+        """Wymusza odświeżenie warstwy Canvas w lewym panelu list."""
+        try:
+            self.parent.update_idletasks()
+            # Pociągamy za niewidzialny sznurek scrolla w lewym panelu
+            self.scroll_lists._parent_canvas.yview_scroll(1, "units")
+            self.scroll_lists._parent_canvas.yview_scroll(-1, "units")
+        except Exception:
+            pass
 
     def create_list_btn(self, list_id, list_name, count):
         is_active = (self.current_list_id == list_id)
@@ -540,9 +551,9 @@ class TodoWindow:
             self.lbl_empty.place_forget()
 
     def _insert_task_row(self, t):
-        status_icon = "☑" if t["status"] == "done" else "☐"
+        status_icon = " ☑" if t["status"] == "done" else " ☐"
         has_note = (t.get("note") or "").strip()
-        marks = " ✎" if has_note else ""
+        marks = "✎" if has_note else ""
 
         tags = []
         if t["status"] == "done":
@@ -557,7 +568,7 @@ class TodoWindow:
                 tags.append("default")
 
         self.tree.insert("", "end", iid=t["id"],
-                         values=(f"  {status_icon}{marks}", t["content"]),
+                         values=(f"  {marks}{status_icon}", t["content"]),
                          tags=tuple(tags))
 
     def move_to_tomorrow(self):
