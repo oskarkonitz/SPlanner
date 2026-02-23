@@ -522,6 +522,9 @@ class BaseProvider(ABC):
     def get_subjects(self, semester_id=None): pass
 
     @abstractmethod
+    def get_subject(self, subject_id): pass
+
+    @abstractmethod
     def add_subject(self, sub_dict): pass
 
     @abstractmethod
@@ -1326,6 +1329,13 @@ class SQLiteProvider(BaseProvider):
                                                                   (semester_id,)).fetchall()]
             return [dict(r) for r in conn.execute("SELECT * FROM subjects").fetchall()]
 
+    def get_subject(self, subject_id):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM subjects WHERE id=?", (subject_id,)).fetchone()
+            if row:
+                return dict(row)
+            return None
+
     def add_subject(self, sub_dict):
         with self._get_conn() as conn:
             conn.execute(
@@ -1736,6 +1746,12 @@ class SupabaseProvider(BaseProvider):
         data = query.execute().data
         return self._clean_dates(data)
 
+    def get_subject(self, subject_id):
+        data = self.client.table("subjects").select("*").eq("id", subject_id).execute().data
+        if data:
+            return self._clean_dates(data[0])
+        return None
+
     def add_subject(self, sub_dict):
         self.client.table("subjects").insert(sub_dict).execute()
 
@@ -2135,6 +2151,9 @@ class StorageManager:
 
     def get_subjects(self, semester_id=None):
         return self._sanitize_nulls(self.local.get_subjects(semester_id))
+
+    def get_subject(self, subject_id):
+        return self._sanitize_nulls(self.local.get_subject(subject_id))
 
     def get_schedule(self):
         return self._sanitize_nulls(self.local.get_schedule())

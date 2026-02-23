@@ -15,10 +15,10 @@ from packaging import version
 # --- KONFIGURACJA ---
 REPO_OWNER = "oskarkonitz"
 REPO_NAME = "SPlanner"
-CURRENT_VERSION = "2.1.3"
+CURRENT_VERSION = "2.1.4"
 
 
-def check_for_updates(txt, silent=True):
+def check_for_updates(txt, silent=True, update_callback=None):
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
     try:
         response = requests.get(url, timeout=5)
@@ -42,7 +42,11 @@ def check_for_updates(txt, silent=True):
                     asset_name = asset["name"]
 
             if asset_url:
-                ask_download(txt, latest_tag, asset_url, asset_name, data["body"])
+                # TUTAJ GŁÓWNA ZMIANA
+                if silent and update_callback:
+                    update_callback(latest_tag, asset_url, asset_name, data["body"])
+                else:
+                    ask_download(txt, latest_tag, asset_url, asset_name, data["body"])
             else:
                 if not silent:
                     messagebox.showwarning(txt.get("msg_error", "Error"),

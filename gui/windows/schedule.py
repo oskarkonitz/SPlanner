@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
 from datetime import datetime, timedelta, date
-from gui.dialogs.subjects_manager import SubjectsManagerPanel
+from gui.dialogs.subjects_manager import SubjectsManagerPanel, AddSubjectPanel
 from gui.dialogs.add_exam import AddExamPanel
 from gui.dialogs.blocked_days import BlockedDaysPanel
 from gui.dialogs.edit import EditExamPanel
@@ -526,9 +526,14 @@ class SchedulePanel(ctk.CTkFrame):
         lbl.pack(expand=True, fill="both", padx=2, pady=2)
 
         for widget in [container, white_border, lbl]:
-            widget.bind("<Button-3>", lambda e: self.show_context_menu(e, entry["id"], date_str))
+            widget.bind("<Button-3>",
+                        lambda e, eid=entry["id"], dstr=date_str, sid=subject["id"]: self.show_context_menu(e, eid,
+                                                                                                            dstr, sid))
             if self._tk_ws() == "aqua":
-                widget.bind("<Button-2>", lambda e: self.show_context_menu(e, entry["id"], date_str))
+                widget.bind("<Button-2>",
+                            lambda e, eid=entry["id"], dstr=date_str, sid=subject["id"]: self.show_context_menu(e, eid,
+                                                                                                                dstr,
+                                                                                                                sid))
 
         rel_w = (1.0 - 0.06) / 7
         rel_x = 0.06 + (day_idx * rel_w)
@@ -708,15 +713,45 @@ class SchedulePanel(ctk.CTkFrame):
             self.storage.delete_custom_event(ev_id)
             self.refresh_schedule()
 
-    def show_context_menu(self, event, entry_id, date_str):
+    def show_context_menu(self, event, entry_id, date_str, subject_id=None):
         menu = tk.Menu(self, tearoff=0)
         menu.add_command(label=self.txt.get("ctx_cancel_class", "Cancel class (this week only)"),
                          command=lambda: self.cancel_class_instance(entry_id, date_str))
+
+        if subject_id:
+            # Pobieramy dane przedmiotu z bazy, aby uzyskać jego nazwę
+            subject_data = self.storage.get_subject(subject_id)
+            if subject_data:
+                subject_name = subject_data.get("name", "Subject")
+                txt_edit = self.txt.get("btn_edit", "Edit")
+
+                menu.add_separator()
+                # Ustawiamy dynamiczną etykietę: "Edit: [Nazwa Przedmiotu]"
+                menu.add_command(label=f"{txt_edit}: {subject_name}",
+                                 command=lambda: self.edit_selected_subject(subject_id))
 
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+
+    def edit_selected_subject(self, subject_id):
+        if not self.drawer:
+            return
+
+        subject_data = self.storage.get_subject(subject_id)
+        if not subject_data:
+            return
+
+        self.drawer.set_content(
+            AddSubjectPanel,
+            txt=self.txt,
+            btn_style=self.btn_style,
+            storage=self.storage,
+            refresh_callback=self.full_refresh,
+            close_callback=self.drawer.close_panel,
+            subject_data=dict(subject_data)
+        )
 
     def on_exam_right_click(self, event, exam_id):
         menu = tk.Menu(self, tearoff=0)

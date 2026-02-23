@@ -77,6 +77,7 @@
     "tag_archived": "Archiwalny",
     "val_other": "Inne",
     "tag_day_off": "(Wolne)",
+    "tag_tomorrow": "Jutro",
 
     "manual_title": "Instrukcja Obsługi",
     "manual_header": "WITAJ W SPLANNER!\n\n",
@@ -555,5 +556,7 @@
     "set_sch_name_full": "Pełna nazwa",
     "set_sch_details": "Szczegóły",
     "set_sch_show_time": "Pokaż godziny zajęć",
-    "set_sch_show_room": "Pokaż numer sali"
+    "set_sch_show_room": "Pokaż numer sali",
+
+    "btn_update_avail": "Nowa aktualizacja!"
 }

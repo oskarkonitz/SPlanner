@@ -17,7 +17,7 @@ from gui.effects import ConfettiEffect, FireworksEffect
 from gui.windows.timer import TimerWindow
 from gui.windows.achievements import AchievementManager
 import threading
-from core.updater import check_for_updates
+from core.updater import check_for_updates, ask_download
 from gui.components.drawers import ToolsDrawer, ContentDrawer
 from gui.windows.todo import TodoWindow
 from gui.dialogs.subjects_manager import SubjectsManagerPanel
@@ -44,7 +44,7 @@ if platform.system() == "Windows":
         except Exception:
             pass
 
-VERSION = "2.1.3"
+VERSION = "2.1.4"
 
 
 def show_cloud_onboarding():
@@ -507,6 +507,17 @@ class GUI:
         self.btn_exit = ctk.CTkButton(self.sidebar, text=self.txt["btn_exit"], command=self.on_close, **self.btn_style)
         self.btn_exit.pack(side="bottom", pady=30)
 
+        # --- UKRYTY PRZYCISK AKTUALIZACJI ---
+        self.btn_update = ctk.CTkButton(
+            self.sidebar,
+            text=self.txt.get("btn_update_avail", "Aktualizacja dostępna"),
+            fg_color="#e67e22",  # Pomarańczowy, żeby się wyróżniał
+            hover_color="#d35400",
+            text_color="white",
+            font=("Arial", 13, "bold"),
+            height=32, corner_radius=20, border_width=0
+        )
+
         def on_enter_exit(event):
             self.btn_exit.configure(
                 border_color="#e74c3c",
@@ -610,7 +621,15 @@ class GUI:
         self.refresh_dashboard()
 
         # --- AUTO-UPDATE ---
-        threading.Thread(target=lambda: check_for_updates(self.txt, silent=True), daemon=True).start()
+        threading.Thread(
+            target=lambda: check_for_updates(
+                self.txt,
+                silent=True,
+                update_callback=lambda tag, url, name, body: self.root.after(0, self.show_update_button, tag, url, name,
+                                                                             body)
+            ),
+            daemon=True
+        ).start()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.bind("<Configure>", self.on_window_resize)
@@ -1362,6 +1381,17 @@ class GUI:
                 if not messagebox.askyesno(self.txt["msg_warning"], msg):
                     return
         self.root.quit()
+
+    def show_update_button(self, latest_tag, asset_url, asset_name, body):
+        """Wyświetla przycisk aktualizacji po cichym jej wykryciu."""
+
+        def trigger_download():
+            ask_download(self.txt, latest_tag, asset_url, asset_name, body)
+            self.btn_update.pack_forget()  # Ukrywa przycisk, jak już go klikniesz
+
+        self.btn_update.configure(command=trigger_download)
+        # side="bottom" rzuci go na dół, ale NAD przycisk Exit (bo Exit był zapakowany pierwszy)
+        self.btn_update.pack(side="bottom", pady=(0, 0), padx=15, fill="x")
 
     def fix_treeview_colors(self):
         style = ttk.Style()

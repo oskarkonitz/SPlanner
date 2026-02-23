@@ -379,15 +379,15 @@ class AddSemesterPanel(ctk.CTkFrame):
 
 
 class AddSubjectPanel(ctk.CTkFrame):
-    def __init__(self, parent, txt, btn_style, storage, semester_id, subject_data=None, callback=None,
-                 close_callback=None):
+    def __init__(self, parent, txt, btn_style, storage, semester_id=None, subject_data=None, callback=None,
+                 close_callback=None, refresh_callback=None):
         super().__init__(parent, fg_color="transparent")
         self.txt = txt
         self.btn_style = btn_style
         self.storage = storage
         self.subject_data = subject_data
         self.current_semester_id = semester_id
-        self.callback = callback
+        self.callback = callback or refresh_callback
         self.close_callback = close_callback
 
         self.schedule_entries = []

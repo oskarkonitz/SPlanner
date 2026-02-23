@@ -167,6 +167,12 @@ class TodoWindow:
         else:
             self.tree.bind("<Button-3>", self.show_context_menu)
 
+        def on_left_panel_click(e):
+            self.deselect_all()
+
+        self.left_panel.bind("<Button-1>", on_left_panel_click)
+        self.scroll_lists._parent_canvas.bind("<Button-1>", on_left_panel_click)
+
         self.refresh_lists()
         self.refresh_table()
 
@@ -528,6 +534,10 @@ class TodoWindow:
             self.selection_callback("idle", "idle", "idle")
 
     def on_click(self, event):
+        region = self.tree.identify("region", event.x, event.y)
+        if region == "heading":
+            return
+
         item = self.tree.identify_row(event.y)
         if not item:
             self.deselect_all()
@@ -688,6 +698,8 @@ class TodoWindow:
                             sort_val = 2  # Zwykłe "No Date" na samiuteńki dół
                         elif d == today_str:
                             display = f"{d} ({self.txt.get('tag_today', 'Today')})"
+                        elif d == str(date.today() + timedelta(days=1)):
+                            display = f"{d} ({self.txt.get('tag_tomorrow', 'Tomorrow')})"
                         else:
                             display = d
 

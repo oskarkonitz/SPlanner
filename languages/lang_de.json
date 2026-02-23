@@ -77,6 +77,7 @@
     "tag_archived": "Archiviert",
     "val_other": "Sonstige",
     "tag_day_off": "(Frei)",
+    "tag_tomorrow": "Morgen",
 
     "manual_title": "Bedienungsanleitung",
     "manual_header": "WILLKOMMEN IM SPLANNER!\n\n",
@@ -555,5 +556,7 @@
     "set_sch_name_full": "Vollständiger Name",
     "set_sch_details": "Details",
     "set_sch_show_time": "Zeit anzeigen",
-    "set_sch_show_room": "Raumnummer anzeigen"
+    "set_sch_show_room": "Raumnummer anzeigen",
+
+    "btn_update_avail": "Update verfügbar!"
 }
