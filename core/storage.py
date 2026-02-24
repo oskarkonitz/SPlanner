@@ -197,19 +197,29 @@ SQL_SCHEMA = """
                  start_datetime TEXT,
                  end_datetime TEXT
                  );
-            
-            CREATE TABLE IF NOT EXISTS subscriptions (
-                id TEXT PRIMARY KEY,
-                subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
-                name TEXT,
-                provider TEXT,
-                expiry_date DATE,
-                cost REAL,
-                currency TEXT,
-                billing_cycle TEXT,
-                note TEXT,
-                is_active BOOLEAN DEFAULT TRUE
-                );
+
+             CREATE TABLE IF NOT EXISTS subscriptions \
+             ( \
+                 id \
+                 TEXT \
+                 PRIMARY \
+                 KEY, \
+                 subject_id \
+                 TEXT \
+                 REFERENCES \
+                 subjects \
+             ( \
+                 id \
+             ) ON DELETE SET NULL,
+                 name TEXT,
+                 provider TEXT,
+                 expiry_date DATE,
+                 cost REAL,
+                 currency TEXT,
+                 billing_cycle TEXT,
+                 note TEXT,
+                 is_active BOOLEAN DEFAULT TRUE
+                 );
 
 -- 3. GRAFIK (CUSTOM EVENTS) - TWOJA NOWOŚĆ
              CREATE TABLE IF NOT EXISTS event_lists \
@@ -1292,7 +1302,6 @@ class SQLiteProvider(BaseProvider):
     def get_task_lists(self):
         with self._get_conn() as conn: return [dict(r) for r in conn.execute("SELECT * FROM task_lists").fetchall()]
 
-    # NOWOŚĆ: dodano list_type (upsert)
     def add_task_list(self, list_dict):
         with self._get_conn() as conn:
             conn.execute("INSERT OR REPLACE INTO task_lists (id, name, icon, list_type) VALUES (?, ?, ?, ?)",
@@ -1612,6 +1621,57 @@ class SupabaseProvider(BaseProvider):
         if not SUPABASE_AVAILABLE:
             raise ImportError("Pakiet 'supabase' nie jest zainstalowany. Wykonaj: pip install supabase")
         self.client: Client = create_client(url, key)
+
+    def _update_config_tokens(self, access_token, refresh_token):
+        try:
+            if CONFIG_PATH.exists():
+                config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            else:
+                config = {}
+            config["supabase_access_token"] = access_token
+            config["supabase_refresh_token"] = refresh_token
+            CONFIG_PATH.write_text(json.dumps(config, indent=4), encoding="utf-8")
+
+            # Aktualizacja menedżera w pamięci RAM, jeśli istnieje w przestrzeni globalnej
+            global manager
+            if 'manager' in globals():
+                manager.config["supabase_access_token"] = access_token
+                manager.config["supabase_refresh_token"] = refresh_token
+        except Exception as e:
+            print(f"[Supabase] Error saving tokens: {e}")
+
+    def register(self, email, password):
+        response = self.client.auth.sign_up({"email": email, "password": password})
+        return response.user
+
+    def login(self, email, password):
+        response = self.client.auth.sign_in_with_password({"email": email, "password": password})
+        if response.session:
+            self._update_config_tokens(response.session.access_token, response.session.refresh_token)
+        return response.user
+
+    def get_session_user(self):
+        try:
+            if not CONFIG_PATH.exists():
+                return None
+            config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            access_token = config.get("supabase_access_token")
+            refresh_token = config.get("supabase_refresh_token")
+            if access_token and refresh_token:
+                response = self.client.auth.set_session(access_token, refresh_token)
+                if response.session:
+                    self._update_config_tokens(response.session.access_token, response.session.refresh_token)
+                    return response.user
+        except Exception as e:
+            print(f"[Supabase] Error restoring session: {e}")
+        return None
+
+    def logout(self):
+        try:
+            self.client.auth.sign_out()
+        except Exception:
+            pass
+        self._update_config_tokens(None, None)
 
     def _clean_dates(self, data):
         if isinstance(data, list):
@@ -2044,6 +2104,10 @@ class StorageManager:
         self.cloud = None
 
         if self.mode == "cloud":
+            self.init_cloud()
+
+    def init_cloud(self):
+        if not self.cloud:
             url = self.config.get("supabase_url")
             key = self.config.get("supabase_key")
             if url and key:
@@ -2052,13 +2116,38 @@ class StorageManager:
                 except Exception as e:
                     print(f"[Storage] Cloud init error: {e}")
 
-    def mark_onboarding_done(self):
-        self.config["cloud_onboarding_shown"] = True
+    def save_config(self):
         try:
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             print(f"Error saving config: {e}")
+
+    def register(self, email, password):
+        self.init_cloud()
+        if self.cloud:
+            return self.cloud.register(email, password)
+        return None
+
+    def login(self, email, password):
+        self.init_cloud()
+        if self.cloud:
+            return self.cloud.login(email, password)
+        return None
+
+    def get_session_user(self):
+        self.init_cloud()
+        if self.cloud:
+            return self.cloud.get_session_user()
+        return None
+
+    def logout(self):
+        if self.cloud:
+            self.cloud.logout()
+
+    def mark_onboarding_done(self):
+        self.config["cloud_onboarding_shown"] = True
+        self.save_config()
 
     def perform_cloud_migration(self, progress_callback=None):
         from core.migration import DataMigrator
@@ -2341,110 +2430,145 @@ class StorageManager:
         return self._sanitize_nulls(self.local.get_task_history())
 
     def update_setting(self, key, value):
-        self.local.update_setting(key, value); self._bg_cloud_sync("update_setting", key, value)
+        self.local.update_setting(key, value);
+        self._bg_cloud_sync("update_setting", key, value)
 
     def update_global_stat(self, key, value):
-        self.local.update_global_stat(key, value); self._bg_cloud_sync("update_global_stat", key, value)
+        self.local.update_global_stat(key, value);
+        self._bg_cloud_sync("update_global_stat", key, value)
 
     def update_other_stat(self, key, value):
-        self.local.update_other_stat(key, value); self._bg_cloud_sync("update_other_stat", key, value)
+        self.local.update_other_stat(key, value);
+        self._bg_cloud_sync("update_other_stat", key, value)
 
     def add_custom_sound(self, sound_dict):
-        self.local.add_custom_sound(sound_dict); self._bg_cloud_sync("add_custom_sound", sound_dict)
+        self.local.add_custom_sound(sound_dict);
+        self._bg_cloud_sync("add_custom_sound", sound_dict)
 
     def delete_custom_sound(self, sound_id):
-        self.local.delete_custom_sound(sound_id); self._bg_cloud_sync("delete_custom_sound", sound_id)
+        self.local.delete_custom_sound(sound_id);
+        self._bg_cloud_sync("delete_custom_sound", sound_id)
 
     def add_exam(self, exam_dict):
-        self.local.add_exam(exam_dict); self._bg_cloud_sync("add_exam", exam_dict)
+        self.local.add_exam(exam_dict);
+        self._bg_cloud_sync("add_exam", exam_dict)
 
     def update_exam(self, exam_dict):
-        self.local.update_exam(exam_dict); self._bg_cloud_sync("update_exam", exam_dict)
+        self.local.update_exam(exam_dict);
+        self._bg_cloud_sync("update_exam", exam_dict)
 
     def delete_exam(self, exam_id):
-        self.local.delete_exam(exam_id); self._bg_cloud_sync("delete_exam", exam_id)
+        self.local.delete_exam(exam_id);
+        self._bg_cloud_sync("delete_exam", exam_id)
 
     def add_topic(self, topic_dict):
-        self.local.add_topic(topic_dict); self._bg_cloud_sync("add_topic", topic_dict)
+        self.local.add_topic(topic_dict);
+        self._bg_cloud_sync("add_topic", topic_dict)
 
     def update_topic(self, topic_dict):
-        self.local.update_topic(topic_dict); self._bg_cloud_sync("update_topic", topic_dict)
+        self.local.update_topic(topic_dict);
+        self._bg_cloud_sync("update_topic", topic_dict)
 
     def update_topics_bulk(self, topics_list):
-        self.local.update_topics_bulk(topics_list); self._bg_cloud_sync("update_topics_bulk", topics_list)
+        self.local.update_topics_bulk(topics_list);
+        self._bg_cloud_sync("update_topics_bulk", topics_list)
 
     def delete_topic(self, topic_id):
-        self.local.delete_topic(topic_id); self._bg_cloud_sync("delete_topic", topic_id)
+        self.local.delete_topic(topic_id);
+        self._bg_cloud_sync("delete_topic", topic_id)
 
     def add_task_list(self, list_dict):
-        self.local.add_task_list(list_dict); self._bg_cloud_sync("add_task_list", list_dict)
+        self.local.add_task_list(list_dict);
+        self._bg_cloud_sync("add_task_list", list_dict)
 
     def delete_task_list(self, list_id):
-        self.local.delete_task_list(list_id); self._bg_cloud_sync("delete_task_list", list_id)
+        self.local.delete_task_list(list_id);
+        self._bg_cloud_sync("delete_task_list", list_id)
 
     def add_daily_task(self, task_dict):
-        self.local.add_daily_task(task_dict); self._bg_cloud_sync("add_daily_task", task_dict)
+        self.local.add_daily_task(task_dict);
+        self._bg_cloud_sync("add_daily_task", task_dict)
 
     def update_daily_task(self, task_dict):
-        self.local.update_daily_task(task_dict); self._bg_cloud_sync("update_daily_task", task_dict)
+        self.local.update_daily_task(task_dict);
+        self._bg_cloud_sync("update_daily_task", task_dict)
 
     def delete_daily_task(self, task_id):
-        self.local.delete_daily_task(task_id); self._bg_cloud_sync("delete_daily_task", task_id)
+        self.local.delete_daily_task(task_id);
+        self._bg_cloud_sync("delete_daily_task", task_id)
 
     def add_blocked_date(self, date_str):
-        self.local.add_blocked_date(date_str); self._bg_cloud_sync("add_blocked_date", date_str)
+        self.local.add_blocked_date(date_str);
+        self._bg_cloud_sync("add_blocked_date", date_str)
 
     def remove_blocked_date(self, date_str):
-        self.local.remove_blocked_date(date_str); self._bg_cloud_sync("remove_blocked_date", date_str)
+        self.local.remove_blocked_date(date_str);
+        self._bg_cloud_sync("remove_blocked_date", date_str)
 
     def add_achievement(self, achievement_id):
-        self.local.add_achievement(achievement_id); self._bg_cloud_sync("add_achievement", achievement_id)
+        self.local.add_achievement(achievement_id);
+        self._bg_cloud_sync("add_achievement", achievement_id)
 
     def add_semester(self, sem_dict):
-        self.local.add_semester(sem_dict); self._bg_cloud_sync("add_semester", sem_dict)
+        self.local.add_semester(sem_dict);
+        self._bg_cloud_sync("add_semester", sem_dict)
 
     def update_semester(self, sem_dict):
-        self.local.update_semester(sem_dict); self._bg_cloud_sync("update_semester", sem_dict)
+        self.local.update_semester(sem_dict);
+        self._bg_cloud_sync("update_semester", sem_dict)
 
     def delete_semester(self, sem_id):
-        self.local.delete_semester(sem_id); self._bg_cloud_sync("delete_semester", sem_id)
+        self.local.delete_semester(sem_id);
+        self._bg_cloud_sync("delete_semester", sem_id)
 
     def add_subject(self, sub_dict):
-        self.local.add_subject(sub_dict); self._bg_cloud_sync("add_subject", sub_dict)
+        self.local.add_subject(sub_dict);
+        self._bg_cloud_sync("add_subject", sub_dict)
 
     def update_subject(self, sub_dict):
-        self.local.update_subject(sub_dict); self._bg_cloud_sync("update_subject", sub_dict)
+        self.local.update_subject(sub_dict);
+        self._bg_cloud_sync("update_subject", sub_dict)
 
     def delete_subject(self, sub_id):
-        self.local.delete_subject(sub_id); self._bg_cloud_sync("delete_subject", sub_id)
+        self.local.delete_subject(sub_id);
+        self._bg_cloud_sync("delete_subject", sub_id)
 
     def add_schedule_entry(self, entry_dict):
-        self.local.add_schedule_entry(entry_dict); self._bg_cloud_sync("add_schedule_entry", entry_dict)
+        self.local.add_schedule_entry(entry_dict);
+        self._bg_cloud_sync("add_schedule_entry", entry_dict)
 
     def delete_schedule_entry(self, entry_id):
-        self.local.delete_schedule_entry(entry_id); self._bg_cloud_sync("delete_schedule_entry", entry_id)
+        self.local.delete_schedule_entry(entry_id);
+        self._bg_cloud_sync("delete_schedule_entry", entry_id)
 
     def add_schedule_cancellation(self, entry_id, date_str):
-        self.local.add_schedule_cancellation(entry_id, date_str); self._bg_cloud_sync("add_schedule_cancellation",
-                                                                                      entry_id, date_str)
+        self.local.add_schedule_cancellation(entry_id, date_str);
+        self._bg_cloud_sync("add_schedule_cancellation",
+                            entry_id, date_str)
 
     def add_grade(self, grade_dict):
-        self.local.add_grade(grade_dict); self._bg_cloud_sync("add_grade", grade_dict)
+        self.local.add_grade(grade_dict);
+        self._bg_cloud_sync("add_grade", grade_dict)
 
     def delete_grade(self, grade_id):
-        self.local.delete_grade(grade_id); self._bg_cloud_sync("delete_grade", grade_id)
+        self.local.delete_grade(grade_id);
+        self._bg_cloud_sync("delete_grade", grade_id)
 
     def add_grade_module(self, module_dict):
-        self.local.add_grade_module(module_dict); self._bg_cloud_sync("add_grade_module", module_dict)
+        self.local.add_grade_module(module_dict);
+        self._bg_cloud_sync("add_grade_module", module_dict)
 
     def update_grade_module(self, module_dict):
-        self.local.update_grade_module(module_dict); self._bg_cloud_sync("update_grade_module", module_dict)
+        self.local.update_grade_module(module_dict);
+        self._bg_cloud_sync("update_grade_module", module_dict)
 
     def delete_grade_module(self, module_id):
-        self.local.delete_grade_module(module_id); self._bg_cloud_sync("delete_grade_module", module_id)
+        self.local.delete_grade_module(module_id);
+        self._bg_cloud_sync("delete_grade_module", module_id)
 
     def clear_task_history(self, today_str):
-        self.local.clear_task_history(today_str); self._bg_cloud_sync("clear_task_history", today_str)
+        self.local.clear_task_history(today_str);
+        self._bg_cloud_sync("clear_task_history", today_str)
 
     def restore_overdue_tasks(self, today_str):
         res = self.local.restore_overdue_tasks(today_str)
@@ -2459,16 +2583,20 @@ class StorageManager:
         return self._sanitize_nulls(self.local.get_custom_events())
 
     def add_event_list(self, lst_dict):
-        self.local.add_event_list(lst_dict); self._bg_cloud_sync("add_event_list", lst_dict)
+        self.local.add_event_list(lst_dict);
+        self._bg_cloud_sync("add_event_list", lst_dict)
 
     def delete_event_list(self, lst_id):
-        self.local.delete_event_list(lst_id); self._bg_cloud_sync("delete_event_list", lst_id)
+        self.local.delete_event_list(lst_id);
+        self._bg_cloud_sync("delete_event_list", lst_id)
 
     def add_custom_event(self, ev_dict):
-        self.local.add_custom_event(ev_dict); self._bg_cloud_sync("add_custom_event", ev_dict)
+        self.local.add_custom_event(ev_dict);
+        self._bg_cloud_sync("add_custom_event", ev_dict)
 
     def delete_custom_event(self, ev_id):
-        self.local.delete_custom_event(ev_id); self._bg_cloud_sync("delete_custom_event", ev_id)
+        self.local.delete_custom_event(ev_id);
+        self._bg_cloud_sync("delete_custom_event", ev_id)
 
     def get_subscriptions(self):
         return self._sanitize_nulls(self.local.get_subscriptions())

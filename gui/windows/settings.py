@@ -287,10 +287,29 @@ class SettingsWindow:
     def _init_data_frame(self):
         f = ctk.CTkFrame(self.frame_content, fg_color="transparent")
         self.frames["data"] = f
+
+        # --- SEKCJA KONTO / LOGOWANIE ---
+        ctk.CTkLabel(f, text=self.txt.get("lbl_account", "Account / Cloud"), font=("Arial", 16, "bold")).pack(
+            anchor="w", pady=(0, 10))
+
+        user = self.storage.get_session_user()
+        if user:
+            email = getattr(user, 'email', str(user))
+            ctk.CTkLabel(f, text=f"{self.txt.get('lbl_logged_in_as', 'Logged in as:')} {email}",
+                         text_color="gray").pack(anchor="w", pady=(0, 5))
+            ctk.CTkButton(f, text=self.txt.get("btn_logout", "Log Out"), fg_color="#e67e22", hover_color="#d35400",
+                          command=self._perform_logout).pack(anchor="w", pady=(0, 20))
+        else:
+            ctk.CTkLabel(f, text=self.txt.get("lbl_local_mode", "Local Mode (Not logged in)"), text_color="gray").pack(
+                anchor="w", pady=(0, 20))
+
+        # --- SEKCJA ZARZĄDZANIA DANYMI ---
         ctk.CTkLabel(f, text=self.txt.get("lbl_data_mgmt", "Data Management"), font=("Arial", 16, "bold")).pack(
             anchor="w", pady=(0, 10))
         ctk.CTkButton(f, text=self.txt.get("btn_clear_data", "Clear All Data"), fg_color="#e74c3c",
                       hover_color="#c0392b", command=self._request_clear_data).pack(anchor="w", pady=10)
+
+        # --- SEKCJA AKTUALIZACJI ---
         ctk.CTkLabel(f, text=self.txt.get("lbl_updates", "Updates"), font=("Arial", 16, "bold")).pack(anchor="w",
                                                                                                       pady=(20, 10))
         ctk.CTkButton(f, text=self.txt.get("menu_check_updates", "Check for Updates"), fg_color="transparent",
@@ -544,6 +563,13 @@ class SettingsWindow:
     def _request_clear_data(self):
         messagebox.showinfo(self.txt["msg_info"],
                             self.txt.get("msg_use_clear_menu", "Please use the 'File -> Clear Data' menu."))
+
+    def _perform_logout(self):
+        if messagebox.askyesno(self.txt.get("msg_confirm", "Confirm"),
+                               self.txt.get("msg_logout_confirm", "Are you sure you want to log out?")):
+            self.storage.logout()
+            self.win.destroy()
+            os.execl(sys.executable, sys.executable, *sys.argv)
 
     def save_all(self):
         old_lang = self.current_settings.get("lang", "en")

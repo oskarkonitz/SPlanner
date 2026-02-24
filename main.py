@@ -32,6 +32,7 @@ from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 import platform
 import ctypes
 from gui.windows.subscriptions import SubscriptionsPanel
+from gui.login_window import LoginWindow
 
 # Dodaj to przed utworzeniem root = ctk.CTk()
 if platform.system() == "Windows":
@@ -45,99 +46,7 @@ if platform.system() == "Windows":
         except Exception:
             pass
 
-VERSION = "2.1.5"
-
-
-def show_cloud_onboarding():
-    # Pobieramy flagę bezpośrednio z obiektu config w managerze
-    if manager.config.get("cloud_onboarding_shown", False):
-        return
-
-    onboarding = ctk.CTkToplevel(root)
-    onboarding.title("Cloud Database Update")
-    onboarding.geometry("500x420")
-    onboarding.attributes("-topmost", True)
-    onboarding.resizable(False, False)
-
-    # UI
-    ctk.CTkLabel(onboarding, text="☁️ Cloud Sync is Here!", font=("Arial", 24, "bold")).pack(pady=20)
-
-    msg = (
-        "✨ StudyPlanner is now even better with Cloud Sync!\n\n"
-        "To sync data with your iPhone:\n"
-        "1. Log in to Supabase and create a new project.\n"
-        "2. Click 'Open Config Folder' below.\n"
-        "3. Open 'schema.sql', copy all content, and paste it into Supabase SQL Editor.\n"
-        "4. Fill in URL and API Key in 'config.json' and click Migrate.\n\n"
-        "The SQL file is already waiting for you in the folder!"
-    )
-
-    ctk.CTkLabel(onboarding, text=msg, wraplength=400, justify="left").pack(pady=10, padx=40)
-
-    btn_frame = ctk.CTkFrame(onboarding, fg_color="transparent")
-    btn_frame.pack(fill="x", side="bottom", pady=30, padx=20)
-
-    def open_config():
-        import os
-        import platform
-        import subprocess
-        from core.storage import CONFIG_PATH
-        config_dir = CONFIG_PATH.parent
-
-        try:
-            if platform.system() == "Windows":
-                os.startfile(config_dir)
-            elif platform.system() == "Darwin":
-                subprocess.Popen(["open", config_dir])
-            else:
-                subprocess.Popen(["xdg-open", config_dir])
-        except Exception as e:
-            print(f"Error opening folder: {e}")
-
-    def continue_local():
-        # Zapisujemy flagę do pliku config.json
-        manager.mark_onboarding_done()
-        onboarding.destroy()
-
-    def start_migration():
-        # Pokazujemy okno ładowania
-        progress_popup = ctk.CTkToplevel(onboarding)
-        progress_popup.title("Migrating...")
-        progress_popup.geometry("300x150")
-        progress_popup.attributes("-topmost", True)
-
-        lbl_status = ctk.CTkLabel(progress_popup, text="Connecting...")
-        lbl_status.pack(pady=20)
-
-        progress_bar = ctk.CTkProgressBar(progress_popup)
-        progress_bar.pack(padx=20, fill="x")
-        progress_bar.set(0)
-
-        def run():
-            # Wywołujemy migrację z StorageManagera
-            success, message = manager.perform_cloud_migration(
-                progress_callback=lambda m: lbl_status.configure(text=m)
-            )
-
-            if success:
-                messagebox.showinfo("Success", "Migration complete! Restart the app to work in Cloud Mode.")
-                onboarding.destroy()
-                root.quit()  # Zalecany restart
-            else:
-                messagebox.showerror("Migration Error", f"Something went wrong.\n\nError: {message}")
-                progress_popup.destroy()
-
-        import threading
-        threading.Thread(target=run, daemon=True).start()
-
-    ctk.CTkButton(btn_frame, text="🚀 Migrate Data to Cloud",
-                  command=start_migration, fg_color="#27ae60", hover_color="#219150").pack(side="top", fill="x", pady=5)
-
-    ctk.CTkButton(btn_frame, text="Continue Locally", fg_color="transparent",
-                  border_width=1, command=continue_local).pack(side="left", expand=True, padx=10)
-
-    ctk.CTkButton(btn_frame, text="Open Config Folder 📂",
-                  command=open_config).pack(side="right", expand=True, padx=10)
+VERSION = "2.2.0"
 
 class SplashScreen(ctk.CTkToplevel):
     def __init__(self, parent, on_finish_callback):
@@ -1432,19 +1341,25 @@ class GUI:
                         borderwidth=0)
         style.map("Treeview.Heading", background=[("active", sel_bg)])
 
-
 if __name__ == "__main__":
     root = ctk.CTk()
     root.withdraw()
-
 
     def start_main_app():
         app = GUI(root)
         root.deiconify()
 
-        # WYWOŁANIE: sekundę po starcie głównej aplikacji
-        root.after(1000, show_cloud_onboarding)
+    def launch_splash_then_main():
+        SplashScreen(root, on_finish_callback=start_main_app)
 
+    def check_auth_and_start():
+        user = manager.get_session_user()
+        if user is not None:
+            launch_splash_then_main()
+        else:
+            settings = manager.get_settings()
+            txt = load_language(settings.get("lang", "en"))
+            LoginWindow(root, txt, manager, on_success_callback=launch_splash_then_main)
 
-    splash = SplashScreen(root, on_finish_callback=start_main_app)
+    root.after(0, check_auth_and_start)
     root.mainloop()

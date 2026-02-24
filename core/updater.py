@@ -15,7 +15,7 @@ from packaging import version
 # --- KONFIGURACJA ---
 REPO_OWNER = "oskarkonitz"
 REPO_NAME = "SPlanner"
-CURRENT_VERSION = "2.1.5"
+CURRENT_VERSION = "2.2.0"
 
 
 def check_for_updates(txt, silent=True, update_callback=None):
