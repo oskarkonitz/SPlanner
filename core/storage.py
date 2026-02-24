@@ -197,6 +197,19 @@ SQL_SCHEMA = """
                  start_datetime TEXT,
                  end_datetime TEXT
                  );
+            
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id TEXT PRIMARY KEY,
+                subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
+                name TEXT,
+                provider TEXT,
+                expiry_date DATE,
+                cost REAL,
+                currency TEXT,
+                billing_cycle TEXT,
+                note TEXT,
+                is_active BOOLEAN DEFAULT TRUE
+                );
 
 -- 3. GRAFIK (CUSTOM EVENTS) - TWOJA NOWOŚĆ
              CREATE TABLE IF NOT EXISTS event_lists \
@@ -911,6 +924,43 @@ class SQLiteProvider(BaseProvider):
                                 id
                             ) ON DELETE SET NULL
                 )""")
+
+            conn.execute("""CREATE TABLE IF NOT EXISTS subscriptions
+            (
+                id
+                TEXT
+                PRIMARY
+                KEY,
+                subject_id
+                TEXT,
+                name
+                TEXT,
+                provider
+                TEXT,
+                expiry_date
+                TEXT,
+                cost
+                REAL,
+                currency
+                TEXT,
+                billing_cycle
+                TEXT,
+                note
+                TEXT,
+                is_active
+                INTEGER
+                DEFAULT
+                1,
+                FOREIGN
+                KEY
+                            (
+                subject_id
+                            ) REFERENCES subjects
+                            (
+                                id
+                            ) ON DELETE SET NULL
+                )""")
+
             try:
                 conn.execute(
                     "ALTER TABLE grades ADD COLUMN module_id TEXT REFERENCES grade_modules(id) ON DELETE SET NULL")
@@ -1501,6 +1551,60 @@ class SQLiteProvider(BaseProvider):
             conn.execute("DELETE FROM custom_events WHERE id=?", (ev_id,))
             conn.commit()
 
+    def get_subscriptions(self):
+        with self._get_conn() as conn:
+            return [dict(r) for r in conn.execute("SELECT * FROM subscriptions").fetchall()]
+
+    def get_subscription(self, sub_id):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM subscriptions WHERE id=?", (sub_id,)).fetchone()
+            return dict(row) if row else None
+
+    def add_subscription(self, sub_dict):
+        with self._get_conn() as conn:
+            # Dodajemy ALTER TABLE w razie gdyby lokalna baza nie miała jeszcze tej kolumny
+            try:
+                conn.execute("ALTER TABLE subscriptions ADD COLUMN billing_date TEXT")
+            except sqlite3.OperationalError:
+                pass
+
+            conn.execute("""INSERT INTO subscriptions
+                            (id, subject_id, name, provider, expiry_date, cost, currency, billing_cycle, note,
+                             is_active, billing_date)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                         (sub_dict["id"], sub_dict.get("subject_id"), sub_dict["name"], sub_dict.get("provider"),
+                          sub_dict.get("expiry_date"), sub_dict.get("cost", 0.0), sub_dict.get("currency", "PLN"),
+                          sub_dict.get("billing_cycle", "yearly"), sub_dict.get("note", ""),
+                          1 if sub_dict.get("is_active", True) else 0, sub_dict.get("billing_date")))
+            conn.commit()
+
+    def update_subscription(self, sub_dict):
+        with self._get_conn() as conn:
+            conn.execute("""UPDATE subscriptions
+                            SET subject_id=?,
+                                name=?,
+                                provider=?,
+                                expiry_date=?,
+                                cost=?,
+                                currency=?,
+                                billing_cycle=?,
+                                note=?,
+                                is_active=?,
+                                billing_date=?
+                            WHERE id = ?""",
+                         (sub_dict.get("subject_id"), sub_dict["name"], sub_dict.get("provider"),
+                          sub_dict.get("expiry_date"),
+                          sub_dict.get("cost", 0.0), sub_dict.get("currency", "PLN"),
+                          sub_dict.get("billing_cycle", "yearly"),
+                          sub_dict.get("note", ""), 1 if sub_dict.get("is_active", True) else 0,
+                          sub_dict.get("billing_date"), sub_dict["id"]))
+            conn.commit()
+
+    def delete_subscription(self, sub_id):
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM subscriptions WHERE id=?", (sub_id,))
+            conn.commit()
+
 
 # --- DOSTAWCA: CHMURA SUPABASE ---
 class SupabaseProvider(BaseProvider):
@@ -1868,6 +1972,42 @@ class SupabaseProvider(BaseProvider):
     def delete_custom_event(self, ev_id):
         self.client.table("custom_events").delete().eq("id", ev_id).execute()
 
+    def get_subscriptions(self):
+        data = self.client.table("subscriptions").select("*").execute().data
+        return self._clean_dates(data)
+
+    def get_subscription(self, sub_id):
+        data = self.client.table("subscriptions").select("*").eq("id", sub_id).execute().data
+        return self._clean_dates(data[0]) if data else None
+
+    def add_subscription(self, sub_dict):
+        payload = sub_dict.copy()
+        payload["is_active"] = bool(payload.get("is_active", True))
+
+        # Zabezpieczenie przed pustymi stringami w restrykcyjnych kolumnach DATE
+        if payload.get("expiry_date") == "":
+            payload["expiry_date"] = None
+        if payload.get("billing_date") == "":
+            payload["billing_date"] = None
+
+        self.client.table("subscriptions").insert(payload).execute()
+
+    def update_subscription(self, sub_dict):
+        payload = sub_dict.copy()
+        payload.pop("id", None)
+        payload["is_active"] = bool(payload.get("is_active", True))
+
+        # Zabezpieczenie przed pustymi stringami w restrykcyjnych kolumnach DATE
+        if payload.get("expiry_date") == "":
+            payload["expiry_date"] = None
+        if payload.get("billing_date") == "":
+            payload["billing_date"] = None
+
+        self.client.table("subscriptions").update(payload).eq("id", sub_dict["id"]).execute()
+
+    def delete_subscription(self, sub_id):
+        self.client.table("subscriptions").delete().eq("id", sub_id).execute()
+
 
 # --- CONFIG LOADER ---
 def load_config():
@@ -1961,6 +2101,8 @@ class StorageManager:
             lists = self.cloud.get_task_lists()
             event_lists = self.cloud.get_event_lists() if hasattr(self.cloud, 'get_event_lists') else []
             custom_events = self.cloud.get_custom_events() if hasattr(self.cloud, 'get_custom_events') else []
+            update("Downloading subscriptions...")
+            subscriptions = self.cloud.get_subscriptions() if hasattr(self.cloud, 'get_subscriptions') else []
             update("Downloading statistics and achievements...")
             global_stats = self.cloud.get_global_stats()
             other_stats = self.cloud.get_other_stats()
@@ -2078,6 +2220,23 @@ class StorageManager:
                                   ce.get('date'),
                                   ce.get('day_of_week'), ce['start_time'], ce['end_time'], ce.get('start_date'),
                                   ce.get('end_date'), ce.get('color')))
+
+                conn.execute("DELETE FROM subscriptions")
+                for sub in subscriptions:
+                    try:
+                        conn.execute("ALTER TABLE subscriptions ADD COLUMN billing_date TEXT")
+                    except sqlite3.OperationalError:
+                        pass
+
+                    conn.execute("""INSERT INTO subscriptions
+                                    (id, subject_id, name, provider, expiry_date, cost, currency, billing_cycle, note,
+                                     is_active, billing_date)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                 (sub['id'], sub.get('subject_id'), sub['name'], sub.get('provider'),
+                                  sub.get('expiry_date'), sub.get('cost', 0.0), sub.get('currency', 'PLN'),
+                                  sub.get('billing_cycle', 'yearly'), sub.get('note', ''),
+                                  1 if sub.get('is_active', True) else 0, sub.get('billing_date')))
+
                 conn.execute("PRAGMA foreign_keys = ON;")
                 conn.commit()
             update("Ready!")
@@ -2310,6 +2469,24 @@ class StorageManager:
 
     def delete_custom_event(self, ev_id):
         self.local.delete_custom_event(ev_id); self._bg_cloud_sync("delete_custom_event", ev_id)
+
+    def get_subscriptions(self):
+        return self._sanitize_nulls(self.local.get_subscriptions())
+
+    def get_subscription(self, sub_id):
+        return self._sanitize_nulls(self.local.get_subscription(sub_id))
+
+    def add_subscription(self, sub_dict):
+        self.local.add_subscription(sub_dict);
+        self._bg_cloud_sync("add_subscription", sub_dict)
+
+    def update_subscription(self, sub_dict):
+        self.local.update_subscription(sub_dict);
+        self._bg_cloud_sync("update_subscription", sub_dict)
+
+    def delete_subscription(self, sub_id):
+        self.local.delete_subscription(sub_id);
+        self._bg_cloud_sync("delete_subscription", sub_id)
 
 
 manager = StorageManager(DB_PATH)

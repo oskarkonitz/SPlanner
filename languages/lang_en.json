@@ -588,5 +588,27 @@
     "lbl_w": "W:",
     "msg_math_error": "Math Error",
     "lbl_pts_conv": "Pts ➡ %:",
-    "btn_add_virt_mod": "+ Virtual Module"
+    "btn_add_virt_mod": "+ Virtual Module",
+
+    "menu_subscriptions": "Subscriptions",
+    "sub_title": "Manage Subscriptions",
+    "sub_name": "Name",
+    "sub_provider": "Provider",
+    "sub_cost": "Cost",
+    "sub_billing_date": "Next payment",
+    "sub_next_payment": "Payment",
+    "sub_expiry": "Expiry",
+    "sub_days_left": "Days left",
+    "sub_has_expiry": "Has expiry date?",
+    "sub_status_inactive": "Inactive",
+    "sub_expired": "Expired!",
+    "sort_by": "Sort by:",
+    "sort_name": "Name",
+    "sort_payment": "Next payment",
+    "sort_expiry": "Expiry date",
+    "sort_cost": "Cost",
+    "msg_empty_subs": "No active subscriptions found.",
+    "sub_show_inactive": "Show Inactive",
+    "btn_add_sub": "+ Add Subscription",
+    "btn_edit_sub": "Edit Subscription"
 }

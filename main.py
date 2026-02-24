@@ -31,6 +31,7 @@ from gui.windows.achievements import AchievementsPanel
 from gui.dialogs.edit import EditExamPanel, EditTopicPanel
 import platform
 import ctypes
+from gui.windows.subscriptions import SubscriptionsPanel
 
 # Dodaj to przed utworzeniem root = ctk.CTk()
 if platform.system() == "Windows":
@@ -331,6 +332,7 @@ class GUI:
             "days_off": self.open_blocked_days,
             "subjects": self.open_subjects_manager,
             "grades": self.open_grades_manager,
+            "subscriptions": self.open_subscriptions_manager,
             "gen_full": self.menu_gen_plan,
             "gen_new": self.menu_gen_plan_new
         }
@@ -877,6 +879,12 @@ class GUI:
         if restart:
             self.root.destroy()
             os.execl(sys.executable, sys.executable, *sys.argv)
+
+    def open_subscriptions_manager(self):
+        self.switch_to_view(SubscriptionsPanel,
+                            txt=self.txt,
+                            btn_style=self.get_btn_style(),
+                            storage=self.storage)
 
     def set_switch_hour(self, hour):
         self.storage.update_setting("next_exam_switch_hour", hour)

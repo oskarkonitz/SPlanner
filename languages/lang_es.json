@@ -580,5 +580,27 @@
     "lbl_w": "Peso:",
     "msg_math_error": "Error de cálculo",
     "lbl_pts_conv": "Pts ➡ %:",
-    "btn_add_virt_mod": "+ Módulo Virtual"
+    "btn_add_virt_mod": "+ Módulo Virtual",
+
+    "menu_subscriptions": "Suscripciones",
+    "sub_title": "Gestionar Suscripciones",
+    "sub_name": "Nombre",
+    "sub_provider": "Proveedor",
+    "sub_cost": "Costo",
+    "sub_billing_date": "Próximo pago",
+    "sub_next_payment": "Pago",
+    "sub_expiry": "Vencimiento",
+    "sub_days_left": "Días restantes",
+    "sub_has_expiry": "¿Tiene fecha de vencimiento?",
+    "sub_status_inactive": "Inactiva",
+    "sub_expired": "¡Expirada!",
+    "sort_by": "Ordenar por:",
+    "sort_name": "Nombre",
+    "sort_payment": "Próximo pago",
+    "sort_expiry": "Fecha de vencimiento",
+    "sort_cost": "Costo",
+    "msg_empty_subs": "No se encontraron suscripciones activas.",
+    "sub_show_inactive": "Mostrar inactivas",
+    "btn_add_sub": "+ Añadir suscripción",
+    "btn_edit_sub": "Editar suscripción"
 }

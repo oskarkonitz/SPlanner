@@ -580,5 +580,28 @@
     "lbl_w": "Waga:",
     "msg_math_error": "Błąd obliczeń",
     "lbl_pts_conv": "Pkt ➡ %:",
-    "btn_add_virt_mod": "+ Wirtualny Moduł"
+    "btn_add_virt_mod": "+ Wirtualny Moduł",
+
+    "menu_subscriptions": "Subskrypcje",
+    "sub_title": "Zarządzaj Subskrypcjami",
+    "sub_name": "Nazwa",
+    "sub_provider": "Dostawca",
+    "sub_cost": "Koszt",
+    "sub_billing_date": "Następna płatność",
+    "sub_next_payment": "Płatność",
+    "sub_expiry": "Wygaśnięcie",
+    "sub_days_left": "Pozostało",
+    "sub_has_expiry": "Ma datę wygaśnięcia?",
+    "sub_status_inactive": "Nieaktywna",
+    "sub_expired": "Wygasła!",
+    "sort_by": "Sortuj:",
+    "sort_name": "Nazwa",
+    "sort_payment": "Następna płatność",
+    "sort_expiry": "Data wygaśnięcia",
+    "sort_cost": "Koszt",
+    "msg_empty_subs": "Brak aktywnych subskrypcji.",
+    "sub_show_inactive": "Pokaż Nieaktywne",
+    "btn_add_sub": "+ Dodaj Subskrypcję",
+    "btn_edit_sub": "Edytuj Subskrypcję"
+
 }

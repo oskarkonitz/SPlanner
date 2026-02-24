@@ -580,5 +580,27 @@
     "lbl_w": "Gew.:",
     "msg_math_error": "Berechnungsfehler",
     "lbl_pts_conv": "Pkt ➡ %:",
-    "btn_add_virt_mod": "+ Virtuelles Modul"
+    "btn_add_virt_mod": "+ Virtuelles Modul",
+
+    "menu_subscriptions": "Abonnements",
+    "sub_title": "Abonnements verwalten",
+    "sub_name": "Name",
+    "sub_provider": "Anbieter",
+    "sub_cost": "Kosten",
+    "sub_billing_date": "Nächste Zahlung",
+    "sub_next_payment": "Zahlung",
+    "sub_expiry": "Ablaufdatum",
+    "sub_days_left": "Tage übrig",
+    "sub_has_expiry": "Hat Ablaufdatum?",
+    "sub_status_inactive": "Inaktiv",
+    "sub_expired": "Abgelaufen!",
+    "sort_by": "Sortieren nach:",
+    "sort_name": "Name",
+    "sort_payment": "Nächste Zahlung",
+    "sort_expiry": "Ablaufdatum",
+    "sort_cost": "Kosten",
+    "msg_empty_subs": "Keine aktiven Abonnements gefunden.",
+    "sub_show_inactive": "Inaktive anzeigen",
+    "btn_add_sub": "+ Abo hinzufügen",
+    "btn_edit_sub": "Abo bearbeiten"
 }

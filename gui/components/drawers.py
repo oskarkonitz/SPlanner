@@ -154,6 +154,7 @@ class ToolsDrawer(ctk.CTkFrame):
         add_btn("menu_days_off", self.callbacks["days_off"], "#5dade2")
         add_btn("menu_subjects", self.callbacks["subjects"], "#e67e22")
         add_btn("menu_grades", self.callbacks["grades"], "#00b800")
+        add_btn("menu_subscriptions", self.callbacks["subscriptions"], "#3498db")
 
         ctk.CTkFrame(content_frame, height=2, fg_color="gray80").pack(fill="x", pady=10)
         add_btn("btn_gen_full", self.callbacks["gen_full"])
