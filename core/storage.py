@@ -877,32 +877,40 @@ class SQLiteProvider(BaseProvider):
                                 TEXT
                             )""")
             conn.execute("""CREATE TABLE IF NOT EXISTS custom_events
+            (
+                id
+                TEXT
+                PRIMARY
+                KEY,
+                list_id
+                TEXT,
+                title
+                TEXT,
+                is_recurring
+                INTEGER,
+                date
+                TEXT,
+                day_of_week
+                INTEGER,
+                start_time
+                TEXT,
+                end_time
+                TEXT,
+                start_date
+                TEXT,
+                end_date
+                TEXT,
+                color
+                TEXT,
+                FOREIGN
+                KEY
+                            (
+                list_id
+                            ) REFERENCES event_lists
                             (
                                 id
-                                TEXT
-                                PRIMARY
-                                KEY,
-                                list_id
-                                TEXT,
-                                title
-                                TEXT,
-                                is_recurring
-                                INTEGER,
-                                date
-                                TEXT,
-                                day_of_week
-                                INTEGER,
-                                start_time
-                                TEXT,
-                                end_time
-                                TEXT,
-                                start_date
-                                TEXT,
-                                end_date
-                                TEXT,
-                                color
-                                TEXT
-                            )""")
+                            ) ON DELETE SET NULL
+                )""")
             try:
                 conn.execute(
                     "ALTER TABLE grades ADD COLUMN module_id TEXT REFERENCES grade_modules(id) ON DELETE SET NULL")

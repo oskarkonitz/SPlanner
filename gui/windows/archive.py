@@ -57,7 +57,7 @@ class ArchivePanel(ctk.CTkFrame):
         ctk.CTkLabel(top_frame, text=self.txt.get("lbl_semester", "Semester") + ":",
                      font=("Arial", 12, "bold")).pack(side="left", padx=(5, 10))
 
-        self.combo_semester = ctk.CTkComboBox(top_frame, width=200, command=self.on_semester_change)
+        self.combo_semester = ctk.CTkComboBox(top_frame, width=200, command=self.on_semester_change, state="readonly")
         self.combo_semester.pack(side="left")
 
         self.load_semesters()

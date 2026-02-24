@@ -567,5 +567,26 @@
     "form_list_name": "List Name:",
     "msg_confirm_del_list": "Delete this list and ALL tasks inside it?",
 
-    "btn_update_avail": "Update Available!"
+    "btn_update_avail": "Update Available!",
+    "win_simulator_title": "What-If Simulator",
+    "lbl_real_avg": "Real Avg:",
+    "lbl_sim_avg": "Simulated Avg:",
+    "sec_add_virtual": "Add Virtual Grade",
+    "sec_target_calc": "Target Calculator",
+    "lbl_target_avg": "Desired Average (%)",
+    "lbl_task_weight": "Upcoming Task Weight (%)",
+    "lbl_req_grade": "Required Grade:",
+    "btn_calc_target": "Calculate",
+    "btn_add_virtual": "Add",
+    "msg_target_unreachable": "Target is unreachable (requires >100%)",
+    "msg_invalid_input": "Please enter valid numbers.",
+    "btn_clear_sim": "Clear Simulation",
+    "lbl_no_virtual": "No virtual grades added yet.",
+    "btn_add_virt_grade": "+ Virtual Grade",
+    "btn_remove": "X",
+    "lbl_val": "Val:",
+    "lbl_w": "W:",
+    "msg_math_error": "Math Error",
+    "lbl_pts_conv": "Pts ➡ %:",
+    "btn_add_virt_mod": "+ Virtual Module"
 }

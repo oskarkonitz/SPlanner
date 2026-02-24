@@ -558,5 +558,27 @@
     "set_sch_show_time": "Pokaż godziny zajęć",
     "set_sch_show_room": "Pokaż numer sali",
 
-    "btn_update_avail": "Nowa aktualizacja!"
+    "btn_update_avail": "Nowa aktualizacja!",
+
+    "win_simulator_title": "Symulator What-If",
+    "lbl_real_avg": "Prawdziwa średnia:",
+    "lbl_sim_avg": "Symulowana średnia:",
+    "sec_add_virtual": "Dodaj Wirtualną Ocenę",
+    "sec_target_calc": "Kalkulator Celu",
+    "lbl_target_avg": "Wymarzona średnia (%)",
+    "lbl_task_weight": "Waga nadchodzącego zadania (%)",
+    "lbl_req_grade": "Wymagana ocena:",
+    "btn_calc_target": "Oblicz",
+    "btn_add_virtual": "Dodaj",
+    "msg_target_unreachable": "Cel nieosiągalny (wymaga >100%)",
+    "msg_invalid_input": "Wprowadź poprawne liczby.",
+    "btn_clear_sim": "Wyczyść symulację",
+    "lbl_no_virtual": "Brak wirtualnych ocen.",
+    "btn_add_virt_grade": "+ Wirtualna Ocena",
+    "btn_remove": "X",
+    "lbl_val": "Ocena:",
+    "lbl_w": "Waga:",
+    "msg_math_error": "Błąd obliczeń",
+    "lbl_pts_conv": "Pkt ➡ %:",
+    "btn_add_virt_mod": "+ Wirtualny Moduł"
 }

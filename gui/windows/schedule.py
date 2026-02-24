@@ -715,8 +715,6 @@ class SchedulePanel(ctk.CTkFrame):
 
     def show_context_menu(self, event, entry_id, date_str, subject_id=None):
         menu = tk.Menu(self, tearoff=0)
-        menu.add_command(label=self.txt.get("ctx_cancel_class", "Cancel class (this week only)"),
-                         command=lambda: self.cancel_class_instance(entry_id, date_str))
 
         if subject_id:
             # Pobieramy dane przedmiotu z bazy, aby uzyskać jego nazwę
@@ -725,10 +723,13 @@ class SchedulePanel(ctk.CTkFrame):
                 subject_name = subject_data.get("name", "Subject")
                 txt_edit = self.txt.get("btn_edit", "Edit")
 
-                menu.add_separator()
                 # Ustawiamy dynamiczną etykietę: "Edit: [Nazwa Przedmiotu]"
                 menu.add_command(label=f"{txt_edit}: {subject_name}",
                                  command=lambda: self.edit_selected_subject(subject_id))
+
+        menu.add_separator()
+        menu.add_command(label=self.txt.get("ctx_cancel_class", "Cancel class (this week only)"),
+                         command=lambda: self.cancel_class_instance(entry_id, date_str))
 
         try:
             menu.tk_popup(event.x_root, event.y_root)

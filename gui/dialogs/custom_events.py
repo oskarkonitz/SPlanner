@@ -268,9 +268,9 @@ class AddCustomEventPanel(ctk.CTkFrame):
         footer = ctk.CTkFrame(self, fg_color="transparent")
         footer.pack(fill="x", pady=20, side="bottom")
 
-        ctk.CTkButton(footer, text=self.txt.get("btn_cancel", "Cancel"), command=self.close_panel, **self.btn_style).pack(side="left", padx=10, fill="x", expand=True)
+        ctk.CTkButton(footer, text=self.txt.get("btn_cancel", "Cancel"), command=self.close_panel, **self.btn_style).pack(side="right", padx=10, fill="x", expand=True)
         btn_save_text = "Save Changes" if self.event_data else "Save Event"
-        ctk.CTkButton(footer, text=self.txt.get("btn_save", btn_save_text), command=self.save_event, **self.btn_style).pack(side="right", padx=10, fill="x", expand=True)
+        ctk.CTkButton(footer, text=self.txt.get("btn_save", btn_save_text), command=self.save_event, **self.btn_style).pack(side="left", padx=10, fill="x", expand=True)
 
     def close_panel(self):
         if self.close_callback:

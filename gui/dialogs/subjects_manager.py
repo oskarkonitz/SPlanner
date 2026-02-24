@@ -483,7 +483,6 @@ class AddSubjectPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(sched_frame, text=self.txt.get("lbl_schedule", "Class Schedule"),
                      font=("Arial", 12, "bold")).pack(side="left")
-        ctk.CTkButton(sched_frame, text="+ Slot", width=60, height=24, command=self.add_slot).pack(side="right")
 
         self.tree_sched = ttk.Treeview(self.center_box, columns=("day", "time", "loc"), show="headings", height=4)
         self.tree_sched.heading("day", text="Day")
@@ -500,11 +499,11 @@ class AddSubjectPanel(ctk.CTkFrame):
         slot_actions_frame = ctk.CTkFrame(self.center_box, fg_color="transparent")
         slot_actions_frame.grid(row=7, column=0, columnspan=2, pady=5)
 
-        ctk.CTkButton(slot_actions_frame, text="Edit Slot", fg_color="#3498db", hover_color="#2980b9",
-                      height=24, width=100, command=self.edit_slot).pack(side="left", padx=5)
+        ctk.CTkButton(slot_actions_frame, text="+ Slot", width=60, **self.btn_style, command=self.add_slot).pack(side="left", padx=5)
 
-        ctk.CTkButton(slot_actions_frame, text="Remove Slot", fg_color="#e74c3c", hover_color="#c0392b",
-                      height=24, width=100, command=self.remove_slot).pack(side="left", padx=5)
+        ctk.CTkButton(slot_actions_frame, text="Edit Slot", **self.btn_style, width=100, command=self.edit_slot).pack(side="left", padx=5)
+
+        ctk.CTkButton(slot_actions_frame, text="Remove Slot", **self.btn_style, width=100, command=self.remove_slot).pack(side="left", padx=5)
 
         self.refresh_schedule_list()
 

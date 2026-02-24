@@ -23,7 +23,7 @@ class TodoWindow:
         draw_target = drawer_parent if drawer_parent else self.parent
         self.note_drawer = NoteDrawer(draw_target, self.txt, self.btn_style, self.save_data_from_drawer)
 
-        self.current_list_id = "scheduled"  # Domyślny widok
+        self.current_list_id = "all"  # Domyślny widok
         self.selected_task_id = None
         self.current_color = None
 
@@ -600,7 +600,10 @@ class TodoWindow:
             if t_date is None or t_date == "None":
                 t_date = ""
 
-            t["date"] = t_date  # Nadpisujemy w pamięci, by kalendarz przy renderowaniu nie zgłupiał
+            t["date"] = t_date 
+
+            if t_date == "" and t["status"] == "done" and not is_shopping_task:
+                continue
 
             if self.current_list_id == "all":
                 pass  # Pokazuj wszystko

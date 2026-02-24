@@ -44,7 +44,7 @@ if platform.system() == "Windows":
         except Exception:
             pass
 
-VERSION = "2.1.4"
+VERSION = "2.1.5"
 
 
 def show_cloud_onboarding():

@@ -4,6 +4,7 @@ import customtkinter as ctk
 from tkcalendar import DateEntry
 from datetime import datetime, date
 import uuid
+from gui.windows.grades_simulator import GradesSimulatorPanel
 
 
 class GradesPanel(ctk.CTkFrame):
@@ -57,13 +58,13 @@ class GradesPanel(ctk.CTkFrame):
 
         # LEWY PANEL
         self.frame_left = ctk.CTkFrame(self.paned, corner_radius=0, fg_color="transparent")
-        self.paned.add(self.frame_left, minsize=250, stretch="always")
+        self.paned.add(self.frame_left, minsize=200, stretch="always")
 
         self._init_left_panel()
 
         # PRAWY PANEL
         self.frame_right = ctk.CTkFrame(self.paned, corner_radius=0, fg_color="transparent")
-        self.paned.add(self.frame_right, minsize=400, stretch="always")
+        self.paned.add(self.frame_right, minsize=450, stretch="always")
 
         self._init_right_panel()
 
@@ -93,7 +94,7 @@ class GradesPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(self.top_left, text=self.txt.get("lbl_semester", "Semester"), font=("Arial", 12, "bold")).pack(
             anchor="w")
-        self.combo_sem = ctk.CTkComboBox(self.top_left, command=self.on_semester_change)
+        self.combo_sem = ctk.CTkComboBox(self.top_left, command=self.on_semester_change, state="readonly")
         self.combo_sem.pack(fill="x", pady=(5, 5))
 
         self.lbl_sem_gpa = ctk.CTkLabel(self.top_left, text=self.txt.get("lbl_gpa_placeholder", "GPA: --"),
@@ -126,12 +127,15 @@ class GradesPanel(ctk.CTkFrame):
 
         # Przyciski akcji (Góra)
         if self.is_advanced:
-            ctk.CTkButton(header_frame, text=self.txt.get("btn_add_module", "+ Module"), width=80, fg_color="#e67e22",
-                          hover_color="#d35400",
+            ctk.CTkButton(header_frame, text=self.txt.get("btn_add_module", "+ Module"), width=80, **self.btn_style,
                           command=self.add_module).pack(side="right", padx=5)
 
         ctk.CTkButton(header_frame, text=self.txt.get("btn_add_grade", "+ Grade"), width=80, command=self.add_grade,
                       **self.btn_style).pack(side="right", padx=5)
+
+        # Przycisk symulatora
+        ctk.CTkButton(header_frame, text=self.txt.get("win_simulator_title", "Simulator"), width=80, **self.btn_style,
+                      command=self.open_simulator).pack(side="right", padx=5)
 
         # Tabela (Treeview)
         style = ttk.Style()
@@ -166,7 +170,7 @@ class GradesPanel(ctk.CTkFrame):
         ctk.CTkButton(btn_box, text=self.txt.get("btn_edit", "Edit"), command=self.edit_item, width=80,
                       **self.btn_style).pack(side="left", padx=5)
         ctk.CTkButton(btn_box, text=self.txt.get("btn_delete", "Delete"), command=self.delete_item, width=80,
-                      fg_color="#e74c3c", hover_color="#c0392b").pack(side="right", padx=5)
+                      **self.btn_style).pack(side="right", padx=5)
 
         self.show_right_panel(empty=True)
 
@@ -180,15 +184,21 @@ class GradesPanel(ctk.CTkFrame):
 
     def load_data(self):
         self.semesters = [dict(s) for s in self.storage.get_semesters()]
-        self.semesters.sort(key=lambda x: (not x["is_current"], x["start_date"]), reverse=True)
+
+        # Poprawione sortowanie: najpierw aktualny semestr, potem od najnowszych dat
+        self.semesters.sort(key=lambda x: (bool(x.get("is_current")), x.get("start_date", "")), reverse=True)
 
         sem_names = [s["name"] for s in self.semesters]
         self.combo_sem.configure(values=sem_names)
 
         if self.semesters:
             if not self.current_semester_id:
-                self.current_semester_id = self.semesters[0]["id"]
-                self.combo_sem.set(self.semesters[0]["name"])
+                # Szukamy pierwszego semestru, który jest oznaczony jako aktualny
+                current_sem = next((s for s in self.semesters if s.get("is_current")), self.semesters[0])
+
+                self.current_semester_id = current_sem["id"]
+                self.combo_sem.set(current_sem["name"])
+
             self.refresh_subjects_list()
         else:
             self.combo_sem.set("")
@@ -451,6 +461,13 @@ class GradesPanel(ctk.CTkFrame):
                                         grade_mode=self.grade_mode, weight_mode=self.weight_mode,
                                         modules=modules, grade_data=dict(target_grade),
                                         callback=cb, close_callback=self.drawer.close_panel)
+
+    def open_simulator(self):
+        if not self.current_subject_id: return
+        if self.drawer:
+            self.drawer.set_content(GradesSimulatorPanel, txt=self.txt, btn_style=self.btn_style,
+                                    storage=self.storage, subject_id=self.current_subject_id,
+                                    close_callback=self.drawer.close_panel)
 
 
 # --- PANEL DODAWANIA MODUŁU (SZUFLADA) ---

@@ -558,5 +558,27 @@
     "set_sch_show_time": "Mostrar hora",
     "set_sch_show_room": "Mostrar aula",
 
-    "btn_update_avail": "¡Actualización!"
+    "btn_update_avail": "¡Actualización!",
+
+    "win_simulator_title": "Simulador What-If",
+    "lbl_real_avg": "Promedio Real:",
+    "lbl_sim_avg": "Promedio Simulado:",
+    "sec_add_virtual": "Añadir Nota Virtual",
+    "sec_target_calc": "Calculadora de Metas",
+    "lbl_target_avg": "Promedio Deseado (%)",
+    "lbl_task_weight": "Peso de la próxima tarea (%)",
+    "lbl_req_grade": "Nota Requerida:",
+    "btn_calc_target": "Calcular",
+    "btn_add_virtual": "Añadir",
+    "msg_target_unreachable": "Meta inalcanzable (requiere >100%)",
+    "msg_invalid_input": "Por favor, introduzca números válidos.",
+    "btn_clear_sim": "Borrar Simulación",
+    "lbl_no_virtual": "Aún no hay notas virtuales.",
+    "btn_add_virt_grade": "+ Nota Virtual",
+    "btn_remove": "X",
+    "lbl_val": "Nota:",
+    "lbl_w": "Peso:",
+    "msg_math_error": "Error de cálculo",
+    "lbl_pts_conv": "Pts ➡ %:",
+    "btn_add_virt_mod": "+ Módulo Virtual"
 }

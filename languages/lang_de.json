@@ -558,5 +558,27 @@
     "set_sch_show_time": "Zeit anzeigen",
     "set_sch_show_room": "Raumnummer anzeigen",
 
-    "btn_update_avail": "Update verfügbar!"
+    "btn_update_avail": "Update verfügbar!",
+
+    "win_simulator_title": "What-If Simulator",
+    "lbl_real_avg": "Echter Durchschn.:",
+    "lbl_sim_avg": "Simulierter Durchschn.:",
+    "sec_add_virtual": "Virtuelle Note hinzufügen",
+    "sec_target_calc": "Zielrechner",
+    "lbl_target_avg": "Gewünschter Durchschnitt (%)",
+    "lbl_task_weight": "Gewicht der nächsten Aufgabe (%)",
+    "lbl_req_grade": "Benötigte Note:",
+    "btn_calc_target": "Berechnen",
+    "btn_add_virtual": "Hinzufügen",
+    "msg_target_unreachable": "Ziel unerreichbar (benötigt >100%)",
+    "msg_invalid_input": "Bitte gültige Zahlen eingeben.",
+    "btn_clear_sim": "Simulation löschen",
+    "lbl_no_virtual": "Noch keine virtuellen Noten.",
+    "btn_add_virt_grade": "+ Virtuelle Note",
+    "btn_remove": "X",
+    "lbl_val": "Note:",
+    "lbl_w": "Gew.:",
+    "msg_math_error": "Berechnungsfehler",
+    "lbl_pts_conv": "Pkt ➡ %:",
+    "btn_add_virt_mod": "+ Virtuelles Modul"
 }
